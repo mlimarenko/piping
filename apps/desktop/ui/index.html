@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Piping</title>
+    <link rel="icon" href="./favicon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="bootstrap-page">
+    <header class="app-topbar">
+      <div class="topbar-brand">
+        <button class="logo-menu-trigger" type="button" data-menu-trigger data-i18n-title="app.menu" aria-haspopup="menu" aria-expanded="false">
+          <img class="topbar-logo" src="./favicon.svg" alt="" />
+        </button>
+        <div class="topbar-drag topbar-title-area" data-window-drag data-tauri-drag-region="deep">
+          <span class="topbar-title">Piping</span>
+          <span class="topbar-context" data-i18n="app.desktop"></span>
+        </div>
+      </div>
+      <div class="topbar-fill" data-window-drag data-tauri-drag-region="deep"></div>
+      <div class="window-controls">
+        <button class="window-control" type="button" data-window-action="minimize" data-i18n-title="window.minimize" aria-label="Minimize">
+          <span aria-hidden="true">-</span>
+        </button>
+        <button class="window-control" type="button" data-window-action="toggle-maximize" data-i18n-title="window.maximize" aria-label="Maximize">
+          <span aria-hidden="true">□</span>
+        </button>
+        <button class="window-control window-control-close" type="button" data-window-action="close" data-i18n-title="window.close" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+    </header>
+    <div class="resize-handles" aria-hidden="true">
+      <div data-window-resize="North"></div>
+      <div data-window-resize="South"></div>
+      <div data-window-resize="West"></div>
+      <div data-window-resize="East"></div>
+      <div data-window-resize="NorthWest"></div>
+      <div data-window-resize="NorthEast"></div>
+      <div data-window-resize="SouthWest"></div>
+      <div data-window-resize="SouthEast"></div>
+    </div>
+    <main class="shell">
+      <section class="setup-panel" aria-labelledby="setup-title">
+        <img class="brand-mark" src="./favicon.svg" alt="" />
+        <div class="copy">
+          <p class="eyebrow" data-i18n="setup.eyebrow"></p>
+          <h1 id="setup-title" data-i18n="setup.title"></h1>
+          <p class="lede" data-i18n="setup.lede"></p>
+        </div>
+
+        <form id="service-form" class="service-form" novalidate>
+          <label for="service-url" data-i18n="setup.serviceAddress"></label>
+          <div class="field-row">
+            <input
+              id="service-url"
+              name="service-url"
+              type="text"
+              inputmode="url"
+              autocomplete="url"
+              spellcheck="false"
+              placeholder="piping.example.com"
+              data-i18n-placeholder="setup.placeholder"
+              required
+            />
+            <button id="submit-button" type="submit" data-i18n="setup.open"></button>
+          </div>
+          <p class="hint" data-i18n="setup.hint"></p>
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+        </form>
+
+        <footer>
+          <span id="version"></span>
+        </footer>
+      </section>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

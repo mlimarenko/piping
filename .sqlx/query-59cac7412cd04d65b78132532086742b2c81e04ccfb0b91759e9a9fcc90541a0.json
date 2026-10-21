@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO secrets_store (secret_id, encrypted_value) VALUES ($1, $2) ON CONFLICT (secret_id) DO UPDATE SET encrypted_value = EXCLUDED.encrypted_value",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "59cac7412cd04d65b78132532086742b2c81e04ccfb0b91759e9a9fcc90541a0"
+}

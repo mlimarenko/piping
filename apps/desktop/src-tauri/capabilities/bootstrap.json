@@ -1,0 +1,25 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "bootstrap-local",
+  "description": "Allow the local first-run bootstrap UI to configure the Piping service URL and control its desktop shell chrome.",
+  "local": true,
+  "windows": ["bootstrap"],
+  "webviews": ["bootstrap"],
+  "permissions": [
+    "core:default",
+    "allow-get-app-version",
+    "allow-get-service-url",
+    "allow-get-system-language",
+    "allow-set-service-url",
+    "allow-change-service-address",
+    "allow-show-about",
+    "allow-check-for-updates",
+    "allow-minimize-window",
+    "allow-toggle-maximize-window",
+    "allow-close-window",
+    "allow-start-window-drag",
+    "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
+    "allow-show-app-menu"
+  ]
+}

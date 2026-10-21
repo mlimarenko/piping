@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE ipam_prefix AS prefix SET\n                _depth = (SELECT COUNT(*) FROM ipam_prefix AS ancestor\n                    WHERE ancestor.vrf_id IS NOT DISTINCT FROM prefix.vrf_id\n                      AND ancestor.prefix >> prefix.prefix)::smallint,\n                _children = (SELECT COUNT(*) FROM ipam_prefix AS child\n                    WHERE child.vrf_id IS NOT DISTINCT FROM prefix.vrf_id\n                      AND prefix.prefix >> child.prefix\n                      AND NOT EXISTS (SELECT 1 FROM ipam_prefix AS intermediate\n                        WHERE intermediate.vrf_id IS NOT DISTINCT FROM prefix.vrf_id\n                          AND prefix.prefix >> intermediate.prefix\n                          AND intermediate.prefix >> child.prefix))\n               WHERE prefix.id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f8e4aa4ce25a646e7c32b1c701bcea60c1542e8bd84e85ac1dd0aeb3741a16f5"
+}

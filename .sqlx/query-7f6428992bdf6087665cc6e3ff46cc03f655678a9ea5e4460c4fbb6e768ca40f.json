@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE virtualization_virtualmachine AS vm SET\n                interface_count = (SELECT COUNT(*) FROM virtualization_vminterface WHERE virtual_machine_id = vm.id),\n                virtual_disk_count = (SELECT COUNT(*) FROM virtualization_virtualdisk WHERE virtual_machine_id = vm.id)\n               WHERE vm.id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7f6428992bdf6087665cc6e3ff46cc03f655678a9ea5e4460c4fbb6e768ca40f"
+}

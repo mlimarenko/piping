@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "name": "Test Platform IOS",
+    "slug": "test-platform-ios",
+    "manufacturer": {"id": 1, "slug": "test-manufacturer-cisco"},
+    "napalm_driver": "ios",
+    "description": "Cisco IOS stand-in",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Test Platform JunOS",
+    "slug": "test-platform-junos",
+    "manufacturer": {"id": 2, "slug": "test-manufacturer-juniper"},
+    "napalm_driver": "junos",
+    "description": "Juniper JunOS stand-in",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

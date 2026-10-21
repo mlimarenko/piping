@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT secret_id FROM secret_usage_binding WHERE (consumer_type = 'user_auth_password' AND consumer_id = $1) OR (consumer_type = 'user_connection_credential_set' AND consumer_id = ANY($2)) OR (consumer_type = 'connection_config:record' AND consumer_id = ANY($3)) ORDER BY secret_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "secret_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9e0db5bbb740700bceff6477504efd205e1ca213c190fed60c1ea61f62b37bda"
+}

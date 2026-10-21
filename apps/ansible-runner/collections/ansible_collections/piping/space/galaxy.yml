@@ -1,0 +1,14 @@
+namespace: piping
+name: space
+version: 0.1.0
+readme: README.md
+authors:
+  - Piping
+license:
+  - Apache-2.0
+tags:
+  - inventory
+  - automation
+  - piping
+repository: https://github.com/mlimarenko/piping
+description: Piping runtime helpers for controller-side playbooks.

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-show-about"
+description = "Enables the show_about command without any pre-configured scope."
+commands.allow = ["show_about"]
+
+[[permission]]
+identifier = "deny-show-about"
+description = "Denies the show_about command without any pre-configured scope."
+commands.deny = ["show_about"]

@@ -1,0 +1,28 @@
+.git
+.github
+.gitlab-ci.yml
+
+# Agent/tool runtime state, mirrored from .gitignore. `docker build .` sends the
+# working tree, so whatever these tools leave in a checkout must stay out of the
+# build context: `.claude/worktrees/` alone can hold a full extra checkout.
+.omc
+.omx
+.claude
+.audit
+.codex
+.playwright-mcp/
+.token-optimizer/
+
+.env
+.env.*
+.images.env
+env/*.env
+
+**/node_modules
+**/target
+**/dist
+**/coverage
+output
+
+*.log
+.DS_Store

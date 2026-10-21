@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.conname::text AS \"name!\" FROM pg_constraint c WHERE c.confrelid = to_regclass($1) AND c.contype = 'f' AND c.confdeltype IN ('a', 'r') AND c.condeferrable AND c.condeferred ORDER BY c.conname",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "44bd3c05fbe5fc279376df2691f116ea3dd5235dfcce4ccc1face392a3b6613f"
+}

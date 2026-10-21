@@ -1,0 +1,42 @@
+# Dev-only: PostgreSQL and Redis for local backend runs.
+# Use: make run (starts these, waits, then runs the backend).
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    hostname: postgres
+    environment:
+      POSTGRES_USER: piping
+      POSTGRES_PASSWORD: piping-dev-password
+      POSTGRES_DB: piping
+    ports:
+      - "${PIPING_DEV_PG_PORT:-5432}:5432"
+    volumes:
+      # postgres:18 stores data in a versioned subdir; mount at the parent
+      # (matches docker-compose.yml). Mounting at /data errors on 18-alpine.
+      - backend-rust-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U piping -d piping"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:8.10.1
+    hostname: redis
+    command: redis-server --requirepass dev-redis-password
+    ports:
+      - "${PIPING_DEV_REDIS_PORT:-6379}:6379"
+    volumes:
+      - backend-rust-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a dev-redis-password ping | grep -q PONG || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 2s
+
+volumes:
+  backend-rust-postgres-data:
+  backend-rust-redis-data:

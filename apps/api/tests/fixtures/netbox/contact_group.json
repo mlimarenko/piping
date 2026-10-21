@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "name": "Test Contact Group NOC",
+    "slug": "test-contact-group-noc",
+    "parent": null,
+    "description": "NOC contact grouping",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

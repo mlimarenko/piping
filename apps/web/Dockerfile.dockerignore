@@ -1,0 +1,17 @@
+# Root context exposes the shared registry; exclude unrelated backend sources.
+**
+!apps
+!apps/web
+!apps/web/**
+!apps/api
+!apps/api/contracts
+!apps/api/contracts/inventory-template-references.json
+
+# Dependencies, generated output and local configuration do not belong in images.
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+**/*.log
+**/.DS_Store

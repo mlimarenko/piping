@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "name": "Test Cluster Type KVM",
+    "slug": "test-cluster-type-kvm",
+    "description": "KVM hypervisor cluster type",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

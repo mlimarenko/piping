@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO secrets_variable (id, key, is_masked, is_protected, kind, retire_with_field_usage) VALUES ($1, $2, true, false, 'field', true)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4d26bf82967a53744669ea20be4d68f65ea7c44983722648149cb5e2c172ca76"
+}

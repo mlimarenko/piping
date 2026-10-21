@@ -1,0 +1,59 @@
+# pnpm 11 refuses to silently skip a dependency's build script: a fresh
+# `pnpm install` exits 1 with ERR_PNPM_IGNORED_BUILDS until each one has an
+# explicit decision. These are the decisions, and the reasoning behind them:
+#
+#   esbuild      — the bundler's own binary check; the only one that could
+#                  affect what we ship, so it runs.
+#   msw          — its script copies the service worker into public/, and
+#                  public/mockServiceWorker.js is committed already.
+#   tree-sitter* — native parsers pulled in transitively; nothing under src/
+#                  imports them, so nothing we ship needs them built.
+#   @scarf/scarf — install-time telemetry.
+#   core-js-pure — a postinstall funding message.
+allowBuilds:
+  '@scarf/scarf': false
+  '@tree-sitter-grammars/tree-sitter-yaml': false
+  core-js-pure: false
+  esbuild: true
+  msw: false
+  tree-sitter: false
+  tree-sitter-json: false
+# PIP-90: owner-approved on 2026-10-03. The PIP-91 re-review on 2026-10-06
+# confirmed against the GitHub advisory API that braces still has no patched
+# release (first_patched_version null); the owner renewed this waiver until
+# 2026-11-10 or an upstream fix. braces is used only by ESLint's checked-in
+# boundary patterns, never by runtime inputs or the production bundle.
+# Keep all other advisories blocking; do not broaden this development-only waiver.
+audit:
+  ignore:
+    - GHSA-vfj7-8cjw-p6xm
+minimumReleaseAgeExclude:
+  - handlebars@4.7.10
+  - dompurify@3.4.16
+  - axios@1.20.0
+  - js-yaml@4.3.2
+  - brace-expansion@2.1.7 || 5.0.12
+  - postcss@8.5.23
+  - undici@7.29.1
+  - nanoid@3.3.18
+  - '@maplibre/maplibre-gl-style-spec@26.4.4'
+  - maplibre-gl@6.10.0
+  - smol-toml@1.9.0
+  - source-map-js@1.2.2
+overrides:
+  # Patch template injection in the ESLint boundaries dependency tree.
+  handlebars@>=4.0.0 <=4.7.9: 4.7.10
+  # argparse 1.x pulls the unpatched sprintf-js DoS advisory; remarkable uses
+  # argparse only in its unused CLI entry, and swagger-client already resolves
+  # argparse 2, so the tree converges on 2.0.1 without changing library code.
+  argparse@>=1.0.0 <2: 2.0.1
+  dompurify@>=3.4.13 <=3.4.15: 3.4.16
+  axios@>=1.0.0 <1.20.0: 1.20.0
+  brace-expansion@>=2.0.0 <2.1.7: 2.1.7
+  brace-expansion@>=4.0.0 <5.0.12: 5.0.12
+  browserslist@<=4.28.6: 4.28.7
+  js-yaml@>=4.0.0 <4.3.2: 4.3.2
+  postcss@<=8.5.22: 8.5.23
+  smol-toml@<=1.8.0: 1.9.0
+  source-map-js@>=1.0.0 <1.2.2: 1.2.2
+  undici@>=7.28.0 <7.29.1: 7.29.1

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT secret_id FROM secret_usage_binding WHERE consumer_id = ANY($1) AND owner_scope_id = consumer_id AND ((consumer_type = 'inventory_custom_field' AND owner_scope_type = 'inventory_custom_field') OR (consumer_type = 'connection_scope:connection_target' AND owner_scope_type = 'connection_target')) ORDER BY secret_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "secret_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5aa6253b6b7716e69ab090f363b8df2dd4d4286f271141decc48b5e00d9a2fb4"
+}

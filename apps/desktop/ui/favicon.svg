@@ -1,0 +1,21 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="favicon-gradient" x1="0" y1="32" x2="32" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffc94d" stop-opacity="1" />
+      <stop offset="50%" stop-color="#f9b310" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#e08e00" stop-opacity="0.9" />
+    </linearGradient>
+    <mask id="mask-large-favicon">
+      <rect width="32" height="32" fill="black" />
+      <circle cx="12" cy="20" r="12" fill="white" />
+      <circle cx="20" cy="12" r="9" fill="black" />
+    </mask>
+    <mask id="mask-small-favicon">
+      <rect width="32" height="32" fill="black" />
+      <circle cx="20" cy="12" r="9" fill="white" />
+      <circle cx="12" cy="20" r="12" fill="black" />
+    </mask>
+  </defs>
+  <circle cx="12" cy="20" r="12" fill="url(#favicon-gradient)" mask="url(#mask-large-favicon)" />
+  <circle cx="20" cy="12" r="9" fill="url(#favicon-gradient)" mask="url(#mask-small-favicon)" />
+</svg>

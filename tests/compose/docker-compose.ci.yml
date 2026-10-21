@@ -1,0 +1,10 @@
+# Catalog's native Compose route owns this readiness fixture and its cleanup.
+# The Python tests create a second uniquely named isolated deployment project.
+services:
+  registry:
+    image: registry:2
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:5000/v2/']
+      interval: 1s
+      timeout: 3s
+      retries: 60

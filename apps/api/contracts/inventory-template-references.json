@@ -1,0 +1,94 @@
+{
+  "targets": {
+    "tenant": { "entity": "Tenants", "table": "tenancy_tenant" },
+    "site": { "entity": "Sites", "table": "dcim_site" },
+    "device": { "entity": "Devices", "table": "dcim_device" },
+    "virtual_machine": { "entity": "Virtual Machines", "table": "virtualization_virtualmachine" },
+    "device_interface": { "entity": "Interfaces", "table": "dcim_interface" },
+    "vm_interface": { "entity": "VM Interfaces", "table": "virtualization_vminterface" },
+    "ip_address": { "entity": "IP Addresses", "table": "ipam_ipaddress" },
+    "tenant_group": { "entity": "Tenant Groups", "table": "tenancy_tenantgroup" },
+    "region": { "entity": "Regions", "table": "dcim_region" },
+    "site_group": { "entity": "Site Groups", "table": "dcim_sitegroup" },
+    "location": { "entity": "Locations", "table": "dcim_location" },
+    "prefix": { "entity": "Prefixes", "table": "ipam_prefix" },
+    "rack": { "entity": "Racks", "table": "dcim_rack" },
+    "rack_role": { "entity": "Rack Roles", "table": "dcim_rackrole" },
+    "rack_type": { "entity": "Rack Types", "table": "dcim_racktype" },
+    "manufacturer": { "entity": "Manufacturers", "table": "dcim_manufacturer" },
+    "device_role": { "entity": "Device Roles", "table": "dcim_devicerole" },
+    "device_type": { "entity": "Device Types", "table": "dcim_devicetype" },
+    "platform": { "entity": "Platforms", "table": "dcim_platform" },
+    "contact": { "entity": "Contacts", "table": "tenancy_contact" },
+    "contact_role": { "entity": "Contact Roles", "table": "tenancy_contactrole" },
+    "contact_assignment": { "entity": "Contact Assignments", "table": "tenancy_contactassignment" },
+    "cluster": { "entity": "Clusters", "table": "virtualization_cluster" },
+    "cluster_type": { "entity": "Cluster Types", "table": "virtualization_clustertype" },
+    "cluster_group": { "entity": "Cluster Groups", "table": "virtualization_clustergroup" }
+  },
+  "fields": {
+    "site": {
+      "tenant_id": { "resource": "tenant", "idField": "tenant_id" },
+      "tenant": { "resource": "tenant", "idField": "tenant_id" },
+      "region_id": { "resource": "region", "idField": "region_id" },
+      "region": { "resource": "region", "idField": "region_id" },
+      "site_group_id": { "resource": "site_group", "idField": "site_group_id" },
+      "site_group": { "resource": "site_group", "idField": "site_group_id" }
+    },
+    "device": {
+      "site_id": { "resource": "site", "idField": "site_id" },
+      "site": { "resource": "site", "idField": "site_id" },
+      "role_id": { "resource": "device_role", "idField": "role_id" },
+      "role": { "resource": "device_role", "idField": "role_id" },
+      "device_type_id": { "resource": "device_type", "idField": "device_type_id" },
+      "device_type": { "resource": "device_type", "idField": "device_type_id" },
+      "tenant_id": { "resource": "tenant", "idField": "tenant_id" },
+      "tenant": { "resource": "tenant", "idField": "tenant_id" }
+    },
+    "virtual_machine": {
+      "cluster_id": { "resource": "cluster", "idField": "cluster_id" },
+      "tenant_id": { "resource": "tenant", "idField": "tenant_id" },
+      "role_id": { "resource": "device_role", "idField": "role_id" },
+      "site_id": { "resource": "site", "idField": "site_id" }
+    },
+    "device_interface": { "device_id": { "resource": "device", "idField": "device_id" } },
+    "vm_interface": { "virtual_machine_id": { "resource": "virtual_machine", "idField": "virtual_machine_id" } },
+    "ip_address": {
+      "tenant_id": { "resource": "tenant", "idField": "tenant_id" },
+      "interface_id": { "resource": "device_interface", "idField": "interface_id" },
+      "vm_interface_id": { "resource": "vm_interface", "idField": "vm_interface_id" }
+    },
+    "tenant_group": { "parent_id": { "resource": "tenant_group", "idField": "parent_id" } },
+    "region": { "parent_id": { "resource": "region", "idField": "parent_id" } },
+    "site_group": { "parent_id": { "resource": "site_group", "idField": "parent_id" } },
+    "location": {
+      "site_id": { "resource": "site", "idField": "site_id" },
+      "parent_id": { "resource": "location", "idField": "parent_id" },
+      "tenant_id": { "resource": "tenant", "idField": "tenant_id" }
+    },
+    "prefix": {
+      "site_id": { "resource": "site", "idField": "site_id" },
+      "site": { "resource": "site", "idField": "site_id" },
+      "tenant_id": { "resource": "tenant", "idField": "tenant_id" },
+      "tenant": { "resource": "tenant", "idField": "tenant_id" }
+    },
+    "rack": {
+      "site_id": { "resource": "site", "idField": "site_id" },
+      "tenant_id": { "resource": "tenant", "idField": "tenant_id" },
+      "role_id": { "resource": "rack_role", "idField": "role_id" }
+    },
+    "rack_type": { "manufacturer_id": { "resource": "manufacturer", "idField": "manufacturer_id" } },
+    "device_type": { "manufacturer_id": { "resource": "manufacturer", "idField": "manufacturer_id" } },
+    "contact_assignment": {
+      "contact_id": { "resource": "contact", "idField": "contact_id" },
+      "role_id": { "resource": "contact_role", "idField": "role_id" }
+    },
+    "platform": { "manufacturer_id": { "resource": "manufacturer", "idField": "manufacturer_id" } },
+    "cluster": {
+      "type_id": { "resource": "cluster_type", "idField": "type_id" },
+      "group_id": { "resource": "cluster_group", "idField": "group_id" },
+      "tenant_id": { "resource": "tenant", "idField": "tenant_id" },
+      "site_id": { "resource": "site", "idField": "site_id" }
+    }
+  }
+}

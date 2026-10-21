@@ -1,0 +1,37 @@
+---
+- name: Inspect X.509 certificate metadata
+  hosts: all
+  gather_facts: false
+  vars:
+    piping_certificate_path_effective: "{{ piping_certificate_path | default('/etc/ssl/certs/ca-certificates.crt', true) }}"
+
+  pre_tasks:
+    - name: Validate certificate path allowlist
+      ansible.builtin.assert:
+        that:
+          - piping_certificate_path_effective in ['/etc/ssl/certs/ca-certificates.crt', '/etc/pki/tls/certs/ca-bundle.crt']
+        fail_msg: "Certificate path must be one of the documented read-only certificate bundle locations."
+        quiet: true
+
+  tasks:
+    - name: Inspect the first X.509 certificate in the approved bundle
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - x509
+          - -in
+          - "{{ piping_certificate_path_effective }}"
+          - -noout
+          - -subject
+          - -issuer
+          - -serial
+          - -dates
+      changed_when: false
+      register: piping_certificate_inspection
+
+    - name: Report X.509 certificate metadata
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          path: "{{ piping_certificate_path_effective }}"
+          metadata: "{{ piping_certificate_inspection.stdout_lines }}"

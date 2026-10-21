@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+
+scrape_configs:
+  - job_name: piping-hosts-vmagent
+    honor_labels: true
+    http_sd_configs:
+      - url: >-
+          http://backend:7000/api/v1/monitoring/sd?kind=all&target=address&group_by=tenant,site&label=collector:vmagent&dedup=true
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [piping_host_name]
+        target_label: instance
+        regex: (.+)
+      - source_labels: [piping_tenant]
+        target_label: tenant
+      - source_labels: [piping_site]
+        target_label: site
+      - source_labels: [piping_target_kind]
+        target_label: target_kind

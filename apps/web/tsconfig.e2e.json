@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "skipLibCheck": true,
+    "target": "ES2022",
+    // Playwright's `test`/`expect` are imported, not globals; the specs do reach
+    // for `process.env`, hence node. `vite/client` is needed because the specs
+    // import table configs out of src/, which pull in modules using
+    // `import.meta.env`.
+    "types": ["node", "vite/client"],
+    "useDefineForClassFields": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "useUnknownInCatchVariables": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  // The specs import table configs straight out of `src/`, so those modules are
+  // pulled in and checked here as well — deliberately: a rename in src that the
+  // suite still references must fail this project, not only at runtime.
+  "include": ["tests/e2e", "playwright.config.ts"]
+}

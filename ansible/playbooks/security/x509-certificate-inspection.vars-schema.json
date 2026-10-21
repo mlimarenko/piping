@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "piping_certificate_path": {
+      "type": "string",
+      "title": "Certificate bundle path",
+      "description": "Read-only certificate bundle path selected from the supported allowlist.",
+      "default": "/etc/ssl/certs/ca-certificates.crt",
+      "enum": [
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/pki/tls/certs/ca-bundle.crt"
+      ]
+    }
+  }
+}

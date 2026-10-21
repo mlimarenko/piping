@@ -1,0 +1,629 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+/* Corporate yellow fills use readable ink on white; dark Amber stays unchanged.
+   Raw HSL channels preserve alpha composition throughout the application. */
+@layer base {
+  :root,
+  .light {
+    color-scheme: light;
+    --background: 218 22% 96%;
+    --foreground: 222 18% 17%;
+    --card: 0 0% 100%;
+    --card-foreground: var(--foreground);
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--foreground);
+    --primary: 222 18% 17%;
+    --primary-fill: 42 95% 52%;
+    --primary-foreground: 218 28% 9%;
+    --secondary: 218 18% 93%;
+    --secondary-foreground: var(--foreground);
+    --muted: 218 18% 95%;
+    --muted-foreground: 222 10% 42%;
+    --accent: 42 95% 94%;
+    --accent-foreground: var(--primary);
+    --accent-hover: 42 95% 90%;
+    --accent-active: 42 95% 86%;
+    --accent-dim: var(--primary-fill) / 0.08;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 16% 89%;
+    --border-muted: 218 8% 65%;
+    --input: 218 12% 55%;
+    --ring: var(--primary);
+    --radius: 0.625rem;
+    --surface-0: var(--background);
+    --surface-1: var(--card);
+    --surface-2: var(--muted);
+    --surface-3: var(--secondary);
+    --surface: var(--card);
+    --surface-raised: var(--muted);
+    --surface-color: var(--card);
+    --text-primary: var(--foreground);
+    --text-secondary: 0 0% 25%;
+    --text-muted: var(--muted-foreground);
+    --text-subtle: 0 0% 40%;
+    --text-inverse: var(--primary-foreground);
+    --border-default: var(--border);
+    --border-subtle: 218 16% 93%;
+    --surface-border: var(--border);
+    --surface-border-soft: var(--border-subtle);
+    --status-positive: 150 64% 29%;
+    --status-warning: 32 88% 32%;
+    --status-negative: 0 72% 45%;
+    --status-info: 210 80% 38%;
+    --status-video: 265 62% 42%;
+    --status-ok: var(--status-positive);
+    --status-warn: var(--status-warning);
+    --status-err: var(--status-negative);
+    --sidebar-background: 218 20% 98%;
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary-fill);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 42 95% 90%;
+    --sidebar-accent-foreground: var(--primary);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+    --shadow-sm: 0 1px 2px hsl(218 28% 15% / 0.04);
+    --shadow-md: 0 4px 12px hsl(218 28% 15% / 0.08);
+    --shadow-lg: 0 12px 32px hsl(218 28% 15% / 0.12);
+    --space-xs: 2px;
+    --space-sm: 4px;
+    --space-md: 8px;
+    --space-lg: 12px;
+    --space-xl: 16px;
+    --space-2xl: 24px;
+    --space-3xl: 32px;
+    --motion-instant: 80ms;
+    --motion-fast: 150ms;
+    --motion-base: 200ms;
+    --motion-slow: 300ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-emphasized: cubic-bezier(0, 0, 0.2, 1);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: 222 16% 10%;
+    --foreground: 218 16% 92%;
+    --card: 222 14% 14%;
+    --card-foreground: var(--foreground);
+    --popover: 222 14% 17%;
+    --popover-foreground: var(--foreground);
+    --primary: 42 95% 52%;
+    --primary-fill: var(--primary);
+    --primary-foreground: 218 28% 9%;
+    --secondary: 222 12% 20%;
+    --secondary-foreground: var(--foreground);
+    --muted: 222 12% 18%;
+    --muted-foreground: 218 10% 70%;
+    --accent: 42 65% 15%;
+    --accent-hover: 42 65% 17%;
+    --accent-active: 42 65% 20%;
+    --accent-dim: var(--primary) / 0.12;
+    --destructive: 0 78% 66%;
+    --destructive-foreground: 218 28% 9%;
+    --border: 222 12% 18%;
+    --border-muted: 222 10% 45%;
+    --input: 218 10% 46%;
+    --text-secondary: 0 0% 90%;
+    --text-subtle: 0 0% 72%;
+    --border-subtle: 222 12% 14%;
+    --status-positive: 150 56% 61%;
+    --status-warning: 38 90% 64%;
+    --status-negative: 0 78% 70%;
+    --status-info: 210 90% 72%;
+    --status-video: 265 75% 76%;
+    --sidebar-background: 222 16% 12%;
+    --sidebar-foreground: var(--foreground);
+    --sidebar-accent: 42 65% 16%;
+    --shadow-sm: 0 1px 2px hsl(218 30% 3% / 0.2);
+    --shadow-md: 0 4px 12px hsl(218 30% 3% / 0.3);
+    --shadow-lg: 0 12px 32px hsl(218 30% 3% / 0.4);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    --app-vh: 100dvh;
+    scroll-behavior: smooth;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    /* The shell owns full-height layout and scrolls <main> internally. */
+    height: var(--app-vh);
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    @apply overflow-hidden bg-background font-sans text-foreground antialiased;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  #root {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  a {
+    @apply text-inherit;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .section-tab-list {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    overflow-x: auto;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .section-tab {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 12px;
+    border-bottom: 2px solid transparent;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: hsl(var(--muted-foreground));
+    transition: color 150ms, background-color 150ms, border-color 150ms;
+  }
+
+  .section-tab:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted));
+  }
+
+  .section-tab[data-state="active"] {
+    color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+  }
+
+  .section-tab-list[data-variant="secondary"] {
+    gap: 8px;
+    border: 0;
+  }
+
+  .section-tab-list[data-variant="secondary"] .section-tab {
+    height: 36px;
+    border: 1px solid transparent;
+    border-radius: calc(var(--radius) - 2px);
+  }
+
+  .section-tab-list[data-variant="secondary"] .section-tab[data-state="active"] {
+    border-color: hsl(var(--primary));
+    background: hsl(var(--primary-fill));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .desktop-shell-frame {
+    height: 100dvh;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: hsl(var(--background));
+    --desktop-shell-titlebar-height: 28px;
+    --app-vh: calc(100dvh - var(--desktop-shell-titlebar-height));
+  }
+
+  .desktop-shell-titlebar {
+    height: var(--desktop-shell-titlebar-height);
+    min-height: var(--desktop-shell-titlebar-height);
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid hsl(var(--border) / 0.75);
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    user-select: none;
+  }
+
+  .desktop-shell-brand {
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 10px;
+    color: hsl(var(--foreground));
+    background: transparent;
+    border-right: 1px solid hsl(var(--border) / 0.55);
+  }
+
+  .desktop-shell-brand:hover {
+    background: hsl(var(--accent) / 0.08);
+  }
+
+  .desktop-shell-brand-name {
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 700;
+  }
+
+  .desktop-shell-brand-context {
+    font-size: 11px;
+    line-height: 1;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .desktop-shell-menu-icon {
+    width: 13px;
+    height: 13px;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .desktop-shell-drag-region {
+    min-width: 0;
+    flex: 1 1 auto;
+    height: 100%;
+  }
+
+  .desktop-shell-window-controls {
+    height: 100%;
+    display: flex;
+    margin-left: auto;
+    border-left: 1px solid hsl(var(--border) / 0.55);
+  }
+
+  .desktop-shell-window-button {
+    width: 40px;
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(var(--muted-foreground));
+    background: transparent;
+  }
+
+  .desktop-shell-window-button:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--accent) / 0.08);
+  }
+
+  .desktop-shell-window-button-danger:hover {
+    color: white;
+    background: hsl(var(--destructive));
+  }
+
+  .desktop-shell-content {
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 0;
+    overflow: hidden;
+  }
+
+}
+
+@layer components {
+  /* Opaque surfaces keep tables and dialogs readable over dense workspaces. */
+  .surface {
+    position: relative;
+    background-color: hsl(var(--surface-1));
+    border: 1px solid hsl(var(--border-default));
+  }
+
+  .surface-inset {
+    background-color: hsl(var(--surface-0));
+    border: 1px solid hsl(var(--border-subtle));
+  }
+
+  .surface-chip {
+    background-color: hsl(var(--surface-2));
+    border: 1px solid hsl(var(--border-subtle));
+  }
+
+  .table-header-surface {
+    background-color: hsl(var(--surface-2));
+    box-shadow: inset 0 -1px 0 hsl(var(--border-subtle));
+  }
+
+  .table-header-surface th,
+  .table-header-surface td {
+    background-color: hsl(var(--surface-2));
+  }
+
+  /* Floating menus and modal sheets use opaque theme surfaces. */
+  .surface-popover {
+    background-color: hsl(var(--popover));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-md);
+    isolation: isolate;
+  }
+
+  .surface-modal {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-lg);
+  }
+
+  [data-sonner-toaster] [data-sonner-toast] {
+    background-color: hsl(var(--surface-2));
+    border-color: hsl(var(--border-default));
+  }
+
+
+  /* Remove native number spinner buttons — they overlap the value and look bad.
+     All <input type="number"> render as clean numeric text fields instead. */
+  input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Keyboard focus must remain visible in both themes. */
+  input:focus-visible,
+  textarea:focus-visible,
+  [role="combobox"]:focus-visible {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+  }
+
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+  }
+
+  a:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer base {
+  button[role="checkbox"][data-state="unchecked"],
+  button[role="radio"][data-state="unchecked"],
+  button[role="switch"][data-state="unchecked"] {
+    background-color: hsl(var(--surface-2));
+  }
+
+  [role="separator"] {
+    background-color: hsl(var(--border-default));
+  }
+
+  .status-chip {
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full;
+  }
+  .status-info     { background: hsl(var(--status-info) / 0.12);     color: hsl(var(--status-info));     border: 1px solid hsl(var(--status-info) / 0.25); }
+  .status-positive { background: hsl(var(--status-positive) / 0.12); color: hsl(var(--status-positive)); border: 1px solid hsl(var(--status-positive) / 0.25); }
+  .status-warning  { background: hsl(var(--status-warning) / 0.14);  color: hsl(var(--status-warning));  border: 1px solid hsl(var(--status-warning) / 0.28); }
+  .status-negative { background: hsl(var(--status-negative) / 0.12); color: hsl(var(--status-negative)); border: 1px solid hsl(var(--status-negative) / 0.25); }
+}
+
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-muted) / 0.4);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--border-muted) / 0.6);
+}
+
+/* Resize handles */
+.resize-handle-horizontal {
+  cursor: ew-resize;
+  transition: background 0.15s;
+}
+
+.resize-handle-horizontal:hover,
+.resize-handle-horizontal:active {
+  background: hsl(var(--accent) / 0.2);
+}
+
+.resize-handle-vertical {
+  cursor: ns-resize;
+  transition: background 0.15s;
+}
+
+.resize-handle-vertical:hover,
+.resize-handle-vertical:active {
+  background: hsl(var(--accent) / 0.2);
+}
+
+/* Selection ring */
+.selection-ring {
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.4);
+}
+
+/* Pointer (hand) cursor on every actionable control — buttons, links, tabs,
+   toggles, selects, menu items and anything explicitly marked clickable.
+   Text inputs keep their text cursor; disabled controls show not-allowed. */
+@layer base {
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
+  a[href],
+  summary,
+  select,
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]),
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="submit"],
+  input[type="button"],
+  input[type="file"],
+  input[type="color"],
+  input[type="range"],
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"],
+  [data-disabled],
+  .cursor-not-allowed {
+    cursor: not-allowed;
+  }
+}
+
+/* xterm.js terminal viewport: thin overlay scrollbar so the scrollbar gutter
+   does not carve a visible background band off the right edge of the terminal,
+   and the grid fills the full available width. */
+.xterm .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(0 0% 100% / 0.15) transparent;
+  background-color: transparent !important;
+}
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background-color: hsl(0 0% 100% / 0.15);
+  border-radius: 3px;
+}
+
+@layer utilities {
+  .stable-scrollbar-gutter {
+    scrollbar-gutter: stable;
+  }
+
+  .text-\[9px\] {
+    font-size: 0.5625rem;
+  }
+
+  .text-\[10px\] {
+    font-size: 0.625rem;
+  }
+
+  .text-\[11px\] {
+    font-size: 0.6875rem;
+  }
+
+  .text-\[12\.5px\] {
+    font-size: 0.78125rem;
+  }
+}
+
+/* Connection-panel session tabs: the host name ellipsis-truncates at rest and,
+   only when actually overflowing (data-overflowing set by JS measurement in
+   MarqueeText), scrolls the full value while the tab is hovered. The shift
+   distance and duration come from CSS custom properties set inline per tab. */
+.connection-tab-name {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.connection-tab:hover .connection-tab-name[data-overflowing="true"] {
+  overflow: visible;
+  text-overflow: clip;
+  animation: connection-tab-marquee var(--marquee-duration, 4s) linear infinite alternate;
+}
+@keyframes connection-tab-marquee {
+  0%, 12% { transform: translateX(0); }
+  88%, 100% { transform: translateX(var(--marquee-shift, 0)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .connection-tab:hover .connection-tab-name[data-overflowing="true"] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: none;
+    transform: none;
+  }
+}
+
+/* Connections tree: keep wheel scrolling isolated from the rest of the shell.
+   WebKitGTK is notably sensitive to virtual-row paint/layout invalidation. */
+.connection-tree-scroll {
+  contain: content;
+  overscroll-behavior: contain;
+}
+
+.connection-tree-row,
+.connection-tree-virtual-row {
+  contain: layout paint;
+}
+
+/* Connection tab strip: minimal horizontal scrollbar, thumb visible only while
+   the strip is hovered (no persistent scrollbar). Paging arrows handle the rest. */
+.tab-strip-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.tab-strip-scroll:hover {
+  scrollbar-color: hsl(var(--border-muted)) transparent;
+}
+.tab-strip-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.tab-strip-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tab-strip-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+.tab-strip-scroll:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-muted));
+}

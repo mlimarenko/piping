@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT child.relname::text AS \"table_name!\", a.attname::text AS \"column_name!\" FROM pg_constraint c JOIN pg_class child ON child.oid = c.conrelid JOIN pg_namespace n ON n.oid = child.relnamespace JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1] JOIN pg_attribute parent_key ON parent_key.attrelid = c.confrelid AND parent_key.attnum = c.confkey[1] WHERE c.confrelid = to_regclass($1) AND c.contype = 'f' AND c.confdeltype = 'c' AND array_length(c.conkey, 1) = 1 AND parent_key.attname = 'id' AND parent_key.atttypid = 'uuid'::regtype AND n.nspname = 'public' ORDER BY child.relname, a.attname",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "table_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "column_name!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "b82d58bc04ffbd60da6361e9b7dd920d3a1d2f4a8564f223042757a1ff12b105"
+}

@@ -1,0 +1,176 @@
+---
+- name: Auto-update inventory through Piping REST API
+  hosts: all
+  gather_facts: false
+  vars:
+    piping_api_base_url: "{{ lookup('ansible.builtin.env', 'PIPING_API_BASE_URL') | trim | regex_replace('/+$', '') }}"
+    piping_run_group_id: "{{ lookup('ansible.builtin.env', 'PIPING_RUN_GROUP_ID') | trim }}"
+    piping_run_id_effective: "{{ hostvars[inventory_hostname].piping_run_id | default(lookup('ansible.builtin.env', 'PIPING_RUN_ID'), true) | trim }}"
+    piping_api_token_effective: "{{ hostvars[inventory_hostname].piping_api_token | default(lookup('ansible.builtin.env', 'PIPING_API_TOKEN'), true) | trim }}"
+    piping_source_kind_effective: "{{ hostvars[inventory_hostname].piping_source_kind | default(lookup('ansible.builtin.env', 'PIPING_SOURCE_KIND'), true) | trim }}"
+    piping_source_id_effective: "{{ hostvars[inventory_hostname].piping_source_id | default(lookup('ansible.builtin.env', 'PIPING_SOURCE_ID'), true) | trim }}"
+    piping_target_id_effective: "{{ hostvars[inventory_hostname].piping_target_id | default(lookup('ansible.builtin.env', 'PIPING_TARGET_ID'), true) | trim }}"
+    piping_inventory_connection_family: >-
+      {{
+        'windows'
+        if (ansible_connection | default('ssh')) in ['winrm', 'psrp']
+        else 'linux'
+      }}
+    piping_inventory_rest_timeout_effective: "{{ piping_inventory_rest_timeout | default(10, true) | int }}"
+    piping_inventory_rest_retries_effective: "{{ piping_inventory_rest_retries | default(1, true) | int }}"
+    piping_inventory_rest_delay_effective: "{{ piping_inventory_rest_delay | default(1, true) | int }}"
+    piping_inventory_gather_timeout_effective: "{{ piping_inventory_gather_timeout | default(8, true) | int }}"
+    piping_api_headers:
+      Authorization: "Bearer {{ piping_api_token_effective }}"
+      Accept: application/json
+      Content-Type: application/json
+
+  pre_tasks:
+    - name: Verify Piping inventory REST environment
+      ansible.builtin.assert:
+        that:
+          - piping_api_base_url | length > 0
+          - piping_api_token_effective | length > 0
+          - piping_run_group_id | length > 0
+          - piping_run_id_effective | length > 0
+          - piping_target_id_effective | length > 0
+          - piping_source_kind_effective in ['device', 'virtual_machine']
+          - piping_source_id_effective | length > 0
+        fail_msg: "Piping inventory REST environment is not available for this system playbook run."
+        quiet: true
+      delegate_to: localhost
+      no_log: true
+
+  tasks:
+    - name: Gather Linux inventory facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - min
+          - distribution
+          - hardware
+          - interfaces
+          - mounts
+          - network
+          - virtual
+        gather_timeout: "{{ piping_inventory_gather_timeout_effective }}"
+      when: piping_inventory_connection_family != 'windows'
+
+    - name: Gather Windows inventory facts
+      ansible.windows.setup:
+        gather_subset:
+          - "!all"
+          - min
+          - hardware
+          - network
+          - virtual
+        gather_timeout: "{{ piping_inventory_gather_timeout_effective }}"
+      when: piping_inventory_connection_family == 'windows'
+
+    - name: Build interface fact rows
+      ansible.builtin.set_fact:
+        piping_discovered_interfaces: "{{ (piping_discovered_interfaces | default([])) + [piping_interface_row] }}"
+      vars:
+        piping_interface_fact: "{{ ansible_facts[item | regex_replace('-', '_')] | default({}) }}"
+        piping_interface_ipv4: "{{ piping_interface_fact.ipv4 | default({}) }}"
+        piping_interface_ipv6_list: "{{ piping_interface_fact.ipv6 | default([]) }}"
+        piping_interface_first_ipv6: "{{ (piping_interface_ipv6_list | selectattr('address', 'defined') | list | first) | default({}) }}"
+        piping_interface_row:
+          name: "{{ item }}"
+          label: "{{ piping_interface_fact.device | default(item) }}"
+          description: "Collected by Piping run {{ piping_run_group_id }}"
+          interface_type: "other"
+          enabled: "{{ (piping_interface_fact.active | default(true)) | bool }}"
+          mtu: "{{ piping_interface_fact.mtu | default(0) | int }}"
+          mac: "{{ piping_interface_fact.macaddress | default('') }}"
+          ipv4: "{{ (piping_interface_ipv4.address ~ '/' ~ piping_interface_ipv4.prefix) if (piping_interface_ipv4.address is defined and piping_interface_ipv4.prefix is defined) else '' }}"
+          ipv6: "{{ (piping_interface_first_ipv6.address ~ '/' ~ (piping_interface_first_ipv6.prefix | default(64))) if (piping_interface_first_ipv6.address is defined) else '' }}"
+      loop: "{{ ansible_facts.interfaces | default([]) }}"
+      when: item != 'lo'
+
+    - name: Build virtual disk fact rows
+      ansible.builtin.set_fact:
+        piping_virtual_disks: "{{ (piping_virtual_disks | default([])) + [piping_virtual_disk_row] }}"
+      vars:
+        piping_virtual_disk_row:
+          name: "{{ item.mount | default(item.device | default('disk')) }}"
+          description: "{{ item.device | default('Collected by Piping') }}"
+          size_mb: "{{ ((item.size_total | default(0) | int) // 1048576) | int }}"
+      loop: "{{ ansible_facts.mounts | default([]) }}"
+      when:
+        - piping_source_kind_effective == 'virtual_machine'
+        - item.size_total | default(0) | int > 0
+
+    - name: Build collected facts payload
+      ansible.builtin.set_fact:
+        piping_collected_facts_payload:
+          run_group_id: "{{ piping_run_group_id }}"
+          run_id: "{{ piping_run_id_effective }}"
+          connection_target_id: "{{ piping_target_id_effective }}"
+          inventory_kind: "{{ piping_source_kind_effective }}"
+          inventory_id: "{{ piping_source_id_effective }}"
+          target_name: "{{ hostvars[inventory_hostname].piping_target_name | default(inventory_hostname, true) }}"
+          platform:
+            name: "{{ ((ansible_facts.distribution | default(ansible_facts.os_family | default(ansible_facts.system | default('')))) ~ ' ' ~ (ansible_facts.distribution_version | default(''))) | trim }}"
+            slug: "{{ (((ansible_facts.distribution | default(ansible_facts.os_family | default(ansible_facts.system | default('unknown')))) ~ '-' ~ (ansible_facts.distribution_major_version | default(ansible_facts.distribution_version | default('')))) | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('(^-|-$)', '')) }}"
+          hardware:
+            manufacturer: "{{ ansible_facts.system_vendor | default(ansible_facts.chassis_vendor | default('')) }}"
+            model: "{{ ansible_facts.product_name | default(ansible_facts.machine | default('')) }}"
+            serial: "{{ ansible_facts.product_serial | default(ansible_facts.chassis_serial | default('')) }}"
+            product_uuid: "{{ ansible_facts.product_uuid | default(ansible_facts.machine_id | default('')) }}"
+            cpu_count: "{{ ansible_facts.processor_vcpus | default(ansible_facts.processor_count | default(0)) | int }}"
+            memory_mb: "{{ ansible_facts.memtotal_mb | default(0) | int }}"
+            disk_mb: "{{ ((ansible_facts.mounts | default([]) | map(attribute='size_total') | sum) // 1048576) | int if (ansible_facts.mounts | default([]) | length > 0) else 0 }}"
+          interfaces: "{{ piping_discovered_interfaces | default([]) }}"
+          virtual_disks: "{{ piping_virtual_disks | default([]) }}"
+          write_policy:
+            write_platform: "{{ piping_inventory_write_platform | default(true) | bool }}"
+            write_device_type: "{{ piping_inventory_write_device_type | default(true) | bool }}"
+            write_serial: "{{ piping_inventory_write_serial | default(true) | bool }}"
+            write_resources: "{{ piping_inventory_write_resources | default(true) | bool }}"
+            write_interfaces: "{{ piping_inventory_write_interfaces | default(true) | bool }}"
+            write_ip_addresses: "{{ piping_inventory_write_ip_addresses | default(true) | bool }}"
+            write_mac_addresses: "{{ piping_inventory_write_mac_addresses | default(true) | bool }}"
+            write_virtual_disks: "{{ piping_inventory_write_virtual_disks | default(true) | bool }}"
+            write_ansible_custom_fields: "{{ piping_inventory_write_ansible_custom_fields | default(true) | bool }}"
+          raw_facts:
+            connection_family: "{{ piping_inventory_connection_family }}"
+            ansible_system: "{{ ansible_facts.system | default('') }}"
+            ansible_kernel: "{{ ansible_facts.kernel | default('') }}"
+            ansible_distribution: "{{ ansible_facts.distribution | default('') }}"
+            ansible_distribution_version: "{{ ansible_facts.distribution_version | default('') }}"
+            ansible_architecture: "{{ ansible_facts.architecture | default('') }}"
+            ansible_hostname: "{{ ansible_facts.hostname | default('') }}"
+            ansible_fqdn: "{{ ansible_facts.fqdn | default('') }}"
+            ansible_domain: "{{ ansible_facts.domain | default('') }}"
+            ansible_bios_version: "{{ ansible_facts.bios_version | default('') }}"
+            ansible_python_version: "{{ ansible_facts.python_version | default('') }}"
+
+    - name: Send collected facts to Piping
+      ansible.builtin.uri:
+        url: "{{ piping_api_base_url }}/api/v1/inventory/collected-facts"
+        method: POST
+        headers: "{{ piping_api_headers }}"
+        body_format: json
+        body: "{{ piping_collected_facts_payload }}"
+        status_code:
+          - 200
+        timeout: "{{ piping_inventory_rest_timeout_effective }}"
+      register: piping_collected_facts_response
+      retries: "{{ piping_inventory_rest_retries_effective }}"
+      delay: "{{ piping_inventory_rest_delay_effective }}"
+      until: piping_collected_facts_response.status == 200
+      no_log: true
+      delegate_to: localhost
+
+    - name: Report inventory ingest summary
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          ingested: true
+          api: collected-facts
+          interfaces: "{{ piping_collected_facts_response.json.interface_count | default(0) }}"
+          ip_addresses: "{{ piping_collected_facts_response.json.ip_address_count | default(0) }}"
+          mac_addresses: "{{ piping_collected_facts_response.json.mac_address_count | default(0) }}"
+          disks: "{{ piping_collected_facts_response.json.disk_count | default(0) }}"
+          conflicts: "{{ piping_collected_facts_response.json.conflict_count | default(0) }}"

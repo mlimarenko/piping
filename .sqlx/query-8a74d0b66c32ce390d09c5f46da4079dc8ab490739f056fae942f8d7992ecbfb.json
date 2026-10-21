@@ -1,0 +1,63 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO secrets_variable (id, key, is_masked, is_protected, kind, description, retire_with_field_usage) VALUES ($1, $2, $3, $4, $5, $6, false) RETURNING id, key, is_masked, is_protected, kind, description, retire_with_field_usage",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "key",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_masked",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_protected",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "kind",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "retire_with_field_usage",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Bool",
+        "Bool",
+        "Varchar",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "8a74d0b66c32ce390d09c5f46da4079dc8ab490739f056fae942f8d7992ecbfb"
+}

@@ -1,0 +1,6 @@
+[server]
+cors_allowed_origins = ["http://localhost:4173"]
+
+[auth]
+local_enabled = true
+cookie_secure = false

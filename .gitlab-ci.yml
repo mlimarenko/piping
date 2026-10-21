@@ -1,0 +1,110 @@
+default:
+  tags: [ci-small]
+variables:
+  CARGO_BUILD_JOBS: '1'
+  CI_TOOLS_IMAGE: $CI_REGISTRY/$CI_PROJECT_ROOT_NAMESPACE/ci/devopsimage:latest
+include:
+- project: $COMPONENTS_CATALOG_PROJECT
+  file: /runtime.yml
+- local: /scripts/ci/helper-source.yml
+  rules: &helper-route
+  # Product policy owns a mixed change before helper-path selection.
+  - &product-default-route
+    if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    changes:
+      compare_to: &default-push-base '$CI_COMMIT_BEFORE_SHA'
+      paths: &product-policy-paths
+      - scripts/ci/product-release.yml
+      - scripts/ci/install-source.yml
+      - .gitlab-ci.yml
+      - apps/api/**/*
+      - apps/web/**/*
+      - apps/desktop/src/**/*
+      - apps/desktop/src-tauri/**/*
+      - crates/**/*
+      - .sqlx/**/*
+      - Cargo.toml
+      - Cargo.lock
+      - scripts/rebaseline-sqlx-0001.sh
+      - scripts/rebaseline_sqlx.py
+      - scripts/check_netbox_owner_schema.py
+      - scripts/deploy_release_bundle.py
+      - scripts/ci/postgres_migration_contract.py
+      - scripts/ci/compose_delivery_contract.py
+      - scripts/ci-compose-native.py
+      - tests/ci/test_sqlx_rebaseline.py
+      - tests/ci/test_netbox_owner_schema.py
+      - tests/ci/test_native_fixture_transport.py
+      - tests/ci/test_deploy_compose_release.py
+      - tests/ci/test_postgres_migration_contract.py
+      - tests/compose/test_deploy_release_bundle.py
+    when: never
+  - &product-source-route
+    if: '$CI_PIPELINE_SOURCE == "merge_request_event" || ($CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_TAG == null)'
+    changes:
+      compare_to: &source-base 'refs/heads/$CI_DEFAULT_BRANCH'
+      paths: *product-policy-paths
+    when: never
+  - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    changes:
+      compare_to: *default-push-base
+      paths: &helper-paths
+      - install.sh
+      - Makefile
+      - docker-compose{,.host-network,.licensing}.yml
+      - docker/nginx/README.md
+      - docker/nginx/nginx.conf
+      - docker/nginx/proxy-common.conf
+      - docker/nginx/locations/assets.conf
+      - docker/nginx/locations/backend.conf
+      - docker/nginx/locations/keycloak.conf
+      - docker/nginx/entrypoint.d/10-init-ssl.sh
+      - env/dev.env
+      - env/images.env
+      - scripts/deploy_release_bundle.py
+      - scripts/ci/apply_release_bundle.py
+      - scripts/ci/{publish,select,github}_public_release.py
+      - scripts/license-{e2e-fixture,e2e-lifecycle,outage-sim}.sh
+      - scripts/public_release.py
+      - scripts/ci/compose_delivery_contract.py
+      - scripts/ci/postgres_migration_contract.py
+      - scripts/rebaseline-sqlx-0001.sh
+      - scripts/rebaseline_sqlx.py
+      - tests/ci/test_sqlx_rebaseline.py
+      - scripts/ci-compose-native.py
+      - tests/ci/test_{deploy_compose_release,deploy_release_bundle,public_release,github_public_release,license_fixture,public_artifacts,compose_image_contract,native_fixture_transport,postgres_migration_contract}.py
+      - tests/compose/test_{deploy_release_bundle,install_https,install_lifecycle}.py
+      - tests/compose/docker-compose.licensing.yml
+      - tests/compose/docker-compose.licensing-cloud.yml
+      - README.md
+      - CONTRIBUTING.md
+      - contrib/demo/piping.gif
+      - apps/desktop/{README,SIGNING}.md
+      - .github/workflows/release-docker-images.yml
+      - .gitlab-ci.yml
+      - scripts/ci/helper-source.yml
+      - scripts/ci/public-release.yml
+      - scripts/ci/install-source.yml
+      - scripts/ci/verify_helper_source_scope.py
+      - tests/ci/test_helper_source_scope.py
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || ($CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_TAG == null)'
+    changes:
+      compare_to: *source-base
+      paths: *helper-paths
+- local: /scripts/ci/product-release.yml
+  rules:
+  - <<: *product-default-route
+    when: always
+  - <<: *product-source-route
+    when: always
+  - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    changes:
+      compare_to: *default-push-base
+      paths: *helper-paths
+    when: never
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || ($CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_TAG == null)'
+    changes:
+      compare_to: *source-base
+      paths: *helper-paths
+    when: never
+  - when: always

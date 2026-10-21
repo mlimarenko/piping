@@ -1,0 +1,151 @@
+name: Release public Docker images
+run-name: Public Docker release ${{ github.event.release.tag_name || inputs.tag }}
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published stable release tag to retry (run this workflow on that same tag)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-docker-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'mlimarenko/piping' &&
+      ((github.event_name == 'release' && !github.event.release.draft && !github.event.release.prerelease) ||
+       (github.event_name == 'workflow_dispatch' && github.ref == format('refs/tags/{0}', inputs.tag)))
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - name: Select release version
+        id: tag
+        env:
+          SELECTED_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+           [[ "$SELECTED_TAG" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          [[ ${#SELECTED_TAG} -le 65 ]]
+           printf 'version=%s\n' "$SELECTED_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the event-selected public tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+
+      - name: Open public DockerHub channels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: python3 scripts/public_release.py initialize --version "$VERSION"
+
+      - name: Resume image publication
+        id: cohort
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: python3 scripts/public_release.py prepare --version "$VERSION"
+
+      - name: Set up Docker Buildx
+        if: steps.cohort.outputs.complete != 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        if: steps.cohort.outputs.complete != 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Prepare canonical image provenance
+        id: meta
+        if: steps.cohort.outputs.complete != 'true'
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            docker.io/pipingspace/piping-backend
+            docker.io/pipingspace/piping-frontend
+            docker.io/pipingspace/piping-ansible-runner
+          tags: type=raw,value=${{ steps.cohort.outputs.version }}
+          flavor: latest=false
+          labels: |
+            org.opencontainers.image.version=${{ steps.cohort.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.cohort.outputs.public_commit }}
+            org.opencontainers.image.source=https://github.com/mlimarenko/piping
+            space.piping.source.commit=${{ steps.cohort.outputs.source_commit }}
+            space.piping.source.pipeline=${{ steps.cohort.outputs.pipeline_id }}
+
+      - name: Build and publish backend only when its tag is absent
+        id: backend
+        if: steps.cohort.outputs.complete != 'true' && steps.cohort.outputs.build_backend == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: docker.io/pipingspace/piping-backend:${{ steps.cohort.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.cohort.outputs.version }}
+            PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM_B64=${{ secrets.PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM_B64 }}
+          cache-from: type=gha,scope=piping-backend
+          cache-to: type=gha,mode=max,scope=piping-backend
+
+      - name: Build and publish frontend only when its tag is absent
+        id: frontend
+        if: steps.cohort.outputs.complete != 'true' && steps.cohort.outputs.build_frontend == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: docker.io/pipingspace/piping-frontend:${{ steps.cohort.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.cohort.outputs.version }}
+          cache-from: type=gha,scope=piping-frontend
+          cache-to: type=gha,mode=max,scope=piping-frontend
+
+      - name: Build and publish runner only when its tag is absent
+        id: runner
+        if: steps.cohort.outputs.complete != 'true' && steps.cohort.outputs.build_ansible_runner == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/ansible-runner/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: docker.io/pipingspace/piping-ansible-runner:${{ steps.cohort.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.cohort.outputs.version }}
+          cache-from: type=gha,scope=piping-ansible-runner
+          cache-to: type=gha,mode=max,scope=piping-ansible-runner
+
+      - name: Publish installer and readiness manifest
+        if: steps.cohort.outputs.complete != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.cohort.outputs.version }}
+          BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
+          FRONTEND_DIGEST: ${{ steps.frontend.outputs.digest }}
+          RUNNER_DIGEST: ${{ steps.runner.outputs.digest }}
+        run: |
+          python3 scripts/public_release.py finalize --version "$VERSION" \
+            --backend-digest "$BACKEND_DIGEST" --frontend-digest "$FRONTEND_DIGEST" \
+            --ansible-runner-digest "$RUNNER_DIGEST"

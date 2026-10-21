@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "Test Tenant Acme",
+    "slug": "test-tenant-acme",
+    "group": {"id": 1, "slug": "test-tenant-group-customers"},
+    "description": "Acme test tenant",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Test Tenant Globex",
+    "slug": "test-tenant-globex",
+    "group": null,
+    "description": "Globex test tenant",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

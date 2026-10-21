@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "type": "cat6",
+    "status": {"value": "connected", "label": "Connected"},
+    "label": "ALPHA-BETA-LINK-1",
+    "color": "00ff00",
+    "length": 5.0,
+    "length_unit": {"value": "m", "label": "Meters"},
+    "a_terminations": [
+      {"object_type": "dcim.interface", "object_id": 2}
+    ],
+    "b_terminations": [
+      {"object_type": "dcim.interface", "object_id": 3}
+    ],
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

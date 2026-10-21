@@ -1,0 +1,17 @@
+{
+  "source_sha": "94cbf3bd2e955c6d7df37a3cda6711808103ea3e",
+  "sha384": {
+    "0001_init.sql": "5adb283d82bd0c5f39e10d6da3bcff85cad696a8b97e60d2fa4d872b55e494ad778d05c3d2f18563ae41fef3b05d5b8a",
+    "0002_monitoring_query_source_secret_binding.sql": "601a34063414b6a80f57653f1bc6bf13f6355d9011d6e1db016bbac8322daabac14210f31f9ffa8adc5cb423093290b0",
+    "0003_monitoring_alert_source_secret_binding.sql": "9797967f812de3493532c92d8080fb961e40bc3f22aee56936f2f6db393db3ad2ad90f62d018531b0b7d83f5ed85600e",
+    "0004_ssh_host_key_pin.sql": "8f16e96d6e3c791f4a16214766f249475d7ec6f9944cb1675ff0da3b062116c67e1b04d87a7d164971b9a3615ad91457",
+    "0005_playbook_project_scm_credential_secret_binding.sql": "3cfe13a7c033198b7f768f602d75abeaba6767939f867053215438b72f99950590d3ac5789fbfc9d7bc39406604e6cef",
+    "0006_monitoring_availability_default.sql": "d4fb9896a4933f5882cbb30deb53540b83ce8b808a93a07073a9e8bd61d0b75fdc095e6b531131746bf53e1c6ad8710e",
+    "0007_device_users_family_neutral.sql": "2d0ee2fd2157031b926d6231d16833b447db6ea513c333653383e336f5522518fb1a3c6cfed114b22bbf5b20703d9912",
+    "0008_local_inventory_target_provenance.sql": "4441d251bdd5a8a51ac46cee33b4ffa18bdc85b1e02acb8e2da55066b8a6e893f21a84bbbfa29cb2f862d7acd2c85519",
+    "0009_local_inventory_target_columns.sql": "0db6856268aab5053a320618e43dfb689c483479e5f3e3bee6995f16a97bbb89a0a048de238d6121174bb010eb1984ca",
+    "0010_remove_legacy_sync_mapping.sql": "b216ef83747b5d6dfa54e1ad7e708b0aa100e96dc865edb2f48df5d275abe115abaf49ebd55eac696fe1453812aca3c1",
+    "0011_service_optional_endpoints.sql": "28d745953f9f5aa8b7a5d1c66b508ae5c806d9a7726eb6c8bed0bbed832c2d41b4b089338e453f903e117216e3d91c1c",
+    "0012_netbox_owner_admin_models.sql": "08c0d4db1a3f93092f9fce2dc39eb11f6822d6862c81c38b337bb72aada9df9ede88efc2a61c5536b0cfac29b801810d"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE secrets_binding SET managed_by_field_usage = false, weight = $4 WHERE secret_id = $1 AND scope_type = $2 AND scope_id = $3 AND managed_by_field_usage RETURNING id, secret_id, scope_type, scope_id, weight, managed_by_field_usage",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "secret_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "scope_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "scope_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "weight",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "managed_by_field_usage",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ac3c948eeb32259740ba05c910cec40443e984fc23347a48993220c1133bb18f"
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-change-service-address"
+description = "Enables the change_service_address command without any pre-configured scope."
+commands.allow = ["change_service_address"]
+
+[[permission]]
+identifier = "deny-change-service-address"
+description = "Denies the change_service_address command without any pre-configured scope."
+commands.deny = ["change_service_address"]

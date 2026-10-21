@@ -1,0 +1,33 @@
+[workspace]
+# Keep this crate out of the parent Cargo workspace at piping/Cargo.toml.
+# The desktop shell has a separate Tauri target tree and toolchain pin.
+
+[package]
+name = "piping-desktop"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+
+[lib]
+name = "piping_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "=2.6.0", features = [] }
+
+[dependencies]
+open = { version = "5", features = ["shellexecute-on-windows"] }
+reqwest = { version = "=0.13.3", default-features = false, features = ["blocking", "rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+shlex = "1"
+tauri = { version = "=2.11.0", features = ["unstable", "devtools"] }
+tauri-plugin-dialog = "=2.7.1"
+tauri-plugin-updater = "=2.10.1"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
+[lints.clippy]
+# This is a separate workspace; the root workspace's lint settings do not apply.
+cognitive_complexity = "warn"

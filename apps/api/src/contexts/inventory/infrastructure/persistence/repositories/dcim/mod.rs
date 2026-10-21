@@ -1,0 +1,35 @@
+//! DCIM SQLx repositories.
+
+pub mod cable_repository;
+pub mod cabling_repository;
+pub mod console_port_repository;
+pub mod console_server_port_repository;
+pub mod device_bay_repository;
+pub mod device_repository;
+pub mod device_role_repository;
+pub mod device_type_repository;
+pub mod front_port_repository;
+pub mod interface_repository;
+pub mod inventory_item_repository;
+pub mod inventory_item_role_repository;
+pub mod location_repository;
+pub mod mac_address_repository;
+pub mod manufacturer_repository;
+pub mod module_bay_repository;
+pub mod module_repository;
+pub mod module_type_profile_repository;
+pub mod module_type_repository;
+pub mod platform_repository;
+pub mod power_feed_repository;
+pub mod power_outlet_repository;
+pub mod power_panel_repository;
+pub mod power_port_repository;
+pub mod rack_repository;
+pub mod rack_reservation_repository;
+pub mod rack_role_repository;
+pub mod rack_type_repository;
+pub mod rear_port_repository;
+pub mod region_repository;
+pub mod site_group_repository;
+pub mod site_repository;
+pub mod virtual_chassis_repository;

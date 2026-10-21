@@ -1,0 +1,30 @@
+Piping Source-Available License v1.0
+
+Copyright (c) 2026 Piping contributors
+
+Permission is granted to view, copy, modify, and run this software for personal,
+internal, and non-commercial use, and for self-hosted production use up to
+10 active users per deployed instance.
+
+Commercial terms:
+1. Use above 10 active users per deployed instance requires a paid commercial
+   subscription from the Licensor.
+2. Official pricing policy for overage seats may be published separately by the
+   Licensor and becomes part of commercial terms.
+
+Restrictions:
+1. You may not remove, disable, or bypass technical licensing enforcement in
+   official distributions to exceed granted seat limits.
+2. You may not offer this software as a competing commercial hosted service
+   without a separate written agreement from the Licensor.
+3. Trademark rights are not granted.
+
+Contributions:
+By contributing, you agree that your contribution may be used under this
+license and commercial licenses per `CLA.md`.
+
+Disclaimer:
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY.

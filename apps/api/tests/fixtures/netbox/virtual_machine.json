@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1,
+    "name": "test-vm-alpha-01",
+    "status": {"value": "active", "label": "Active"},
+    "cluster": {"id": 1, "name": "Test Cluster Alpha"},
+    "site": {"id": 1, "slug": "test-site-alpha"},
+    "role": {"id": 1, "slug": "test-role-access-switch"},
+    "tenant": {"id": 1, "slug": "test-tenant-acme"},
+    "platform": {"id": 1, "slug": "test-platform-ios"},
+    "primary_ip4": null,
+    "primary_ip6": null,
+    "vcpus": 2.0,
+    "memory": 4096,
+    "disk": 50,
+    "description": "Alpha test VM",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

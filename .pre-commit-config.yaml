@@ -1,0 +1,130 @@
+default_install_hook_types: [pre-commit, pre-push, commit-msg]
+default_stages: [pre-commit]
+exclude: ^apps/web/\.pnpm-store/
+
+# Pre-commit hooks for the piping workspace.
+#
+# Install: `pip install pre-commit && pre-commit install --install-hooks`.
+# Run on all files: `pre-commit run --all-files`.
+#
+# These hooks repeat the repository's local checks — cargo fmt, contract-drift,
+# clippy, cargo deny, eslint, frontend typecheck and frontend tests — so they
+# run before review. GitLab CI does not run this set: on the protected `develop`
+# branch it computes the version, builds the product images and releases them
+# (see the root README, "Release").
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: ^\.gitlab-ci\.yml$
+      - id: check-yaml
+        name: check GitLab pipeline YAML
+        files: ^\.gitlab-ci\.yml$
+        # Syntax only: GitLab resolves !reference and validates the compiled DAG.
+        args: [--allow-multiple-documents, --unsafe]
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: detect-private-key
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        # `pnpm-lock.yaml` несёт только integrity-хэши — тот же класс, что знает
+        # собственный фильтр `is_lock_file` (npm/yarn/Cargo); pnpm в нём нет, и
+        # файл исключён явно, чтобы хэши не жили в baseline. Baseline-файл
+        # исключён из собственного скана.
+        exclude: ^\.secrets\.baseline$|(^|/)pnpm-lock\.yaml$
+        stages: [pre-commit]
+
+  - repo: local
+    hooks:
+      - id: backend-fmt
+        name: backend-fmt
+        description: "cargo fmt --check across the workspace"
+        entry: cargo fmt --manifest-path Cargo.toml --all -- --check
+        language: system
+        pass_filenames: false
+        files: \.rs$
+
+      - id: contract-drift
+        name: contract-drift
+        description: "generated OpenAPI document: typed sync targets and catalog resources"
+        entry: cargo test --manifest-path apps/api/Cargo.toml --test contract_drift
+        language: system
+        pass_filenames: false
+        # The test reads ApiDoc::openapi(), i.e. the schema attributes anywhere
+        # in the crate, not the committed yaml or the router source. The
+        # committed contract stays in the pattern: a regenerated
+        # `contracts/piping.openapi.yaml` ships in the same change as the ApiDoc
+        # it came from, and this hook must run on that change too.
+        files: ^(apps/api/contracts/|apps/api/src/|apps/api/tests/contract_drift\.rs)
+
+      - id: cargo-clippy-workspace
+        name: cargo clippy workspace
+        description: "cargo clippy --workspace --all-targets -- -D warnings"
+        entry: cargo clippy --workspace --all-targets -- -D warnings
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: cargo-deny
+        name: cargo deny check
+        description: "cargo deny check"
+        entry: cargo deny check
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: frontend-eslint
+        name: frontend-eslint
+        description: "eslint --max-warnings=0 over apps/web when staged web files change"
+        # pre-commit passes git-root-relative paths; we lint the whole apps/web
+        # project (mirrors `pnpm run lint`) instead of forwarding paths, because
+        # the flat config + `@/*` aliases resolve against apps/web, not the root.
+        # `files:` gates this hook so it only runs when apps/web sources change.
+        # Env knobs make the hook a deterministic *check* (not an installer):
+        #   CI=true                              -> non-interactive pnpm
+        #   PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN   -> skip pnpm's pre-run implicit
+        #     install/dep-check (it stashes deps and aborts the hook on
+        #     ERR_PNPM_IGNORED_BUILDS / no-TTY). Devs keep node_modules in sync
+        #     with `pnpm install`; a missing dep yields a clear eslint error.
+        entry: bash -c 'cd apps/web && CI=true PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false exec pnpm exec eslint . --max-warnings=0'
+        language: system
+        pass_filenames: false
+        files: ^apps/web/.*\.(m?js|jsx|ts|tsx)$
+
+      - id: frontend-typecheck
+        name: frontend typecheck
+        description: "cd apps/web && pnpm run typecheck"
+        entry: bash -c 'cd apps/web && CI=true PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false exec pnpm run typecheck'
+        language: system
+        pass_filenames: false
+        files: ^apps/web/.*\.(m?js|jsx|ts|tsx)$
+        stages: [pre-commit, pre-push]
+
+      - id: frontend-test
+        name: frontend test
+        description: "cd apps/web && pnpm run test"
+        entry: bash -lc 'cd apps/web && pnpm run test'
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: check-commit-msg
+        name: check commit message format
+        description: "Piping conventional commit subject"
+        entry: scripts/check-commit-msg.sh
+        language: script
+        stages: [commit-msg]

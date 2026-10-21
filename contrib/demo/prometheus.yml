@@ -1,0 +1,55 @@
+# Demo Prometheus configuration mounted by the `demo` compose profile.
+#
+# The whole point of this file is that there is nothing to edit: targets and
+# their `piping_target_id` / `piping_host_name` labels come from Piping's HTTP
+# service discovery endpoint (`/api/v1/monitoring/sd`), which derives them
+# from the live inventory. `piping_target_id` is always emitted; the opt-in
+# identifier labels are not required. Adding a host to the Piping inventory is
+# enough to start collecting `probe_success` / `probe_duration_seconds` for it.
+#
+# The HTTP SD endpoint requires an admin-issued token: set
+# `PIPING_MONITORING_SD_TOKEN` in the host `.env` (the bootstrap admin can
+# mint one from Settings → API tokens). Without it Prometheus will scrape
+# nothing and that's fine — the rest of the stack keeps running.
+
+global:
+  scrape_interval: 30s
+  external_labels:
+    monitor: piping-stage-demo
+
+scrape_configs:
+  # Self-monitoring: lets `up{job="prometheus"}` give the operator a quick
+  # heartbeat for the demo Prometheus itself.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Fleet ICMP probes. Targets are pulled from Piping's HTTP service
+  # discovery on every refresh, so the probe set tracks the inventory
+  # without any manual configuration here.
+  - job_name: blackbox_icmp
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    http_sd_configs:
+      - url: http://backend:7000/api/v1/monitoring/sd?kind=all
+        refresh_interval: 60s
+        authorization:
+          # The token is provided through the SD endpoint's bearer scheme.
+          # Use an admin-issued service token so the SD endpoint is
+          # authenticated even when login cookies aren't available.
+          credentials_file: /etc/prometheus/sd-token
+    relabel_configs:
+      # `piping_target_id` / `piping_host_name` are stamped by the SD endpoint
+      # and HTTP service discovery passes label names through unchanged, so
+      # they need no relabel rule here.
+      # Drop the SD-provided port (we probe the bare address by ICMP) and
+      # send the probe to the blackbox exporter sidecar.
+      - source_labels: [__address__]
+        regex: "([^:]+)(?::\\d+)?"
+        replacement: "$1"
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: monitoring-blackbox:9115

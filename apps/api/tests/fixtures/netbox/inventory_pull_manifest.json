@@ -1,0 +1,206 @@
+{
+  "_note": "Synthetic, committed PIP-86 local-inventory pull source. Shapes and api paths mirror the closed source census (/data/artifacts/pip-86-source-census.json: 26 resources); every value here is invented, never a live NetBox export and never derived from a running stack. Integer ids are deliberate: the target binds them to provider-scoped UUIDv5 local ids, so the fixture exercises remote-integer -> local-UUID conversion.",
+  "resources": {
+    "dcim.device-roles": {
+      "api_path": "/api/dcim/device-roles/",
+      "records": [
+        {
+          "id": 1,
+          "name": "Synthetic Role",
+          "slug": "synthetic-role",
+          "color": "8f8f8f",
+          "vm_role": false,
+          "description": "",
+          "comments": "",
+          "tags": []
+        }
+      ]
+    },
+    "dcim.device-types": {
+      "api_path": "/api/dcim/device-types/",
+      "records": [
+        {
+          "id": 1,
+          "manufacturer": { "id": 1 },
+          "model": "SYN-1",
+          "slug": "syn-1",
+          "part_number": "",
+          "u_height": 1.0,
+          "is_full_depth": true,
+          "exclude_from_utilization": false,
+          "front_image": "",
+          "rear_image": "",
+          "comments": "",
+          "description": "",
+          "tags": []
+        }
+      ]
+    },
+    "dcim.devices": {
+      "api_path": "/api/dcim/devices/",
+      "records": [
+        {
+          "id": 1,
+          "name": "syn-device-1",
+          "serial": "SYN-SER-1",
+          "status": { "value": "active", "label": "Active" },
+          "role": { "id": 1 },
+          "device_type": { "id": 1 },
+          "site": { "id": 1 },
+          "primary_ip4": { "id": 1 },
+          "description": "",
+          "comments": "",
+          "custom_fields": { "owner_team": "ops" },
+          "tags": [{ "id": 1, "name": "edge", "slug": "edge" }]
+        }
+      ]
+    },
+    "dcim.interfaces": {
+      "api_path": "/api/dcim/interfaces/",
+      "records": [
+        {
+          "id": 1,
+          "device": { "id": 1 },
+          "name": "eth0",
+          "label": "",
+          "description": "",
+          "mark_connected": false,
+          "enabled": true,
+          "type": { "value": "1000base-t", "label": "1000BASE-T" },
+          "mgmt_only": false,
+          "mtu": 1500,
+          "tags": []
+        }
+      ]
+    },
+    "dcim.inventory-items": { "api_path": "/api/dcim/inventory-items/", "records": [] },
+    "dcim.mac-addresses": {
+      "api_path": "/api/dcim/mac-addresses/",
+      "records": [
+        {
+          "id": 1,
+          "mac_address": "AA:BB:CC:DD:EE:FF",
+          "description": "",
+          "comments": "",
+          "assigned_object_type": "dcim.interface",
+          "assigned_object": { "id": 1 },
+          "tags": []
+        }
+      ]
+    },
+    "dcim.manufacturers": {
+      "api_path": "/api/dcim/manufacturers/",
+      "records": [
+        {
+          "id": 1,
+          "name": "Synthetic Manufacturing",
+          "slug": "synthetic-manufacturing",
+          "description": "",
+          "comments": "",
+          "tags": []
+        }
+      ]
+    },
+    "dcim.module-type-profiles": { "api_path": "/api/dcim/module-type-profiles/", "records": [] },
+    "dcim.platforms": { "api_path": "/api/dcim/platforms/", "records": [] },
+    "dcim.regions": { "api_path": "/api/dcim/regions/", "records": [] },
+    "dcim.site-groups": { "api_path": "/api/dcim/site-groups/", "records": [] },
+    "dcim.sites": {
+      "api_path": "/api/dcim/sites/",
+      "records": [
+        {
+          "id": 1,
+          "name": "Synthetic Site",
+          "slug": "synthetic-site",
+          "status": { "value": "active", "label": "Active" },
+          "facility": "",
+          "description": "",
+          "physical_address": "",
+          "shipping_address": "",
+          "comments": "",
+          "tags": [{ "id": 1, "name": "edge", "slug": "edge" }]
+        }
+      ]
+    },
+    "extras.custom-fields": { "api_path": "/api/extras/custom-fields/", "records": [
+      { "id": 1, "name": "owner_team", "label": "Owner Team", "type": { "value": "text", "label": "Text" }, "required": false, "object_types": ["dcim.device"], "default": null, "validation_schema": null }
+    ] },
+    "extras.tagged-objects": { "api_path": "/api/extras/tagged-objects/", "records": [
+        { "id": 1, "url": "http://source.example.invalid/api/extras/tagged-objects/1/", "object_type": "dcim.device", "object_id": 1, "tag": { "id": 1 } },
+      { "id": 2, "object_type": "dcim.site", "object_id": 1, "tag": { "id": 1 } },
+      { "id": 3, "object_type": "ipam.service", "object_id": 1, "tag": { "id": 1 } }
+    ] },
+    "extras.tags": {
+      "api_path": "/api/extras/tags/",
+      "records": [
+        {
+          "id": 1,
+          "name": "edge",
+          "slug": "edge",
+          "color": "00ff00",
+          "description": "edge tag",
+          "weight": 100
+        }
+      ]
+    },
+    "ipam.ip-addresses": {
+      "api_path": "/api/ipam/ip-addresses/",
+      "records": [
+        {
+          "id": 1,
+          "address": "10.0.0.1/24",
+          "status": { "value": "active", "label": "Active" },
+          "dns_name": "syn-1.example.invalid",
+          "description": "",
+          "comments": "",
+          "assigned_object_type": "dcim.interface",
+          "assigned_object": { "id": 1 },
+          "tags": []
+        }
+      ]
+    },
+    "ipam.prefixes": { "api_path": "/api/ipam/prefixes/", "records": [] },
+    "ipam.services": {
+      "api_path": "/api/ipam/services/",
+      "records": [
+        {
+          "id": 1,
+          "name": "syn-https",
+          "protocol": { "value": "tcp", "label": "TCP" },
+          "ports": [],
+          "description": "",
+          "comments": "",
+          "parent_object_type": "dcim.device",
+          "parent_object_id": 1,
+          "port_mappings": ["tcp/443", "tcp/80"],
+          "tags": [{ "id": 1, "name": "edge", "slug": "edge" }]
+        }
+      ]
+    },
+    "ipam.vrfs": { "api_path": "/api/ipam/vrfs/", "records": [] },
+    "tenancy.tenants": { "api_path": "/api/tenancy/tenants/", "records": [] },
+    "virtualization.cluster-groups": { "api_path": "/api/virtualization/cluster-groups/", "records": [] },
+    "virtualization.cluster-types": { "api_path": "/api/virtualization/cluster-types/", "records": [] },
+    "virtualization.clusters": { "api_path": "/api/virtualization/clusters/", "records": [] },
+    "virtualization.interfaces": { "api_path": "/api/virtualization/interfaces/", "records": [] },
+    "virtualization.virtual-disks": { "api_path": "/api/virtualization/virtual-disks/", "records": [] },
+    "virtualization.virtual-machines": {
+      "api_path": "/api/virtualization/virtual-machines/",
+      "records": [
+        {
+          "id": 1,
+          "name": "syn-vm-1",
+          "status": { "value": "active", "label": "Active" },
+          "vcpus": 2.0,
+          "memory": 1024,
+          "disk": 10,
+          "serial": "",
+          "start_on_boot": { "value": "off", "label": "Off" },
+          "description": "",
+          "comments": "",
+          "tags": []
+        }
+      ]
+    }
+  }
+}

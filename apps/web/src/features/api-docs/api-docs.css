@@ -1,0 +1,617 @@
+/*
+ * Swagger UI theme override — scoped to .api-docs-scope
+ *
+ * All colors reference our design tokens so the single ruleset
+ * adapts to both dark (default) and light themes automatically.
+ * No `.dark` / `.light` selectors needed here.
+ */
+
+/* ── Root / typography ─────────────────────────────────────── */
+
+.api-docs-scope .swagger-ui {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 0.9375rem;
+  color: hsl(var(--foreground));
+}
+
+.api-docs-scope .swagger-ui *,
+.api-docs-scope .swagger-ui *::before,
+.api-docs-scope .swagger-ui *::after {
+  box-sizing: border-box;
+}
+
+.api-docs-scope .swagger-ui a {
+  color: hsl(var(--primary));
+  text-decoration: none;
+}
+
+.api-docs-scope .swagger-ui a:hover {
+  text-decoration: underline;
+}
+
+/* ── Info / header block ──────────────────────────────────── */
+
+.api-docs-scope .swagger-ui .information-container {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 8px;
+}
+
+.api-docs-scope .swagger-ui .info {
+  margin: 0;
+}
+
+.api-docs-scope .swagger-ui .info .title {
+  color: hsl(var(--foreground));
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.api-docs-scope .swagger-ui .info .title small {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.api-docs-scope .swagger-ui .info p,
+.api-docs-scope .swagger-ui .info li,
+.api-docs-scope .swagger-ui .info table,
+.api-docs-scope .swagger-ui .info .description {
+  color: hsl(var(--muted-foreground));
+}
+
+.api-docs-scope .swagger-ui .info .base-url,
+.api-docs-scope .swagger-ui .info .url {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+}
+
+/* ── Servers / scheme bar ─────────────────────────────────── */
+
+.api-docs-scope .swagger-ui .scheme-container {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  box-shadow: none;
+}
+
+.api-docs-scope .swagger-ui .scheme-container .schemes > label {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Inputs / selects / textareas ─────────────────────────── */
+
+.api-docs-scope .swagger-ui input,
+.api-docs-scope .swagger-ui textarea,
+.api-docs-scope .swagger-ui select {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--input));
+  border-radius: calc(var(--radius) - 2px);
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+
+@media (min-width: 768px) {
+  .api-docs-scope .swagger-ui input,
+  .api-docs-scope .swagger-ui textarea,
+  .api-docs-scope .swagger-ui select {
+    font-size: 0.9375rem;
+  }
+}
+
+.api-docs-scope .swagger-ui input:focus,
+.api-docs-scope .swagger-ui textarea:focus,
+.api-docs-scope .swagger-ui select:focus {
+  border-color: hsl(var(--ring) / 0.6);
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.25);
+}
+
+.api-docs-scope .swagger-ui select {
+  /* Clear the hard-coded SVG arrow */
+  background-image: none;
+  cursor: pointer;
+}
+
+.api-docs-scope .swagger-ui option {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+.api-docs-scope .swagger-ui input[type="text"]::placeholder,
+.api-docs-scope .swagger-ui textarea::placeholder {
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+/* ── Tag (section) headers ────────────────────────────────── */
+
+.api-docs-scope .swagger-ui .opblock-tag,
+.api-docs-scope .swagger-ui .opblock-tag-section h3 {
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.api-docs-scope .swagger-ui .opblock-tag:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.api-docs-scope .swagger-ui .opblock-tag small {
+  color: hsl(var(--muted-foreground));
+  font-weight: 400;
+}
+
+/* ── Operation panels ─────────────────────────────────────── */
+
+.api-docs-scope .swagger-ui .opblock {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: none;
+  margin-bottom: 6px;
+}
+
+.api-docs-scope .swagger-ui .opblock .opblock-summary {
+  background-color: transparent;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.api-docs-scope .swagger-ui .opblock .opblock-summary:hover {
+  background-color: hsl(var(--muted) / 0.4);
+}
+
+.api-docs-scope .swagger-ui .opblock .opblock-summary-description {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+.api-docs-scope .swagger-ui .opblock .opblock-summary-path,
+.api-docs-scope .swagger-ui .opblock .opblock-summary-path__deprecated {
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.api-docs-scope .swagger-ui .opblock .opblock-summary-path__deprecated {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.api-docs-scope .swagger-ui .opblock-section-header {
+  background-color: hsl(var(--muted));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 8px 20px;
+}
+
+.api-docs-scope .swagger-ui .opblock-section-header h4,
+.api-docs-scope .swagger-ui .opblock-section-header label {
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.api-docs-scope .swagger-ui .opblock-description-wrapper,
+.api-docs-scope .swagger-ui .opblock-external-docs-wrapper {
+  padding: 12px 20px;
+  color: hsl(var(--muted-foreground));
+}
+
+.api-docs-scope .swagger-ui .opblock-title_normal {
+  color: hsl(var(--foreground));
+}
+
+/* ── Method badges — keep semantic colors, ensure contrast ── */
+
+.api-docs-scope .swagger-ui .opblock-summary-method {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  min-width: 60px;
+  text-align: center;
+  border-radius: 3px;
+  padding: 4px 6px;
+}
+
+/* Override default alpha-tinted backgrounds on the operation block */
+.api-docs-scope .swagger-ui .opblock.opblock-get {
+  background-color: hsl(var(--card));
+  border-left: 3px solid hsl(var(--status-info));
+}
+
+.api-docs-scope .swagger-ui .opblock.opblock-post {
+  background-color: hsl(var(--card));
+  border-left: 3px solid hsl(var(--status-positive));
+}
+
+.api-docs-scope .swagger-ui .opblock.opblock-put {
+  background-color: hsl(var(--card));
+  border-left: 3px solid hsl(var(--status-warning));
+}
+
+.api-docs-scope .swagger-ui .opblock.opblock-delete {
+  background-color: hsl(var(--card));
+  border-left: 3px solid hsl(var(--status-negative));
+}
+
+.api-docs-scope .swagger-ui .opblock.opblock-patch {
+  background-color: hsl(var(--card));
+  border-left: 3px solid hsl(var(--status-positive));
+}
+
+.api-docs-scope .swagger-ui .opblock.opblock-options,
+.api-docs-scope .swagger-ui .opblock.opblock-head {
+  background-color: hsl(var(--card));
+  border-left: 3px solid hsl(var(--border));
+}
+
+/* ── Tables (parameters & responses) ─────────────────────── */
+
+.api-docs-scope .swagger-ui table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.api-docs-scope .swagger-ui table thead tr th,
+.api-docs-scope .swagger-ui table thead tr td {
+  background-color: hsl(var(--surface-2));
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.api-docs-scope .swagger-ui table tbody tr td {
+  background-color: transparent;
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  padding: 8px 12px;
+  vertical-align: top;
+}
+
+.api-docs-scope .swagger-ui table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.api-docs-scope .swagger-ui .parameters-col_description input {
+  max-width: 340px;
+}
+
+.api-docs-scope .swagger-ui .parameter__name {
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.api-docs-scope .swagger-ui .parameter__type,
+.api-docs-scope .swagger-ui .parameter__in {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+.api-docs-scope .swagger-ui .parameter__deprecated {
+  color: hsl(var(--status-negative));
+  font-size: 12px;
+}
+
+.api-docs-scope .swagger-ui .response-col_status {
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.api-docs-scope .swagger-ui .response-col_description {
+  color: hsl(var(--muted-foreground));
+}
+
+.api-docs-scope .swagger-ui .responses-inner h4,
+.api-docs-scope .swagger-ui .responses-inner h5 {
+  color: hsl(var(--foreground));
+}
+
+.api-docs-scope .swagger-ui .response-control-media-type__title {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+/* ── Code / example boxes ─────────────────────────────────── */
+
+.api-docs-scope .swagger-ui .microlight,
+.api-docs-scope .swagger-ui .highlight-code,
+.api-docs-scope .swagger-ui .opblock-body pre,
+.api-docs-scope .swagger-ui pre.microlight {
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) - 2px);
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 12px 16px;
+  overflow-x: auto;
+}
+
+.api-docs-scope .swagger-ui .opblock-body pre.microlight {
+  border: none;
+}
+
+.api-docs-scope .swagger-ui .copy-to-clipboard {
+  background-color: hsl(var(--muted));
+}
+
+.api-docs-scope .swagger-ui .copy-to-clipboard button {
+  background-color: transparent;
+  border: 1px solid hsl(var(--input));
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+
+.api-docs-scope .swagger-ui .copy-to-clipboard button:hover {
+  border-color: hsl(var(--ring));
+  color: hsl(var(--foreground));
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+
+.api-docs-scope .swagger-ui .btn {
+  background-color: transparent;
+  border: 1px solid hsl(var(--input));
+  border-radius: calc(var(--radius) - 2px);
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  min-height: 36px;
+  font-weight: 500;
+  padding: 5px 12px;
+  transition: border-color 120ms, background-color 120ms, color 120ms;
+}
+
+.api-docs-scope .swagger-ui .btn:hover {
+  border-color: hsl(var(--ring) / 0.6);
+  background-color: hsl(var(--muted));
+}
+
+.api-docs-scope .swagger-ui .btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.35);
+}
+
+.api-docs-scope .swagger-ui .btn.execute {
+  background-color: hsl(var(--primary-fill));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 600;
+}
+
+.api-docs-scope .swagger-ui .btn.execute:hover {
+  background-color: hsl(var(--primary-fill) / 0.9);
+  border-color: hsl(var(--primary));
+}
+
+.api-docs-scope .swagger-ui .btn.authorize {
+  background-color: transparent;
+  border-color: hsl(var(--status-positive));
+  color: hsl(var(--status-positive));
+}
+
+.api-docs-scope .swagger-ui .btn.authorize:hover {
+  background-color: hsl(var(--status-positive) / 0.1);
+}
+
+.api-docs-scope .swagger-ui .btn.authorize svg {
+  fill: hsl(var(--status-positive));
+}
+
+.api-docs-scope .swagger-ui .btn.try-out__btn {
+  border-color: hsl(var(--border-muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.api-docs-scope .swagger-ui .btn.try-out__btn:hover {
+  border-color: hsl(var(--ring) / 0.6);
+  color: hsl(var(--foreground));
+}
+
+.api-docs-scope .swagger-ui .btn.cancel {
+  border-color: hsl(var(--destructive) / 0.7);
+  color: hsl(var(--destructive));
+}
+
+.api-docs-scope .swagger-ui .btn.cancel:hover {
+  background-color: hsl(var(--destructive) / 0.1);
+}
+
+.api-docs-scope .swagger-ui .btn-clear {
+  background-color: transparent;
+  color: hsl(var(--muted-foreground));
+  border: none;
+  font-size: 12px;
+}
+
+.api-docs-scope .swagger-ui .btn-clear:hover {
+  color: hsl(var(--foreground));
+}
+
+/* ── SVG icons ────────────────────────────────────────────── */
+
+.api-docs-scope .swagger-ui svg {
+  fill: currentColor;
+}
+
+/* Keep method badge svgs untouched — they're already styled inline */
+.api-docs-scope .swagger-ui .opblock-summary-method svg {
+  fill: inherit;
+}
+
+.api-docs-scope .swagger-ui .arrow {
+  color: hsl(var(--muted-foreground));
+  fill: hsl(var(--muted-foreground));
+}
+
+/* ── Schema/Example tab toggles ──────────────────────────── */
+
+.api-docs-scope .swagger-ui .tab li,
+.api-docs-scope .swagger-ui .tab li button {
+  color: hsl(var(--muted-foreground));
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 0;
+  margin-right: 12px;
+}
+
+.api-docs-scope .swagger-ui .tab li.active,
+.api-docs-scope .swagger-ui .tab li button.tablinks.active {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  border-bottom: 2px solid hsl(var(--primary));
+}
+
+/* ── Models section ───────────────────────────────────────── */
+
+.api-docs-scope .swagger-ui section.models {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  margin-top: 12px;
+}
+
+.api-docs-scope .swagger-ui section.models h4 {
+  color: hsl(var(--foreground));
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 12px 16px;
+  margin: 0;
+}
+
+.api-docs-scope .swagger-ui section.models .model-container {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) - 2px);
+  margin: 8px 12px;
+}
+
+.api-docs-scope .swagger-ui .model-box {
+  background-color: hsl(var(--muted));
+  border-radius: calc(var(--radius) - 2px);
+  padding: 8px 12px;
+}
+
+.api-docs-scope .swagger-ui .model-title {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.api-docs-scope .swagger-ui .model .property,
+.api-docs-scope .swagger-ui .model .prop-type,
+.api-docs-scope .swagger-ui .model .prop-format {
+  color: hsl(var(--muted-foreground));
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.api-docs-scope .swagger-ui .model-toggle {
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Auth dialog ──────────────────────────────────────────── */
+
+.api-docs-scope .swagger-ui .dialog-ux .modal-ux {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  color: hsl(var(--foreground));
+}
+
+.api-docs-scope .swagger-ui .dialog-ux .modal-ux-header {
+  background-color: hsl(var(--muted));
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.api-docs-scope .swagger-ui .dialog-ux .modal-ux-content {
+  color: hsl(var(--foreground));
+}
+
+.api-docs-scope .swagger-ui .dialog-ux .modal-ux-content p,
+.api-docs-scope .swagger-ui .dialog-ux .modal-ux-content h4 {
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Miscellaneous ────────────────────────────────────────── */
+
+/* Loading / errors */
+.api-docs-scope .swagger-ui .loading-container {
+  color: hsl(var(--muted-foreground));
+}
+
+.api-docs-scope .swagger-ui .errors-wrapper {
+  background-color: hsl(var(--destructive) / 0.1);
+  border: 1px solid hsl(var(--destructive) / 0.4);
+  border-radius: var(--radius);
+  color: hsl(var(--foreground));
+}
+
+/* Expand / collapse all (the top-right buttons) */
+.api-docs-scope .swagger-ui .expand-operation svg {
+  fill: hsl(var(--muted-foreground));
+}
+
+/* Server select dropdown wrapper */
+.api-docs-scope .swagger-ui .servers > label {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.api-docs-scope .swagger-ui .servers select {
+  margin-top: 4px;
+}
+
+/* Live response block */
+.api-docs-scope .swagger-ui .live-responses-table .response .response-col_status {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+/* Curl/request example box */
+.api-docs-scope .swagger-ui .curl-command {
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) - 2px);
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 12px;
+  padding: 10px 14px;
+}
+
+/* Hide Swagger UI topbar (it has its own branding that clashes) */
+.api-docs-scope .swagger-ui .topbar {
+  display: none;
+}
+
+/* Wrapper padding */
+.api-docs-scope .swagger-ui .wrapper {
+  padding: 0;
+}

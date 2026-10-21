@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: piping-backend
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - backend:7000
+        labels:
+          service: piping-backend
+          env: dev

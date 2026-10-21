@@ -1,0 +1,698 @@
+name: piping
+
+# App services use the internal network. The edge profile adds HTTPS nginx.
+# Backend starts its embedded RDP-only guacd for browser RDP sessions.
+#
+# Optional profiles (off by default):
+#   --profile proxy        — edge proxy node runtime (PIPING_RUN_MODE=proxy)
+#   --profile ssh-target   — throwaway SSH target for smoke tests
+#   --profile netbox       — temporary NetBox for provider sync e2e
+#   --profile keycloak     — temporary Keycloak for OIDC e2e
+
+x-piping-runtime-env: &piping-runtime-env
+  PIPING_DATABASE__URL: postgresql://${POSTGRES_USER:-piping}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set to a strong, non-default value}@postgres:5432/${POSTGRES_DB:-piping}
+  PIPING_REDIS__URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set to a strong, non-default value}@redis:6379/0
+  PIPING_PROXY__GUACD_HOST: ${PIPING_PROXY_GUACD_HOST:-127.0.0.1}
+  PIPING_PROXY__GUACD_PORT: ${PIPING_PROXY_GUACD_PORT:-4822}
+  PIPING_PROXY__RDP_DRIVE_BASE_PATH: ${PIPING_PROXY_RDP_DRIVE_BASE_PATH:-/tmp/guac-drives}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_UPLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES:-536870912}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_DOWNLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_DOWNLOAD_BYTES:-536870912}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_SIDECARS_TOTAL: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_SIDECARS_TOTAL:-8}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_SIDECARS_PER_SESSION: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_SIDECARS_PER_SESSION:-2}
+  PIPING_SECRETS__CIPHER_KEY_B64: ${PIPING_SECRETS__CIPHER_KEY_B64:?PIPING_SECRETS__CIPHER_KEY_B64 must be set (base64 32-byte key)}
+  PIPING_ANSIBLE_RUNNER__BASE_URL: ${PIPING_ANSIBLE_RUNNER__BASE_URL:-http://ansible-runner:8080}
+  PIPING_ANSIBLE_RUNNER__SHARED_SECRET: ${PIPING_ANSIBLE_RUNNER__SHARED_SECRET:-dev-ansible-runner-secret}
+  # Hourly git refresh of the official playbook catalog. Local stacks that
+  # cannot reach the public catalog repo set this to false in env/dev.env to
+  # silence the hourly failed-clone warning; the baked snapshot stays
+  # authoritative either way.
+  PIPING_OFFICIAL_CATALOG__REFRESH_ENABLED: ${PIPING_OFFICIAL_CATALOG_REFRESH_ENABLED:-true}
+  # Backend address the ansible-runner SIDECAR (separate container) POSTs run
+  # events/completion back to. The config default is loopback localhost:7000,
+  # which inside the sidecar points at the sidecar itself — callbacks would
+  # silently fail and runs would hang in callback_wait. Must be the backend's
+  # compose-network host. (Internal hop; the run token never leaves it.)
+  PIPING_PLAYBOOK_RUNTIME__SELF_CALLBACK_BASE_URL: ${PIPING_PLAYBOOK_RUNTIME__SELF_CALLBACK_BASE_URL:-http://backend:7000}
+  PIPING_AUTH__LOCAL_ENABLED: ${PIPING_AUTH_LOCAL_ENABLED:-true}
+  PIPING_AUTH__PASSWORD_PEPPER: ${PIPING_AUTH_PASSWORD_PEPPER:?PIPING_AUTH_PASSWORD_PEPPER must be set}
+  # Local emergency administrator password. Empty in dev (dev tolerance in
+  # PIPING_SECURITY__ALLOW_WEAK_DEV_SECRETS short-circuits config validation and
+  # bootstrap falls back to the dev default); production must supply a strong,
+  # non-default value or startup fails closed. Provisioned by the operator or
+  # Vault -> ESO; never commit the value.
+  PIPING_AUTH__LOCAL_ADMIN_PASSWORD: ${PIPING_AUTH_LOCAL_ADMIN_PASSWORD:-}
+  PIPING_AUTH__PASSWORD_MIN_LENGTH: ${PIPING_AUTH_PASSWORD_MIN_LENGTH:-8}
+  PIPING_AUTH__COOKIE_SECURE: ${PIPING_AUTH_COOKIE_SECURE:-true}
+  PIPING_SECURITY__ALLOW_WEAK_DEV_SECRETS: ${PIPING_SECURITY_ALLOW_WEAK_DEV_SECRETS:-false}
+  PIPING_START_EMBEDDED_GUACD: ${PIPING_START_EMBEDDED_GUACD:-auto}
+  PIPING_GUACD_LOG_LEVEL: ${PIPING_GUACD_LOG_LEVEL:-info}
+  PIPING_LOG_LEVEL: ${PIPING_LOG_LEVEL:-info}
+  PIPING_LOG_OUTPUT_FORMAT: ${PIPING_LOG_OUTPUT_FORMAT:-text}
+  PIPING_LOG_COLOR: ${PIPING_LOG_COLOR:-false}
+  PIPING_MONITORING__SD_TOKEN: ${PIPING_MONITORING_SD_TOKEN:-}
+  PIPING_MONITORING__SD_PUBLIC_ENABLED: ${PIPING_MONITORING_SD_PUBLIC_ENABLED:-false}
+  PIPING_MONITORING__SD_MAX_LIMIT: ${PIPING_MONITORING_SD_MAX_LIMIT:-50000}
+  # OTLP export is opt-in: no shipped default names a collector (the estate's
+  # k8s contour sets OTEL_EXPORTER_OTLP_ENDPOINT explicitly).
+  PIPING_OBSERVABILITY__OTEL_ENABLED: ${PIPING_OBSERVABILITY_OTEL_ENABLED:-false}
+  OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-piping-backend}
+  OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment.name=prod,service.namespace=piping}
+  OTEL_SERVICE_INSTANCE_ID: ${OTEL_SERVICE_INSTANCE_ID:-}
+  OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+  OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
+  OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-otlp}
+  OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: ${OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE:-cumulative}
+  OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
+  RUST_BACKTRACE: full
+
+x-piping-proxy-env: &piping-proxy-env
+  PIPING_PROXY__NODE_ID: ${PIPING_PROXY_NODE_ID:-}
+  PIPING_PROXY__NODE_SECRET: ${PIPING_PROXY_NODE_SECRET:-}
+  PIPING_PROXY__GUACD_HOST: ${PIPING_PROXY_NODE_GUACD_HOST:-127.0.0.1}
+  PIPING_PROXY__GUACD_PORT: ${PIPING_PROXY_GUACD_PORT:-4822}
+  PIPING_PROXY__RDP_DRIVE_BASE_PATH: ${PIPING_PROXY_RDP_DRIVE_BASE_PATH:-/tmp/guac-drives}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_UPLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES:-536870912}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_DOWNLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_DOWNLOAD_BYTES:-536870912}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_SIDECARS_TOTAL: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_SIDECARS_TOTAL:-8}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_SIDECARS_PER_SESSION: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_SIDECARS_PER_SESSION:-2}
+  PIPING_START_EMBEDDED_GUACD: ${PIPING_START_EMBEDDED_GUACD:-auto}
+  PIPING_GUACD_LOG_LEVEL: ${PIPING_GUACD_LOG_LEVEL:-info}
+  PIPING_LOG_LEVEL: ${PIPING_LOG_LEVEL:-info}
+  PIPING_LOG_OUTPUT_FORMAT: ${PIPING_LOG_OUTPUT_FORMAT:-text}
+  PIPING_LOG_COLOR: ${PIPING_LOG_COLOR:-false}
+  RUST_BACKTRACE: full
+
+# Resource tiers. Limit ceilings are env-overridable: an operator on a host
+# with fewer CPUs lowers a ceiling through these overrides, while the defaults
+# below preserve the full-size limits. `docker compose up` maps limits.cpus to
+# `--cpus`, and the daemon HARD-REJECTS a value above the host's nproc.
+x-piping-resources-small: &piping-resources-small
+  limits:
+    cpus: "${PIPING_RES_SMALL_CPUS:-1.00}"
+    memory: ${PIPING_RES_SMALL_MEM:-512M}
+  reservations:
+    cpus: "0.10"
+    memory: 128M
+
+x-piping-resources-medium: &piping-resources-medium
+  limits:
+    cpus: "${PIPING_RES_MEDIUM_CPUS:-2.00}"
+    memory: ${PIPING_RES_MEDIUM_MEM:-2G}
+  reservations:
+    cpus: "0.25"
+    memory: 512M
+
+x-piping-resources-large: &piping-resources-large
+  limits:
+    cpus: "${PIPING_RES_LARGE_CPUS:-4.00}"
+    memory: ${PIPING_RES_LARGE_MEM:-4G}
+  reservations:
+    cpus: "0.50"
+    memory: 1G
+
+services:
+  postgres:
+    image: ${PIPING_POSTGRES_IMAGE:-postgres:18-alpine}
+    restart: unless-stopped
+    # JIT disabled: product read-model queries (e.g. the connections workspace
+    # list) cross the default jit_above_cost on cost *estimate* alone, yet operate
+    # on a few thousand rows, so LLVM emission (~135ms/call, measured) is pure
+    # overhead with no runtime gain. Disabling it cut that query ~63%
+    # (273ms -> 100ms). This is OLTP; no query here benefits from JIT.
+    command: ["postgres", "-c", "jit=off"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-piping}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set to a strong, non-default value}
+      POSTGRES_DB: ${POSTGRES_DB:-piping}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-piping} -d ${POSTGRES_DB:-piping}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "${PIPING_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-medium
+
+  redis:
+    image: ${PIPING_REDIS_IMAGE:-redis:8.10.1}
+    restart: unless-stopped
+    labels:
+      io.piping.monitoring.enabled: "true"
+      io.piping.monitoring.primary: "true"
+      io.piping.monitoring.service: "redis"
+      io.piping.monitoring.host: "127.0.0.1"
+      io.piping.monitoring.container_port: "6379"
+    # The monitoring fact reads the password from the container environment when
+    # the label is absent (puppet common/lib/facter/container_monitoring.rb:139-142).
+    # Keep it here and NOT in a label: labels are world-readable to anything that
+    # can reach the Docker API, and cAdvisor re-exports them as metric labels.
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD must be set to a strong, non-default value}"
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set to a strong, non-default value}", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:?REDIS_PASSWORD must be set to a strong, non-default value} ping | grep -q PONG || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "${PIPING_REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+  backend:
+    image: ${PIPING_BACKEND_IMAGE:?Set PIPING_BACKEND_IMAGE}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        VERSION: ${PIPING_APP_VERSION:-0.1.0}
+        PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM: |-
+          -----BEGIN PUBLIC KEY-----
+          MCowBQYDK2VwAyEA6wfrFIl5II8AGPRbrIZqj2FeKAt3uiXeYyh/pAlWMKA=
+          -----END PUBLIC KEY-----
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *piping-runtime-env
+      PIPING_RUN_MODE: backend
+      PIPING_SERVER__BIND: 0.0.0.0:7000
+      PIPING_SYNC_RUNTIME__CALLBACK_BASE_URL: http://backend:7000
+      OTEL_SERVICE_NAME: ${PIPING_BACKEND_OTEL_SERVICE_NAME:-piping-backend}
+      OTEL_SERVICE_INSTANCE_ID: ${PIPING_BACKEND_OTEL_SERVICE_INSTANCE_ID:-}
+    expose:
+      - "7000"
+    tmpfs:
+      # Backing dir for RDPDR drive redirection used by embedded guacd. guacd's
+      # create-drive-path only creates the final path segment, so the base must
+      # already exist; mode=1777 lets the unprivileged backend user create
+      # per-session subdirectories. tmpfs keeps redirected drives ephemeral.
+      - ${PIPING_PROXY_RDP_DRIVE_BASE_PATH:-/tmp/guac-drives}:mode=1777,size=512m
+    healthcheck:
+      # NOTE: this probe fails when the database is down, so nothing may gate
+      # its own startup on `backend: service_healthy` — see frontend and nginx
+      # below. Otherwise a database outage stops the edge from starting at all,
+      # turning a degraded API into a total blackout.
+      #
+      # Probes readiness, not /health: /health answers 200 from the process
+      # alone and cannot fail; /api/v1/ready runs a query and PINGs Redis, so
+      # an unreachable database is visible in `docker compose ps` instead of
+      # hiding behind a container that says it is fine.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7000/api/v1/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      # Readiness only passes once migrations finish, and a first boot against
+      # an empty database takes longer than a restart.
+      start_period: 60s
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-large
+
+  frontend:
+    image: ${PIPING_FRONTEND_IMAGE:?Set PIPING_FRONTEND_IMAGE}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VERSION: ${PIPING_APP_VERSION:-0.1.0}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES:-536870912}
+      PIPING_NGINX_CLIENT_MAX_BODY_SIZE: ${PIPING_NGINX_CLIENT_MAX_BODY_SIZE:-}
+    ports:
+      - "${PIPING_FRONTEND_PORT:-9080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+  proxy:
+    image: ${PIPING_BACKEND_IMAGE:?Set PIPING_BACKEND_IMAGE}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        VERSION: ${PIPING_APP_VERSION:-0.1.0}
+        PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM: |-
+          -----BEGIN PUBLIC KEY-----
+          MCowBQYDK2VwAyEA6wfrFIl5II8AGPRbrIZqj2FeKAt3uiXeYyh/pAlWMKA=
+          -----END PUBLIC KEY-----
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    environment:
+      <<: *piping-proxy-env
+      PIPING_RUN_MODE: proxy
+      PIPING_SERVER__BIND: 0.0.0.0:7100
+    expose:
+      - "7100"
+    tmpfs:
+      - ${PIPING_PROXY_RDP_DRIVE_BASE_PATH:-/tmp/guac-drives}:mode=1777,size=512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7100/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    profiles:
+      - proxy
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-medium
+
+  ansible-runner:
+    image: ${PIPING_ANSIBLE_RUNNER_IMAGE:?Set PIPING_ANSIBLE_RUNNER_IMAGE}
+    build:
+      context: .
+      dockerfile: apps/ansible-runner/Dockerfile
+    restart: unless-stopped
+    # Containment: user playbooks achieve in-container code execution by design
+    # (ansible evaluates lookups/templating on the controller), so the runner is
+    # treated as untrusted. Non-root, no Linux caps, no privilege escalation,
+    # immutable rootfs with only exec-capable tmpfs scratch, and a fork cap.
+    user: "10001:10001"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      # exec is REQUIRED (ansible writes+execs python module payloads); the
+      # default tmpfs is noexec. Owned by the runtime uid so the read-only rootfs
+      # still has writable scratch for the pdd, $HOME/.ansible and /tmp.
+      - /var/lib/piping-runner:exec,mode=0770,uid=10001,gid=10001,size=1g
+      - /home/runner:exec,mode=0770,uid=10001,gid=10001,size=128m
+      - /tmp:exec,mode=1777,size=256m
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      PIPING_ANSIBLE_RUNNER__SHARED_SECRET: ${PIPING_ANSIBLE_RUNNER__SHARED_SECRET:-dev-ansible-runner-secret}
+      PIPING_ANSIBLE_RUNNER__NOFILE_SOFT_LIMIT: ${PIPING_ANSIBLE_RUNNER_NOFILE_SOFT:-65536}
+      # Mass playbook runs can emit thousands of interleaved Ansible events.
+      # Keep the runner thread from blocking on callback HTTP round trips by
+      # batching close to the backend contract limit and by keeping enough queue
+      # headroom for high-fork jobs.
+      PIPING_ANSIBLE_RUNNER__CALLBACK_WORKERS: ${PIPING_ANSIBLE_RUNNER_CALLBACK_WORKERS:-64}
+      PIPING_ANSIBLE_RUNNER__CALLBACK_TIMEOUT_S: ${PIPING_ANSIBLE_RUNNER_CALLBACK_TIMEOUT_S:-15}
+      PIPING_ANSIBLE_RUNNER__EVENT_QUEUE_SIZE: ${PIPING_ANSIBLE_RUNNER_EVENT_QUEUE_SIZE:-50000}
+      PIPING_ANSIBLE_RUNNER__EVENT_BATCH_SIZE: ${PIPING_ANSIBLE_RUNNER_EVENT_BATCH_SIZE:-1000}
+      PIPING_ANSIBLE_RUNNER__EVENT_BATCH_FLUSH_MS: ${PIPING_ANSIBLE_RUNNER_EVENT_BATCH_FLUSH_MS:-100}
+      PIPING_ANSIBLE_RUNNER__EVENT_DRAIN_TIMEOUT_S: ${PIPING_ANSIBLE_RUNNER_EVENT_DRAIN_TIMEOUT_S:-30}
+      PIPING_ANSIBLE_RUNNER__RESULT_FORCE_COMPACT_PAYLOAD_BYTES: ${PIPING_ANSIBLE_RUNNER_RESULT_FORCE_COMPACT_PAYLOAD_BYTES:-4000}
+    ulimits:
+      nofile:
+        soft: ${PIPING_ANSIBLE_RUNNER_NOFILE_SOFT:-65536}
+        hard: ${PIPING_ANSIBLE_RUNNER_NOFILE_HARD:-65536}
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks:
+      - piping
+    deploy:
+      resources:
+        # Explicit (not the shared *medium anchor) so the untrusted runner also
+        # gets a process cap — ansible forks per host + leaves ssh helpers, so a
+        # runaway/fork-bomb play is bounded. Size production pids/memory together
+        # with playbook_runtime.max_concurrent_runs *
+        # playbook_runtime.max_concurrent_runs_per_group. cpu/mem mirror
+        # *piping-resources-medium.
+        limits:
+          cpus: "${PIPING_ANSIBLE_RUNNER_CPUS:-8.00}"
+          memory: ${PIPING_ANSIBLE_RUNNER_MEM:-4G}
+          pids: ${PIPING_ANSIBLE_RUNNER_PIDS_LIMIT:-4096}
+        reservations:
+          cpus: "${PIPING_ANSIBLE_RUNNER_RESERVE_CPUS:-1.00}"
+          memory: ${PIPING_ANSIBLE_RUNNER_RESERVE_MEM:-1G}
+
+  ssh-target:
+    image: lscr.io/linuxserver/openssh-server:latest
+    restart: unless-stopped
+    environment:
+      PUID: 1000
+      PGID: 1000
+      USER_NAME: testuser
+      USER_PASSWORD: testpassword
+      PASSWORD_ACCESS: "true"
+      SUDO_ACCESS: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 2222 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles:
+      - ssh-target
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+  netbox-postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${NETBOX_DB_USER:-netbox}
+      POSTGRES_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox-db-password}
+      POSTGRES_DB: ${NETBOX_DB_NAME:-netbox}
+    volumes:
+      - netbox_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NETBOX_DB_USER:-netbox} -d ${NETBOX_DB_NAME:-netbox}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    profiles:
+      - netbox
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-medium
+
+  netbox-redis:
+    image: redis:8.10.1
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${NETBOX_REDIS_PASSWORD:-netbox-redis-password}"]
+    volumes:
+      - netbox_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${NETBOX_REDIS_PASSWORD:-netbox-redis-password} ping | grep -q PONG || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    profiles:
+      - netbox
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+  netbox:
+    image: netboxcommunity/netbox:v4.4.0
+    restart: unless-stopped
+    environment:
+      ALLOWED_HOSTS: "*"
+      SECRET_KEY: ${NETBOX_SECRET_KEY:-netbox-dev-secret-key-change-me-before-real-use-0123456789}
+      DB_HOST: netbox-postgres
+      DB_PORT: 5432
+      DB_NAME: ${NETBOX_DB_NAME:-netbox}
+      DB_USER: ${NETBOX_DB_USER:-netbox}
+      DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox-db-password}
+      REDIS_HOST: netbox-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox-redis-password}
+      REDIS_DATABASE: 0
+      REDIS_CACHE_HOST: netbox-redis
+      REDIS_CACHE_PORT: 6379
+      REDIS_CACHE_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox-redis-password}
+      REDIS_CACHE_DATABASE: 1
+      SUPERUSER_NAME: ${NETBOX_SUPERUSER_NAME:-admin}
+      SUPERUSER_EMAIL: ${NETBOX_SUPERUSER_EMAIL:-admin@example.local}
+      SUPERUSER_PASSWORD: ${NETBOX_SUPERUSER_PASSWORD:-admin}
+      SUPERUSER_API_TOKEN: ${NETBOX_SUPERUSER_API_TOKEN:-netbox-admin-token}
+    ports:
+      - "${NETBOX_PORT:-28080}:8080"
+    depends_on:
+      netbox-postgres:
+        condition: service_healthy
+      netbox-redis:
+        condition: service_healthy
+    volumes:
+      - netbox_media:/opt/netbox/netbox/media
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -H 'Authorization: Token ${NETBOX_SUPERUSER_API_TOKEN:-netbox-admin-token}' http://localhost:8080/api/status/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+    profiles:
+      - netbox
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-large
+
+  netbox-worker:
+    image: netboxcommunity/netbox:v4.4.0
+    restart: unless-stopped
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - rqworker
+      - --with-scheduler
+      - default
+      - high
+      - low
+    environment:
+      ALLOWED_HOSTS: "*"
+      SECRET_KEY: ${NETBOX_SECRET_KEY:-netbox-dev-secret-key-change-me-before-real-use-0123456789}
+      DB_HOST: netbox-postgres
+      DB_PORT: 5432
+      DB_NAME: ${NETBOX_DB_NAME:-netbox}
+      DB_USER: ${NETBOX_DB_USER:-netbox}
+      DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox-db-password}
+      REDIS_HOST: netbox-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox-redis-password}
+      REDIS_DATABASE: 0
+      REDIS_CACHE_HOST: netbox-redis
+      REDIS_CACHE_PORT: 6379
+      REDIS_CACHE_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox-redis-password}
+      REDIS_CACHE_DATABASE: 1
+    depends_on:
+      netbox:
+        condition: service_healthy
+      netbox-postgres:
+        condition: service_healthy
+      netbox-redis:
+        condition: service_healthy
+    profiles:
+      - netbox
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-medium
+
+  keycloak-postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak-dev-password}
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER:-keycloak} -d ${KEYCLOAK_DB_NAME:-keycloak}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    profiles:
+      - keycloak
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-medium
+
+  keycloak:
+    image: keycloak/keycloak:26.1.4
+    restart: unless-stopped
+    command:
+      - start-dev
+      - --http-enabled=true
+      - --http-port=8080
+      - --http-relative-path=${PIPING_KEYCLOAK_BASE_PATH:-/keycloak}
+      - --hostname-strict=false
+      - --proxy-headers=xforwarded
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${PIPING_KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${PIPING_KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-postgres
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak-dev-password}
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8081}:8080"
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 40s
+    profiles:
+      - keycloak
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-large
+
+  # Edge ingress: TLS terminator + aggregator (/api,/proxy → backend, / → frontend).
+  # OFF by default — dev uses frontend:9080 directly. Enable for self-contained
+  # prod (stack terminates TLS): `docker compose --profile edge up -d`.
+  nginx:
+    image: ${PIPING_NGINX_IMAGE:-nginx:1.30-alpine}
+    hostname: nginx
+    profiles:
+      - edge
+    environment:
+      PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES:-536870912}
+      PIPING_NGINX_CLIENT_MAX_BODY_SIZE: ${PIPING_NGINX_CLIENT_MAX_BODY_SIZE:-}
+      PIPING_PUBLIC_HOST: ${PIPING_PUBLIC_HOST:-localhost}
+      PIPING_HTTPS_PORT: ${PIPING_HTTPS_PORT:-443}
+    labels:
+      io.piping.monitoring.enabled: "true"
+      io.piping.monitoring.primary: "true"
+      io.piping.monitoring.service: "nginx"
+      io.piping.monitoring.container_port: "80"
+      io.piping.monitoring.nginx.path: "/nginx_status"
+    ports:
+      - "${PIPING_HTTP_PORT:-80}:80"
+      - "${PIPING_HTTPS_PORT:-443}:443"
+      - "${PIPING_HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/proxy-common.conf:/etc/nginx/proxy-common.conf:ro
+      - ./docker/nginx/locations:/etc/nginx/locations:ro
+      - ./docker/nginx/entrypoint.d/10-init-ssl.sh:/docker-entrypoint.d/10-init-ssl.sh:ro
+      - ./docker/nginx/acme-challenge:/var/www/certbot:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --show-error --insecure --max-time 4 https://127.0.0.1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+  # ─── Demo observability stack ────────────────────────────────────────────
+  # `docker compose --profile demo up -d` brings up a self-contained Prometheus
+  # + blackbox exporter that scrape Piping's HTTP service discovery (the same
+  # `/api/v1/monitoring/sd` endpoint the product exposes), so every host in
+  # the inventory automatically gets `probe_success` / `probe_duration_seconds`
+  # series tagged with `piping_target_id`. This makes the inspector metric pull
+  # subsystem demo-able on any install without any out-of-band setup. Off by
+  # default — opt-in via the `demo` profile.
+  monitoring-prometheus:
+    image: prom/prometheus:3.5.4
+    restart: unless-stopped
+    profiles:
+      - demo
+    networks:
+      - piping
+    volumes:
+      - ./contrib/demo/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - monitoring_prometheus_data:/prometheus
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=2d
+      - --web.listen-address=:9090
+    expose:
+      - "9090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+  monitoring-blackbox:
+    image: prom/blackbox-exporter:v0.27.0
+    restart: unless-stopped
+    profiles:
+      - demo
+    networks:
+      - piping
+    # ICMP probes require raw sockets but the container otherwise stays
+    # unprivileged.
+    cap_add:
+      - NET_RAW
+    expose:
+      - "9115"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9115/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+volumes:
+  postgres_data:
+  redis_data:
+  netbox_postgres_data:
+  netbox_redis_data:
+  netbox_media:
+  keycloak_postgres_data:
+  monitoring_prometheus_data:
+
+networks:
+  piping:
+    driver: bridge

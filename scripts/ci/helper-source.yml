@@ -1,0 +1,205 @@
+include:
+- local: /scripts/ci/install-source.yml
+- local: /scripts/ci/public-release.yml
+- project: $COMPONENTS_CATALOG_PROJECT
+  file: /policies/pipeline.yml
+  inputs:
+    pipeline-policy: standard
+    branch-pipelines-enabled: true
+    tag-pipelines-enabled: false
+    scheduled-pipelines-enabled: false
+    default-push-auto-cancel: interruptible
+- project: $COMPONENTS_CATALOG_PROJECT
+  file: /jobs/tests/script.yml
+  inputs:
+    job-name: helper:scope
+    script-path: scripts/ci/verify_helper_source_scope.py
+    rules-policy: unconditional
+    runner-tags: [ci-small]
+    needs: []
+- project: $COMPONENTS_CATALOG_PROJECT
+  file: /jobs/tests/script.yml
+  inputs:
+    job-name: helper:unit
+    script-path: scripts/ci-compose-native.py
+    rules-policy: unconditional
+    runner-tags: [ci-small]
+    needs:
+    - job: helper:scope
+      artifacts: false
+- project: $COMPONENTS_CATALOG_PROJECT
+  file: /jobs/tests/script.yml
+  inputs:
+    job-name: helper:native
+    stage: package
+    script-path: scripts/ci-compose-native.py
+    rules-policy: unconditional
+    runner-tags: [ci-medium]
+    needs:
+    - job: helper:unit
+      artifacts: false
+- project: $COMPONENTS_CATALOG_PROJECT
+  file: /jobs/tests/script.yml
+  inputs:
+    job-name: helper:export
+    stage: package
+    script-path: scripts/ci-compose-native.py
+    rules-policy: unconditional
+    runner-tags: [ci-small]
+    needs:
+    - job: helper:native
+      artifacts: true
+
+helper:scope:
+  variables:
+    GIT_DEPTH: '0'
+  allow_failure: false
+
+helper:unit:
+  allow_failure: false
+  variables:
+    # Exporter unit cases archive the immutable released application ancestor.
+    GIT_DEPTH: '0'
+  script:
+  - python3 -m unittest tests.ci.test_helper_source_scope tests.ci.test_public_release tests.ci.test_github_public_release tests.ci.test_public_artifacts tests.ci.test_license_fixture tests.ci.test_deploy_compose_release tests.ci.test_deploy_release_bundle tests.ci.test_native_fixture_transport tests.ci.test_postgres_migration_contract tests.ci.test_netbox_owner_schema tests.ci.test_sqlx_rebaseline -v
+
+helper:native:
+  # Canonical ci-medium Kubernetes pool: privileged job/service, 4 GiB each.
+  # The service owns a fresh engine; no runner/production host socket is used.
+  # Nested offline SAVE/LOAD and disk-backed PG restores run inside this engine.
+  timeout: 60m
+  allow_failure: false
+  image:
+    name: $CI_TOOLS_IMAGE
+    entrypoint: ['']
+    kubernetes:
+      user: '0:0'
+  variables:
+    GIT_DEPTH: '0'
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /builds/pwa118-${CI_JOB_ID}-tls
+    DOCKER_CERT_PATH: /builds/pwa118-${CI_JOB_ID}-tls/client
+    DOCKER_TLS_VERIFY: '1'
+    HEALTHCHECK_TCP_PORT: '2376'
+    # Published App122 from release pipeline 18950; native fixture proof is separate.
+    PIPING_NATIVE_BACKEND_IMAGE: gitlab.piping.space:4567/piping-space/products/piping/piping.app/backend@sha256:edf2ae43eb2d0ec13f13830e55afe94cbf7d41d2bd5f4d115b4be92eb069aa25
+    PIPING_NATIVE_BACKEND_SHA256: bfd2cf6b7056130d534f1c049edfc2966b83c1b4c5ef9c85e9f752e4f2033ab9
+    PIPING_NATIVE_APPLICATION_SHA: 5e4b78bfe647ea55829f24992b944cd2a8392172
+    # Its registered 23-contract helper/tests own historical CHECK acceptance.
+    PIPING_NATIVE_HELPER_SHA: 17d6896c7b20437e69bf2b2800a586720fff8a13
+    PIPING_NATIVE_TOOLS_IMAGE: gitlab.piping.space:4567/piping-space/ci/devopsimage:latest@sha256:8464448032a82bcd235f8243e584faa82c0268e6799f22de40f202da89de8d77
+  services:
+  - name: docker:29.8.2-dind
+    alias: docker
+    # Shared /builds is disk-backed scratch; do not fit the nested engine's
+    # image stores and >768 MiB restore into a tmpfs or service writable layer.
+    command:
+    - sh
+    - -ec
+    - exec dockerd-entrypoint.sh --data-root="/builds/pwa118-${CI_JOB_ID}-store"
+  script:
+  - |
+    set -eu
+    umask 077
+    test "$(git rev-parse HEAD)" = "$CI_COMMIT_SHA"
+    git cat-file -e "${PIPING_NATIVE_APPLICATION_SHA}^{commit}" || git fetch --no-tags origin "$PIPING_NATIVE_APPLICATION_SHA"
+    test "$(git rev-parse "${PIPING_NATIVE_APPLICATION_SHA}^{commit}")" = "$PIPING_NATIVE_APPLICATION_SHA"
+    git cat-file -e "${PIPING_NATIVE_HELPER_SHA}^{commit}" || git fetch --no-tags origin "$PIPING_NATIVE_HELPER_SHA"
+    mkdir -p .ci/helper-native/private
+    export DOCKER_CONFIG="$CI_PROJECT_DIR/.ci/helper-native/private/docker-auth"
+    mkdir -p "$DOCKER_CONFIG"
+    printf '%s' "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY" >/dev/null
+    docker info >/dev/null
+    docker pull "$PIPING_NATIVE_BACKEND_IMAGE"
+    test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$PIPING_NATIVE_BACKEND_IMAGE")" = "$PIPING_NATIVE_APPLICATION_SHA"
+    # This checks the producer label, not reservation/publication of this version.
+    test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$PIPING_NATIVE_BACKEND_IMAGE")" = '1.0.122'
+    fixture="pwa118-published-${CI_JOB_ID}"
+    trap 'docker rm -f "$fixture" >/dev/null 2>&1' EXIT
+    docker create --name "$fixture" "$PIPING_NATIVE_BACKEND_IMAGE" >/dev/null
+    docker cp "$fixture:/usr/local/bin/piping-backend" .ci/helper-native/private/piping-backend
+    docker rm "$fixture" >/dev/null
+    trap - EXIT
+    printf '%s  %s\n' "$PIPING_NATIVE_BACKEND_SHA256" '.ci/helper-native/private/piping-backend' | sha256sum -c -
+    # The inner networkless daemon cannot pull its own engine image. All
+    # fixture prerequisites are seeded only into the outer disposable service.
+    docker pull docker:29.8.2-dind
+    docker pull postgres:18-trixie
+    docker pull postgres:18-alpine
+    docker pull registry:2
+    python3 scripts/ci-compose-native.py --download-postgres-fixture "$CI_PROJECT_DIR/.ci/helper-native/private/postgres-18.3.tar"
+    docker load --input .ci/helper-native/private/postgres-18.3.tar
+    # The historical native oracle requires these exact bytes, not whichever
+    # PostgreSQL release the mutable prerequisite tags currently resolve to.
+    test "$(docker image inspect --format '{{.Id}}' sha256:54451ecb8ab38c24c3ec123f2fd501303a3a1856a5c66e98cecf2460d5e1e9d7)" = 'sha256:54451ecb8ab38c24c3ec123f2fd501303a3a1856a5c66e98cecf2460d5e1e9d7'
+    python3 scripts/ci-compose-native.py --backend-binary "$CI_PROJECT_DIR/.ci/helper-native/private/piping-backend" --backend-sha256 "$PIPING_NATIVE_BACKEND_SHA256" --image "$PIPING_NATIVE_TOOLS_IMAGE" --proof-directory "$CI_PROJECT_DIR/.ci/helper-native/public"
+  artifacts:
+    when: on_success
+    expire_in: 30 days
+    paths:
+    - .ci/helper-native/public/*.json
+
+helper:export:
+  allow_failure: false
+  variables:
+    GIT_DEPTH: '0'
+  script:
+  - |
+    set -eu
+    umask 077
+    application_sha=5e4b78bfe647ea55829f24992b944cd2a8392172
+    helper_sha=17d6896c7b20437e69bf2b2800a586720fff8a13
+    git cat-file -e "${application_sha}^{commit}" || git fetch --no-tags origin "$application_sha"
+    test "$(git rev-parse "${application_sha}^{commit}")" = "$application_sha"
+    git cat-file -e "${helper_sha}^{commit}" || git fetch --no-tags origin "$helper_sha"
+    test "$(git rev-parse HEAD)" = "$CI_COMMIT_SHA"
+    mkdir .ci/helper-export
+    python3 scripts/ci-compose-native.py --export-source "$CI_PROJECT_DIR/.ci/helper-export/source.tar"
+    (cd .ci/helper-export && sha256sum source.tar > source.tar.sha256)
+  - |
+    python3 - <<'PY'
+    import hashlib, json, os, pathlib, runpy, shutil, tarfile, tempfile
+    def require(condition, message):
+        if not condition:
+            raise ValueError(message)
+    root = pathlib.Path('.ci/helper-export')
+    with tarfile.open(root / 'source.tar') as archive:
+        metadata = json.load(archive.extractfile('compose-native-source.json'))
+        require(metadata['schema'] == 'piping.compose-native-source/v1', 'wrong source schema')
+        require(metadata['helper_commit'] == '17d6896c7b20437e69bf2b2800a586720fff8a13', 'wrong registered historical helper SHA')
+        require(metadata['application_commit'] == '5e4b78bfe647ea55829f24992b944cd2a8392172', 'wrong application SHA')
+        require(metadata['dirty_helper_overlay'] is False, 'dirty source export is forbidden')
+        require(set(archive.getnames()) == set(metadata['files_sha256']) | {'compose-native-source.json'}, 'archive inventory mismatch')
+        for member in archive:
+            require(member.isfile() and not member.issym() and not member.islnk(), 'archive member must be regular')
+            if member.name in metadata['files_sha256']:
+                require(hashlib.sha256(archive.extractfile(member).read()).hexdigest() == metadata['files_sha256'][member.name], 'source file hash mismatch')
+        (root / 'compose-native-source.json').write_text(json.dumps(metadata, sort_keys=True))
+    proof = pathlib.Path('.ci/helper-native/public')
+    api = runpy.run_path('scripts/ci-compose-native.py')
+    with tempfile.TemporaryDirectory(prefix='pwa-helper-identity-') as directory:
+        with tarfile.open(root / 'source.tar') as archive:
+            archive.extractall(directory, filter='data')
+        helper_identity = api['exported_helper_identity'](directory)
+    api['validate_public_proof'](proof, helper_identity)
+    shutil.copytree(proof, root / 'proof')
+    (root / 'handoff.json').write_text(json.dumps({
+        'helper_commit': metadata['helper_commit'],
+        'driver_commit': os.environ['CI_COMMIT_SHA'],
+        'helper_sha256': helper_identity,
+        'pipeline_id': os.environ['CI_PIPELINE_ID'],
+        'export_job_id': os.environ['CI_JOB_ID'],
+        'artifact_url': os.environ['CI_API_V4_URL'] + '/projects/' + os.environ['CI_PROJECT_ID'] + '/jobs/' + os.environ['CI_JOB_ID'] + '/artifacts',
+        'source_sha256': hashlib.sha256((root / 'source.tar').read_bytes()).hexdigest(),
+        'postgres_fixture': api['postgres_fixture_identity'](),
+    }, sort_keys=True))
+    PY
+  artifacts:
+    when: on_success
+    expire_in: 30 days
+    paths:
+    - .ci/helper-export/source.tar
+    - .ci/helper-export/source.tar.sha256
+    - .ci/helper-export/compose-native-source.json
+    - .ci/helper-export/handoff.json
+    - .ci/helper-export/proof/*.json

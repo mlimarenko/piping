@@ -1,0 +1,34 @@
+//! DCIM REST route modules.
+
+pub mod cables;
+pub mod cabling;
+pub mod console_ports;
+pub mod console_server_ports;
+pub mod device_bays;
+pub mod device_roles;
+pub mod device_types;
+pub mod devices;
+pub mod front_ports;
+pub mod inventory_item_roles;
+pub mod inventory_items;
+pub mod locations;
+pub mod mac_addresses;
+pub mod manufacturers;
+pub mod module_bays;
+pub mod module_type_profiles;
+pub mod module_types;
+pub mod modules;
+pub mod platforms;
+pub mod power_feeds;
+pub mod power_outlets;
+pub mod power_panels;
+pub mod power_ports;
+pub mod rack_reservations;
+pub mod rack_roles;
+pub mod rack_types;
+pub mod racks;
+pub mod rear_ports;
+pub mod regions;
+pub mod site_groups;
+pub mod sites;
+pub mod virtual_chassis;

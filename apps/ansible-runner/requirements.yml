@@ -1,0 +1,13 @@
+# Ansible Galaxy collections for the EE, pinned to EXACT versions. An UNPINNED
+# `ansible-galaxy install` is a supply-chain RCE on every rebuild. Installed to
+# the system path /usr/share/ansible/collections so the non-root runtime user
+# can read them. Bump these deliberately.
+collections:
+  - name: ansible.posix
+    version: "2.2.0"
+  - name: community.general
+    version: "11.4.8"
+  - name: ansible.windows
+    version: "2.8.0"
+  - name: community.windows
+    version: "2.4.0"

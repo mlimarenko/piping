@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-detached-window"
+description = "Enables the open_detached_window command without any pre-configured scope."
+commands.allow = ["open_detached_window"]
+
+[[permission]]
+identifier = "deny-open-detached-window"
+description = "Denies the open_detached_window command without any pre-configured scope."
+commands.deny = ["open_detached_window"]

@@ -1,0 +1,41 @@
+---
+- name: Collect bounded diagnostics
+  hosts: all
+  gather_facts: false
+  vars:
+    piping_diagnostics_include_network_effective: "{{ piping_diagnostics_include_network | default(false, true) | bool }}"
+    piping_diagnostics_max_interfaces_effective: "{{ piping_diagnostics_max_interfaces | default(8, true) | int }}"
+
+  tasks:
+    - name: Gather bounded diagnostic facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - min
+          - hardware
+          - network
+      no_log: true
+
+    - name: Report bounded diagnostic summary
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          system: "{{ ansible_facts.system | default('') }}"
+          architecture: "{{ ansible_facts.architecture | default('') }}"
+          kernel: "{{ ansible_facts.kernel | default('') }}"
+          distribution: "{{ ansible_facts.distribution | default('') }}"
+          distribution_version: "{{ ansible_facts.distribution_version | default('') }}"
+          processor_vcpus: "{{ ansible_facts.processor_vcpus | default(0) | int }}"
+          memory_mb: "{{ ansible_facts.memtotal_mb | default(0) | int }}"
+          interfaces: >-
+            {{
+              (ansible_facts.interfaces | default([]) | sort)
+              [:piping_diagnostics_max_interfaces_effective]
+              if piping_diagnostics_include_network_effective
+              else []
+            }}
+          interfaces_truncated: >-
+            {{
+              piping_diagnostics_include_network_effective
+              and (ansible_facts.interfaces | default([]) | length > piping_diagnostics_max_interfaces_effective)
+            }}

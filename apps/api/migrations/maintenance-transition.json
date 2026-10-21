@@ -1,0 +1,32 @@
+{
+  "schema": "piping.sqlx-maintenance/v1",
+  "source_sha": "4c5140d9511fea54e7cb02bfb94799713147b4e5",
+  "history": [
+    {"version":1,"description":"init","checksum":"5adb283d82bd0c5f39e10d6da3bcff85cad696a8b97e60d2fa4d872b55e494ad778d05c3d2f18563ae41fef3b05d5b8a"},
+    {"version":2,"description":"monitoring query source secret binding","checksum":"601a34063414b6a80f57653f1bc6bf13f6355d9011d6e1db016bbac8322daabac14210f31f9ffa8adc5cb423093290b0"},
+    {"version":3,"description":"monitoring alert source secret binding","checksum":"9797967f812de3493532c92d8080fb961e40bc3f22aee56936f2f6db393db3ad2ad90f62d018531b0b7d83f5ed85600e"},
+    {"version":4,"description":"ssh host key pin","checksum":"8f16e96d6e3c791f4a16214766f249475d7ec6f9944cb1675ff0da3b062116c67e1b04d87a7d164971b9a3615ad91457"},
+    {"version":5,"description":"playbook project scm credential secret binding","checksum":"3cfe13a7c033198b7f768f602d75abeaba6767939f867053215438b72f99950590d3ac5789fbfc9d7bc39406604e6cef"},
+    {"version":6,"description":"monitoring availability default","checksum":"d4fb9896a4933f5882cbb30deb53540b83ce8b808a93a07073a9e8bd61d0b75fdc095e6b531131746bf53e1c6ad8710e"},
+    {"version":7,"description":"device users family neutral","checksum":"2d0ee2fd2157031b926d6231d16833b447db6ea513c333653383e336f5522518fb1a3c6cfed114b22bbf5b20703d9912"},
+    {"version":8,"description":"local inventory target provenance","checksum":"4441d251bdd5a8a51ac46cee33b4ffa18bdc85b1e02acb8e2da55066b8a6e893f21a84bbbfa29cb2f862d7acd2c85519"},
+    {"version":9,"description":"local inventory target columns","checksum":"0db6856268aab5053a320618e43dfb689c483479e5f3e3bee6995f16a97bbb89a0a048de238d6121174bb010eb1984ca"},
+    {"version":10,"description":"remove legacy sync mapping","checksum":"b216ef83747b5d6dfa54e1ad7e708b0aa100e96dc865edb2f48df5d275abe115abaf49ebd55eac696fe1453812aca3c1"},
+    {"version":11,"description":"service optional endpoints","checksum":"28d745953f9f5aa8b7a5d1c66b508ae5c806d9a7726eb6c8bed0bbed832c2d41b4b089338e453f903e117216e3d91c1c"},
+    {"version":12,"description":"netbox owner admin models","checksum":"08c0d4db1a3f93092f9fce2dc39eb11f6822d6862c81c38b337bb72aada9df9ede88efc2a61c5536b0cfac29b801810d"},
+    {"version":13,"description":"dcim rack groups cable bundles","checksum":"b9e6968d5e9876d88325d3c27eddd5db23c0cd3c6639e5adf299f464a05338b5315d1dbad737f781f47e2772e283c367"},
+    {"version":14,"description":"dcim module bay types","checksum":"7da3b5d9261aed97061951da937a376b0ef4963eead37b6ae0f8296157f3aaad8d80dca33039021abca3fed9a13dfaba"},
+    {"version":15,"description":"virtual machine types","checksum":"2a1b6c40a68f71e019d4c8f7c237e533655b382ab4a568ba3708ebe39010d094979a0676129fddc2efbabcd7a99e259d"},
+    {"version":16,"description":"dcim cooling models","checksum":"1f0c97a231e63ba0693427bf569725c2909614dd5af351177d47ab5ffdd208aaae67fd5de756e2a0f6f580043c70c5b0"},
+    {"version":17,"description":"netbox network interface fields","checksum":"6c0d2ba872f156386b6b459e4eb81bcdb1ec761ffd798b597d6c62518de9397c51de929ef304e2620cf4f69dde8e13e0"},
+    {"version":18,"description":"netbox wireless model","checksum":"107c05c0cb5c3e8c96293883338406fbb801fdfd64cc5fdc057d5546bdca67735763f8719d7a0b2b27b5e2333b34c09e"},
+    {"version":19,"description":"ipam fhrp groups","checksum":"d54b99592576b9c6f3e596945b91356c17161b8c939f370a9f031eae76b5f8eabb519402e63125b050725aa96fb37592"},
+    {"version":20,"description":"inventory dataflows","checksum":"7b19ff208069cac2d931309120597543ea7afb701975f0ed0036233043874698bd74554a54ae89eaf9256f9841321e9f"},
+    {"version":21,"description":"inventory dataflow scopes","checksum":"2cd352e85635e0e70e74aaa42508e8aae6d19d7932c90939462d8e526f08a89948f5d9e71179c6c88778437d113f32f9"},
+    {"version":22,"description":"virtual machine type finite vcpus","checksum":"eafba0659d2bbd538ac8ee0b7addfd5711b20bd839a1bea4c10d7d314fc0aa1fbd51c5da0f138d98fb8e775ca91187f3"},
+    {"version":23,"description":"secret field lifecycle management","checksum":"5b7e29cb0ad4db207bb112e6551cd8ef3237fd6d5f731783a9edf86e8b9fe3891fb837ab2afd91df26e4bfeac9801107"},
+    {"version":24,"description":"license issuer refusal","checksum":"05c9c73ee7fef697edaaf79cd5836add99e6f14eaf93b5b2af2d364a800b33a1432f3ac634273fd06f3946bfef152d6f"}
+  ],
+  "historical_catalog_sha256": "559b484a1d3cce65ab25109ed7631794b233043998ad228b2195f7a25b1ac98d",
+  "baseline_catalog_sha256": "407336b92370e9e8b0bd417b1d2d8b21e2b2c2645eb17f1fe18d91aa05bc4f26"
+}
