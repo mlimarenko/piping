@@ -63,7 +63,7 @@ pub struct TemplateSelection {
     pub id: Uuid,
 }
 
-fn selection(value: &Value) -> Result<TemplateSelection, AppError> {
+pub(crate) fn selection(value: &Value) -> Result<TemplateSelection, AppError> {
     let selected: TemplateSelection = serde_json::from_value(value.clone()).map_err(|_| {
         AppError::Validation(
             "A template selection requires exactly resource and UUID id".to_string(),
@@ -380,6 +380,73 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn template_reference_tenant_is_shared_by_inventory_and_vpn_steps() {
+        let id = Uuid::new_v4();
+        let selected = json!({"resource":"tenant","id":id});
+        let definitions = vec![json!({"key":"tenant_id","value_type":"resource_ref",
+            "validation_rules":{"resource":"tenant"}})];
+        let steps: Vec<Value> = ["site", "prefix", "device", "tunnel"]
+            .into_iter()
+            .map(|resource| {
+                json!({"resource_type":resource,
+                "payload_template":{"tenant_id":"{{tenant_id}}"}})
+            })
+            .collect();
+        assert_eq!(
+            validate_run_selections(&definitions, &steps, &json!({"tenant_id":selected}))
+                .expect("one tenant selection may be reused by inventory and VPN")
+                .len(),
+            1
+        );
+        for step in &steps {
+            assert_eq!(
+                project_payload(step, json!({"tenant_id":selected})).expect("tenant UUID"),
+                json!({"tenant_id":id})
+            );
+        }
+        assert!(
+            validate_run_selections(
+                &definitions,
+                &steps,
+                &json!({"tenant_id":{"resource":"site","id":id}})
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn template_reference_projects_supported_tenant_and_vpn_foreign_keys() {
+        for (resource_type, field, target) in [
+            ("tenant", "group_id", "tenant_group"),
+            ("tunnel", "group_id", "tunnel_group"),
+            ("tunnel", "ipsec_profile_id", "ipsec_profile"),
+            ("tunnel_termination", "tunnel_id", "tunnel"),
+            ("tunnel_termination", "interface_id", "device_interface"),
+            ("tunnel_termination", "vm_interface_id", "vm_interface"),
+            ("tunnel_termination", "outside_ip_id", "ip_address"),
+        ] {
+            let id = Uuid::new_v4();
+            let selected = json!({"resource":target,"id":id});
+            let step =
+                json!({"resource_type":resource_type,"payload_template":{field:"{{chosen}}"}});
+            assert_eq!(
+                validate_run_selections(
+                    &[json!({"key":"chosen","value_type":"resource_ref"})],
+                    std::slice::from_ref(&step),
+                    &json!({"chosen":selected})
+                )
+                .expect("supported reference")
+                .len(),
+                1
+            );
+            assert_eq!(
+                project_payload(&step, json!({field:selected})).expect("project UUID"),
+                json!({field:id})
+            );
+        }
     }
 
     #[test]

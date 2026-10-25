@@ -16,6 +16,7 @@ import { useLocation } from "react-router";
 
 const apiMocks = vi.hoisted(() => ({
   listResources: vi.fn(),
+  listAllResources: vi.fn(),
   listResourcesForTable: vi.fn(),
   getResource: vi.fn(),
   updateResource: vi.fn(),
@@ -24,8 +25,13 @@ const apiMocks = vi.hoisted(() => ({
   bulkUpdateResources: vi.fn(),
 }));
 
+beforeEach(() => {
+  apiMocks.listAllResources.mockResolvedValue([]);
+});
+
 vi.mock("@/features/inventory/api", () => ({
   listResources: apiMocks.listResources,
+  listAllResources: apiMocks.listAllResources,
   listResourcesForTable: apiMocks.listResourcesForTable,
   getResource: apiMocks.getResource,
   updateResource: apiMocks.updateResource,
@@ -188,22 +194,29 @@ describe("InventoryResources list", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Clusters" })).toBeInTheDocument();
   });
 
-  it("shows entity names and counts directly instead of requiring a picker", async () => {
+  it("finds entities by typing in the single category picker and selects them by keyboard", async () => {
     apiMocks.listResources.mockImplementation((entity) => Promise.resolve({ items: [], total: entity === "Sites" ? 4 : 0 }));
     renderWithClient(
       <MemoryRouter initialEntries={["/inventory/resources?entity=Sites"]}>
         <InventoryResources />
       </MemoryRouter>,
     );
-    const navigation = screen.getByRole("navigation", { name: "DCIM" });
-    expect(await within(navigation).findByRole("link", { name: "Sites 4" })).toBeVisible();
-    expect(within(navigation).getByRole("link", { name: "Devices 0" })).toBeVisible();
-    expect(within(navigation).getByRole("link", { name: "Virtual Device Contexts 0" })).toBeVisible();
-    expect(screen.queryByRole("combobox", { name: /DCIM|Inventory Resources/ })).not.toBeInTheDocument();
-    fireEvent.click(within(navigation).getByRole("link", { name: "Locations 0" }));
+    const picker = screen.getByRole("combobox", { name: "DCIM" });
+    expect(await screen.findByRole("combobox", { name: "DCIM" })).toHaveTextContent("Sites");
+    fireEvent.click(picker);
+    expect(await screen.findByRole("option", { name: "Sites 4" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "Devices 0" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "Virtual Device Contexts 0" })).toBeVisible();
+    const search = screen.getByPlaceholderText(en.search);
+    fireEvent.change(search, { target: { value: "Locations" } });
+    expect(screen.queryByRole("option", { name: "Sites 4" })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("option", { name: "Locations 0" })).toHaveAttribute("aria-selected", "true"));
+    fireEvent.keyDown(search, { key: "Enter" });
     expect(await screen.findByRole("heading", { level: 1, name: "Locations" })).toBeInTheDocument();
-    expect(within(navigation).getByRole("link", { name: "Locations 0" })).toHaveAttribute("aria-current", "page");
-    expect(within(navigation).getByRole("link", { name: "Sites 4" })).not.toHaveAttribute("aria-current");
+    expect(picker).toHaveTextContent("Locations 0");
+    expect(picker).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("navigation", { name: "DCIM" })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Search Locations...")).toBeVisible();
     expect(apiMocks.listResources).toHaveBeenCalledWith("Devices", { limit: 1 });
   });
 
@@ -212,15 +225,16 @@ describe("InventoryResources list", () => {
     const toolbar = screen.getByRole("group", { name: "Inventory Resources" });
     fireEvent.click(within(toolbar).getByRole("link", { name: /^Virtualization/ }));
     expect(screen.getByLabelText("Bookmark")).toHaveTextContent("entity=Clusters");
-    fireEvent.click(within(toolbar).getByRole("link", { name: /^Virtual Machines/ }));
-    expect(screen.getByLabelText("Bookmark")).toHaveTextContent("entity=Virtual+Machines");
-    fireEvent.change(within(toolbar).getByPlaceholderText("Search Virtual Machines..."), { target: { value: "vm-edge" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Virtualization" }));
+    fireEvent.click(await screen.findByRole("option", { name: /^Virtual Machines/ }));
+    expect(screen.getByLabelText("Bookmark")).toHaveTextContent(/^\?entity=Virtual\+Machines$/);
+    fireEvent.change(screen.getByPlaceholderText("Search Virtual Machines..."), { target: { value: "vm-edge" } });
     await waitFor(() => expect(apiMocks.listResourcesForTable).toHaveBeenCalledWith("Virtual Machines", expect.objectContaining({ search: "vm-edge" })));
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByLabelText("Bookmark")).toHaveTextContent("entity=Clusters");
     expect(screen.getByPlaceholderText("Search Clusters...")).toHaveValue("");
     fireEvent.click(screen.getByRole("button", { name: "Forward" }));
-    expect(screen.getByRole("link", { name: /^Virtual Machines/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("combobox", { name: "Virtualization" })).toHaveTextContent("Virtual Machines");
     expect(screen.getByPlaceholderText("Search Virtual Machines...")).toHaveValue("");
   });
 
@@ -231,11 +245,11 @@ describe("InventoryResources list", () => {
       return Promise.resolve({ items: [], total: entity === "Sites" ? 4 : 0 });
     });
     renderWithClient(<MemoryRouter initialEntries={["/inventory/resources?entity=Sites"]}><InventoryResources /></MemoryRouter>);
-    const entities = screen.getByRole("navigation", { name: "DCIM" });
-    expect(await within(entities).findByRole("link", { name: "Devices Unknown error" })).toBeVisible();
-    expect(within(entities).getByRole("link", { name: "Locations Loading..." })).toBeVisible();
-    expect(within(entities).getByRole("link", { name: "Sites 4" })).toBeVisible();
-    expect(within(entities).queryByRole("link", { name: "Devices 0" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("combobox", { name: "DCIM" }));
+    expect(await screen.findByRole("option", { name: "Devices Unknown error" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "Locations Loading..." })).toBeVisible();
+    expect(screen.getByRole("option", { name: "Sites 4" })).toBeVisible();
+    expect(screen.queryByRole("option", { name: "Devices 0" })).not.toBeInTheDocument();
     const categories = screen.getByRole("navigation", { name: "Inventory Resources" });
     expect(within(categories).getByRole("link", { name: "DCIM Unknown error" })).toBeVisible();
     expect(within(categories).getByRole("link", { name: "Provisioning" })).toBeVisible();
@@ -247,6 +261,19 @@ describe("InventoryResources list", () => {
     expect(screen.queryByRole("button", { name: "Create" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Edit fields|Delete \(/ })).not.toBeInTheDocument();
+  });
+
+  it("selects a pseudo workspace through the same entity picker and preserves history", async () => {
+    renderWithClient(<MemoryRouter initialEntries={["/inventory/resources?entity=Cables&offset=50#old"]}><InventoryResources /><CurrentBookmark /><HistoryControls /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("combobox", { name: /Circuits/ }));
+    fireEvent.click(await screen.findByRole("option", { name: "Cabling Workstation" }));
+    expect(await screen.findByText("Cabling workstation pane")).toBeInTheDocument();
+    expect(screen.getByLabelText("Bookmark")).toHaveTextContent(/^\?entity=cabling-workstation$/);
+    expect(screen.getByRole("combobox", { name: /Circuits/ })).toHaveTextContent("Cabling Workstation");
+    expect(apiMocks.listResourcesForTable).not.toHaveBeenCalledWith("cabling-workstation", expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByPlaceholderText("Search Cables...")).toBeVisible();
+    expect(screen.getByRole("combobox", { name: /Circuits/ })).toHaveTextContent("Cables");
   });
 
   it("returns focus to the named row menu after cancelling delete without mutating", async () => {
@@ -271,9 +298,10 @@ describe("InventoryResources list", () => {
     expect(screen.queryByRole("button", { name: "Actions: Site A" })).not.toBeInTheDocument();
   });
 
-  it("retains the selected entity explanation after following its visible link", async () => {
+  it("retains the selected entity explanation after choosing it in the picker", async () => {
     renderWithClient(<MemoryRouter initialEntries={["/inventory/resources?entity=Sites"]}><InventoryResources /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole("link", { name: /^Locations/ }));
+    fireEvent.click(screen.getByRole("combobox", { name: "DCIM" }));
+    fireEvent.click(await screen.findByRole("option", { name: /^Locations/ }));
     expect(await screen.findByRole("heading", { level: 1, name: "Locations" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: text => text.includes("DCIM / Locations:") && text.includes(en.inventory.resources.hints.entities.Locations) }));
     expect(await screen.findByText(text => text.includes("DCIM / Locations:") && text.includes(en.inventory.resources.hints.entities.Locations))).toBeInTheDocument();
@@ -401,7 +429,7 @@ describe("InventoryResources column filters", () => {
       );
     });
 
-    expect(within(screen.getByRole("navigation", { name: /Circuits/ })).getByRole("link", { name: /^Cables/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("combobox", { name: /Circuits/ })).toHaveTextContent("Cables");
   });
 
   it("does not render the global create button for pseudo workspaces", async () => {

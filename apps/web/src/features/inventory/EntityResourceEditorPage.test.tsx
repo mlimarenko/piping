@@ -50,18 +50,18 @@ describe("EntityResourceEditorPage", () => {
     apiMocks.listAllResources.mockResolvedValue([]);
   });
 
-  it("owns one form-width shell while loading and after the resource arrives", async () => {
+  it("keeps one editor and heading while loading and after the resource arrives", async () => {
     let finish!: (value: unknown) => void;
     apiMocks.getResource.mockReturnValue(new Promise(resolve => { finish = resolve; }));
     renderEditor("/inventory/resources/Sites/site-1/edit");
     expect(screen.getByRole("status")).toHaveTextContent("Loading");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getAllByTestId("entity-editor-page")).toHaveLength(1);
-    expect(screen.getByTestId("entity-editor-page")).toHaveClass("max-w-[960px]");
+    expect(screen.queryByRole("button", { name: "Save Changes" })).not.toBeInTheDocument();
     finish({ id: "site-1", name: "Site A", type: "site" });
     await screen.findByRole("heading", { level: 1, name: "Site A" });
     expect(screen.getAllByTestId("entity-editor-page")).toHaveLength(1);
-    expect(screen.getByTestId("entity-editor-page")).toHaveClass("max-w-[960px]");
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeInTheDocument();
   });
 
   it.each(["error", "missing"])("keeps %s in its shell and retries without exposing a write action", async state => {

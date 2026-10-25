@@ -12,7 +12,7 @@ import StatusChip from "@/shared/ui-shared/StatusChip";
 import EmptyState from "@/shared/ui-shared/EmptyState";
 import { Button } from "@/shared/ui-primitives/button";
 import SearchInput from "@/shared/ui-shared/SearchInput";
-import { RefreshCw, Activity, Loader2 } from "lucide-react";
+import { RefreshCw, Activity } from "lucide-react";
 import { notify } from "@/shared/lib/notifications";
 import {
   closeSession,
@@ -329,25 +329,17 @@ const ActiveConnections = () => {
             onPageSizeChange: setPageSize,
           }}
           emptyState={
-            sessionsQuery.isPending ? (
-              <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" /> {t("activeConnections.loadingSessions")}
-              </div>
-            ) : (
               <EmptyState
                 icon={Activity}
                 title={t("activeConnections.noActiveSessions")}
                 description={t("activeConnections.noActiveDescription")}
               />
-            )
           }
           toolbar={
             <SearchInput
-              containerClassName="flex-1 max-w-xs"
               value={search}
               onValueChange={setSearch}
               placeholder={t("activeConnections.searchPlaceholder")}
-              className="pl-8"
             />
           }
         />

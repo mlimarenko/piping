@@ -1,11 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Tags } from "lucide-react";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import FormSection from "@/shared/ui-shared/FormSection";
 import FormField from "@/shared/ui-shared/FormField";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageState from "@/shared/ui-shared/PageState";
 import { useUnsavedChangesGuard } from "@/shared/ui-shared/useUnsavedChangesGuard";
 import { Checkbox } from "@/shared/ui-primitives/checkbox";
 import { Input } from "@/shared/ui-primitives/input";
@@ -125,7 +124,7 @@ function LabelForm({ initial }: { initial: SdLabelGroups }) {
 export default function SdLabelSettings() {
   const { t } = useTranslation();
   const query = useQuery({ queryKey: KEY, queryFn: getSdLabelSettings, retry: false });
-  if (query.isPending) return <output>{t("loading")}</output>;
-  if (!query.data) return <EmptyState icon={Tags} title={t("observability.entityLoadFailed")} actionLabel={t("retry")} onAction={() => { void query.refetch(); }} />;
+  if (query.isPending) return <PageState kind="loading" title={t("loading")} />;
+  if (!query.data) return <PageState kind="error" title={t("observability.entityLoadFailed")} action={<Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button>} />;
   return <>{query.isError && <p role="alert">{t("observability.entityLoadFailed")} <Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button></p>}<LabelForm initial={query.data.groups} /></>;
 }

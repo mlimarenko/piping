@@ -827,7 +827,7 @@ function renderFooterRow(
 ): React.ReactNode {
   if (!footer && !pagination) return null;
   return (
-    <div data-slot="table-footer" className={cn("flex shrink-0 items-center gap-2 border-t border-border px-4 py-3 text-muted-foreground", comfortable ? "text-sm" : "text-xs")}>
+    <div data-slot="table-footer" className={cn("flex shrink-0 flex-wrap items-center gap-2 border-t border-border px-4 py-3 text-muted-foreground", comfortable ? "text-sm" : "text-xs")}>
       {pagination ? <TablePagination {...pagination} /> : footer}
     </div>
   );
@@ -1056,7 +1056,7 @@ function DataTableRow<T>({
           }
         : {})}
       className={cn(
-        "border-b border-border/10 transition-all duration-150 group outline-none",
+        "border-b border-border/10 transition-colors duration-150 group outline-none",
         rowCanClick && "cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         isSelected
           ? "bg-primary/6 shadow-inner"

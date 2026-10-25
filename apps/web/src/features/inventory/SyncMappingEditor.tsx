@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { notify } from "@/shared/lib/notifications";
 
-import PageLayout from "@/shared/ui-shared/PageLayout";
 import SurfaceCard from "@/shared/ui-shared/SurfaceCard";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
 import EntityDetail from "@/shared/ui-shared/EntityDetail";
@@ -25,7 +24,7 @@ import SearchableSelect from "@/shared/ui-shared/SearchableSelect";
 import SectionTabs from "@/shared/ui-shared/SectionTabs";
 import { Button } from "@/shared/ui-primitives/button";
 import { Input } from "@/shared/ui-primitives/input";
-import { Skeleton } from "@/shared/ui-primitives/skeleton";
+import PageState from "@/shared/ui-shared/PageState";
 import { Switch } from "@/shared/ui-primitives/switch";
 import { Tabs, TabsContent } from "@/shared/ui-primitives/tabs";
 import { cn } from "@/shared/lib/utils";
@@ -400,24 +399,13 @@ const SyncMappingEditorState = ({ selection }: { selection: WorkbenchSelection }
 
   if (mode !== "create" && configQuery.isLoading) {
     return (
-      <EntityEditorPage scope="routed" width="standard"
+      <EntityEditorPage scope="routed"
         title={t("sync.mapping.editorTitle", "Mapping Editor")}
         onBack={() => navigate(-1)}
         backLabel={t("sync.mapping.backToList", "Back to list")}
         footer={null}
       >
-        <div className="flex min-h-[32rem] flex-col gap-4 md:flex-row">
-          <SurfaceCard className="w-full shrink-0 p-3 space-y-2 md:w-[280px]">
-            {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="h-9 w-full" />
-            ))}
-          </SurfaceCard>
-          <SurfaceCard className="flex-1 p-4 space-y-3">
-            <Skeleton className="h-9 w-48" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-32 w-full" />
-          </SurfaceCard>
-        </div>
+        <PageState kind="loading" title={t("loading")} />
       </EntityEditorPage>
     );
   }
@@ -430,28 +418,15 @@ const SyncMappingEditorState = ({ selection }: { selection: WorkbenchSelection }
   );
   if (mode !== "create" && (configQuery.isError || missingConfig)) {
     return (
-      <EntityEditorPage scope="routed" width="standard"
+      <EntityEditorPage scope="routed"
         title={t("sync.mapping.editorTitle", "Mapping Editor")}
         onBack={() => navigate(-1)}
         backLabel={t("sync.mapping.backToList", "Back to list")}
         footer={null}
       >
-        <SurfaceCard className="flex w-full flex-col items-center justify-center py-16 gap-4">
-          <AlertTriangle className="size-9 text-status-negative" />
-          <p role="alert" className="mx-auto max-w-xs text-sm text-muted-foreground text-balance">
-            {missingConfig ? t("notFound") : t("sync.mapping.loadConfigError", "Failed to load configuration.")}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 text-sm"
-              onClick={() => configQuery.refetch()}
-            >
-              {t("tryAgain", "Try again")}
-            </Button>
-          </div>
-        </SurfaceCard>
+        <PageState kind="error"
+          title={missingConfig ? t("notFound") : t("sync.mapping.loadConfigError", "Failed to load configuration.")}
+          action={<Button variant="outline" onClick={() => configQuery.refetch()}>{t("tryAgain", "Try again")}</Button>} />
       </EntityEditorPage>
     );
   }
@@ -659,13 +634,12 @@ const SyncMappingEditorState = ({ selection }: { selection: WorkbenchSelection }
               {/* Sticky tab strip */}
               <div className="px-4 pt-3 pb-0 shrink-0 sticky top-0 z-10 bg-card border-b border-border">
                 <SectionTabs
+                  aria-label={t("sync.mapping.editorTitle", "Mapping Editor")}
                   items={[
                     { value: "expression", label: t("sync.mapping.tabExpression", "Expression") },
                     { value: "preview", label: t("sync.mapping.tabPreview", "Preview") },
                     { value: "settings", label: t("sync.mapping.tabSettings", "Settings") },
                   ] satisfies Array<{ value: typeof activeTab; label: string }>}
-                  className="surface-chip h-9 w-auto justify-start gap-0"
-                  triggerClassName="h-9 px-3"
                 />
               </div>
 
@@ -784,7 +758,6 @@ const SyncMappingEditorState = ({ selection }: { selection: WorkbenchSelection }
 
   if (isReadonly && currentConfig) {
     return (
-      <PageLayout width="standard">
       <EntityDetail
         icon={Layers}
         title={`${currentConfig.name} v${currentConfig.version}`}
@@ -804,13 +777,11 @@ const SyncMappingEditorState = ({ selection }: { selection: WorkbenchSelection }
       >
         <div className="pt-6">{body}</div>
       </EntityDetail>
-      </PageLayout>
     );
   }
 
   return (
     <EntityEditorPage scope="routed"
-      width="standard"
       title={mode === "create" ? t("sync.mapping.newConfig", "New Configuration") : currentConfig ? `${currentConfig.name} v${currentConfig.version}` : t("sync.mapping.newConfig", "New Configuration")}
       onBack={() => {
         invalidateAuthoring();

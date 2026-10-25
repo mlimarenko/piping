@@ -28,5 +28,96 @@
     {"version":24,"description":"license issuer refusal","checksum":"05c9c73ee7fef697edaaf79cd5836add99e6f14eaf93b5b2af2d364a800b33a1432f3ac634273fd06f3946bfef152d6f"}
   ],
   "historical_catalog_sha256": "559b484a1d3cce65ab25109ed7631794b233043998ad228b2195f7a25b1ac98d",
-  "baseline_catalog_sha256": "407336b92370e9e8b0bd417b1d2d8b21e2b2c2645eb17f1fe18d91aa05bc4f26"
+  "baseline_catalog_sha256": "407336b92370e9e8b0bd417b1d2d8b21e2b2c2645eb17f1fe18d91aa05bc4f26",
+  "installed_layout": {
+    "provenance": {
+      "source_history_sha": "1c7ee9467582304b9f3f6cf052cc666efaec32d2",
+      "reference_catalog_sha256": "559b484a1d3cce65ab25109ed7631794b233043998ad228b2195f7a25b1ac98d",
+      "archive": "Original pre-semantic migration bytes match the preserved archive SHA-384 entries; archive rows remain immutable during maintenance.",
+      "archive_source_sha": "ef45419da210ae83a34ececc8de2bf5738a68e79",
+      "archive_source_files": [
+        "apps/api/migrations/0001_init.sql",
+        "apps/api/migrations/0002_video_protocol.sql"
+      ]
+    },
+    "columns": [
+      {"name":"public.playbook_run.attempt","from":27,"to":28},
+      {"name":"public.playbook_run.callback_event_count","from":33,"to":30},
+      {"name":"public.playbook_run.callback_request_count","from":34,"to":33},
+      {"name":"public.playbook_run.callback_request_window_started_at","from":35,"to":34},
+      {"name":"public.playbook_run.cancel_outcome","from":30,"to":19},
+      {"name":"public.playbook_run.error_message","from":26,"to":27},
+      {"name":"public.playbook_run.exit_code","from":25,"to":26},
+      {"name":"public.playbook_run.finished_at","from":24,"to":25},
+      {"name":"public.playbook_run.lease_expires_at","from":20,"to":21},
+      {"name":"public.playbook_run.lease_owner","from":19,"to":20},
+      {"name":"public.playbook_run.leased_at","from":22,"to":23},
+      {"name":"public.playbook_run.metadata","from":29,"to":35},
+      {"name":"public.playbook_run.queued_at","from":21,"to":22},
+      {"name":"public.playbook_run.started_at","from":23,"to":24},
+      {"name":"public.playbook_run.timeout_seconds","from":28,"to":29},
+      {"name":"public.playbook_run_event.created_at","from":8,"to":10},
+      {"name":"public.playbook_run_event.event_kind","from":4,"to":6},
+      {"name":"public.playbook_run_event.event_sequence","from":3,"to":5},
+      {"name":"public.playbook_run_event.event_type","from":5,"to":7},
+      {"name":"public.playbook_run_event.host","from":10,"to":4},
+      {"name":"public.playbook_run_event.message","from":6,"to":8},
+      {"name":"public.playbook_run_event.payload","from":7,"to":9},
+      {"name":"public.playbook_run_event.run_group_id","from":9,"to":2},
+      {"name":"public.playbook_run_event.run_id","from":2,"to":3},
+      {"name":"public.playbook_run_group.callback_artifact_count","from":29,"to":27},
+      {"name":"public.playbook_run_group.callback_bytes","from":30,"to":28},
+      {"name":"public.playbook_run_group.callback_event_count","from":31,"to":26},
+      {"name":"public.playbook_run_group.callback_request_count","from":32,"to":29},
+      {"name":"public.playbook_run_group.callback_request_window_started_at","from":33,"to":30},
+      {"name":"public.playbook_run_group.cancel_deadline_at","from":27,"to":32},
+      {"name":"public.playbook_run_group.cancel_outcome","from":28,"to":33},
+      {"name":"public.playbook_run_group.cancel_requested_at","from":26,"to":31},
+      {"name":"public.playbook_run_group.canceled_runs","from":13,"to":14},
+      {"name":"public.playbook_run_group.created_at","from":15,"to":17},
+      {"name":"public.playbook_run_group.event_sequence_counter","from":23,"to":16},
+      {"name":"public.playbook_run_group.failed_runs","from":12,"to":13},
+      {"name":"public.playbook_run_group.finished_at","from":18,"to":20},
+      {"name":"public.playbook_run_group.lease_expires_at","from":20,"to":22},
+      {"name":"public.playbook_run_group.lease_owner","from":19,"to":21},
+      {"name":"public.playbook_run_group.leased_at","from":21,"to":23},
+      {"name":"public.playbook_run_group.metadata","from":22,"to":34},
+      {"name":"public.playbook_run_group.requested_by_user_id","from":6,"to":7},
+      {"name":"public.playbook_run_group.scheduled_for","from":34,"to":6},
+      {"name":"public.playbook_run_group.service_principal_id","from":7,"to":8},
+      {"name":"public.playbook_run_group.started_at","from":17,"to":19},
+      {"name":"public.playbook_run_group.status","from":9,"to":10},
+      {"name":"public.playbook_run_group.succeeded_runs","from":11,"to":12},
+      {"name":"public.playbook_run_group.timeout_runs","from":14,"to":15},
+      {"name":"public.playbook_run_group.total_runs","from":10,"to":11},
+      {"name":"public.playbook_run_group.trigger_kind","from":8,"to":9},
+      {"name":"public.playbook_run_group.updated_at","from":16,"to":18},
+      {"name":"public.secrets_variable.created_at","from":5,"to":7},
+      {"name":"public.secrets_variable.created_by","from":6,"to":9},
+      {"name":"public.secrets_variable.description","from":7,"to":6},
+      {"name":"public.secrets_variable.kind","from":8,"to":5},
+      {"name":"public.secrets_variable.updated_at","from":9,"to":8},
+      {"name":"public.sync_webhook_event.last_error","from":10,"to":11},
+      {"name":"public.sync_webhook_event.payload_hash","from":12,"to":8},
+      {"name":"public.sync_webhook_event.processed_at","from":9,"to":10},
+      {"name":"public.sync_webhook_event.received_at","from":8,"to":9},
+      {"name":"public.sync_webhook_event.updated_at","from":11,"to":12}
+    ],
+    "constraints": [
+      {"name":"public.secrets_variable.chk_secrets_variable_kind","from":"CHECK (((kind)::text = ANY (ARRAY[('field'::character varying)::text, ('named'::character varying)::text])))","to":"CHECK (((kind)::text = ANY ((ARRAY['field'::character varying, 'named'::character varying])::text[])))"}
+    ],
+    "archive_objects": [
+      {"kind":"column","name":"public._sqlx_migrations_pre_semantic_20260719.checksum","definition":{"type":"bytea","default":null,"identity":"","not_null":false,"position":5,"collation":null,"generated":""}},
+      {"kind":"column","name":"public._sqlx_migrations_pre_semantic_20260719.description","definition":{"type":"text","default":null,"identity":"","not_null":false,"position":2,"collation":"default","generated":""}},
+      {"kind":"column","name":"public._sqlx_migrations_pre_semantic_20260719.execution_time","definition":{"type":"bigint","default":null,"identity":"","not_null":false,"position":6,"collation":null,"generated":""}},
+      {"kind":"column","name":"public._sqlx_migrations_pre_semantic_20260719.installed_on","definition":{"type":"timestamp with time zone","default":null,"identity":"","not_null":false,"position":3,"collation":null,"generated":""}},
+      {"kind":"column","name":"public._sqlx_migrations_pre_semantic_20260719.success","definition":{"type":"boolean","default":null,"identity":"","not_null":false,"position":4,"collation":null,"generated":""}},
+      {"kind":"column","name":"public._sqlx_migrations_pre_semantic_20260719.version","definition":{"type":"bigint","default":null,"identity":"","not_null":false,"position":1,"collation":null,"generated":""}},
+      {"kind":"relation","name":"public._sqlx_migrations_pre_semantic_20260719","definition":{"kind":"r","options":null,"persistence":"p","row_security":false,"force_row_security":false}}
+    ],
+    "archive_history": [
+      {"success":true,"version":1,"checksum":"c76633df5bd9f0bc88bbf24d98504ee362bc26bd229245e3276d5c836ce6604cf3984c5582af01164d6735fd9d569e65","description":"init"},
+      {"success":true,"version":2,"checksum":"4ab422572f71996fac288c5b7f22eafdcf438acb3c105bbe881dd323aecdfdb2f5afdbb2f50973ef8ac738ecda39a7bd","description":"video protocol"}
+    ]
+  }
 }

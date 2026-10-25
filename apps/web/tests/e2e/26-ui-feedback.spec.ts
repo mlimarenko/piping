@@ -39,7 +39,6 @@ for (const scenario of [
     await page.evaluate(() => { (window as unknown as { inventoryFixtureMode: string }).inventoryFixtureMode = "rows"; });
     await page.getByRole("button", { name: strings.refresh, exact: true }).click();
     await expect(page.getByText("Fixture device", { exact: true }).first()).toBeVisible();
-    if (scenario.width < 768) await page.getByRole("button", { name: strings.inventory.resources.controls, exact: true }).click();
     const search = page.getByPlaceholder(strings.inventory.resources.searchPlaceholder.replace("{{entity}}", strings.inventory.resources.entities.Devices.other));
     await page.getByRole("combobox", { name: strings.pagination.perPageLabel }).selectOption("100");
     await page.locator('[data-column-sort-key="name"]').click();
@@ -60,7 +59,6 @@ for (const scenario of [
       const queries = (window as unknown as { inventoryFixtureQueries: Record<string, string>[] }).inventoryFixtureQueries;
       return queries[queries.length - 1]?.offset;
     })).toBe("100");
-    if (scenario.width < 768) await page.getByRole("button", { name: strings.inventory.resources.controls, exact: true }).click();
     await reset.focus();
     await reset.press("Enter");
     await expect(search).toBeVisible();
@@ -153,7 +151,8 @@ for (const language of ["en", "ru"] as const) {
         if (attempt < 2) {
           await expect(page.getByRole("alert").filter({ hasText: strings.userSettings.passwordChangeFailed })).toBeVisible();
           await expect(page.getByText("internal fixture diagnostic")).toHaveCount(0);
-          await expect(current).toHaveAttribute("aria-invalid", "false");
+          // FormFieldControl removes aria-invalid when the field error clears.
+          await expect(current).not.toHaveAttribute("aria-invalid", "true");
           await expect(submit).toBeEnabled();
         } else {
           await expect(current).toHaveValue("");
@@ -164,7 +163,6 @@ for (const language of ["en", "ru"] as const) {
       await expect(page.locator("footer")).toContainText(process.env.PWA116_EXPECT_VERSION ?? "dev");
       await page.goto("/inventory/resources?entity=Devices");
       await expectRoutedPage(page);
-      if (viewport.width < 768) await page.getByRole("button", { name: strings.inventory.resources.controls, exact: true }).click();
       const search = page.getByPlaceholder(strings.inventory.resources.searchPlaceholder.replace("{{entity}}", strings.inventory.resources.entities.Devices.other));
       await search.fill("no-fixture-match");
       await expect(page.getByText(strings.noResults, { exact: true })).toBeVisible();

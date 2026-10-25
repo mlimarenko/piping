@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import PageState from "@/shared/ui-shared/PageState";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   ChevronDown,
   ChevronRight,
   Layers3,
@@ -641,7 +641,7 @@ function PlaybookLaunchDialogForm({
                 </div>
 
                 {hasServerPreview && previewQuery.isPending ? (
-                  <DialogState icon={Loader2} spin label={t("playbooks.launchDialog.loadingPreview")} />
+                  <PageState kind="loading" title={t("playbooks.launchDialog.loadingPreview")} />
                 ) : hasServerPreview && previewQuery.isError ? (
                   <TargetRecoveryState
                     label={t("playbooks.launchDialog.previewFailed")}
@@ -959,23 +959,6 @@ function VarField({
   );
 }
 
-function DialogState({
-  icon: Icon,
-  label,
-  spin = false,
-}: {
-  icon: typeof Loader2;
-  label: string;
-  spin?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-center gap-2 px-3 py-8 text-sm text-muted-foreground">
-      <Icon className={cn("h-4 w-4", spin && "animate-spin")} />
-      {label}
-    </div>
-  );
-}
-
 function TargetRecoveryState({
   label,
   description,
@@ -988,15 +971,7 @@ function TargetRecoveryState({
   onAction?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
-      <div className="flex items-center gap-2 text-sm font-medium text-status-warning">
-        <AlertTriangle className="h-4 w-4" />
-        {label}
-      </div>
-      <p className="max-w-md text-xs leading-snug text-muted-foreground">
-        {description}
-      </p>
-      {actionLabel && onAction ? (
+    <PageState kind="empty" title={label} description={description} action={actionLabel && onAction ? (
         <Button
           type="button"
           variant="outline"
@@ -1006,7 +981,6 @@ function TargetRecoveryState({
         >
           {actionLabel}
         </Button>
-      ) : null}
-    </div>
+      ) : undefined} />
   );
 }

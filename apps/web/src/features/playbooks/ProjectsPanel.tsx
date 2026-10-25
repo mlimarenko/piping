@@ -12,7 +12,8 @@ import EntityRef from "@/shared/ui-shared/EntityRef";
 import type { PlaybookExecutionEnvironment, PlaybookProject } from "@/features/playbooks/api";
 
 import { formatDateTime } from "./playbookPageFormat";
-import { ListState, PreviewActions } from "./PlaybookPanelUi";
+import { PreviewActions } from "./PlaybookPanelUi";
+import PageState from "@/shared/ui-shared/PageState";
 import { projectFilesHref } from "./projectRoutes";
 
 export function ProjectsPanel({
@@ -144,7 +145,7 @@ export function ProjectsPanel({
       loading={loading}
       error={error}
       onRetry={onRetry}
-      emptyState={<ListState label={t("playbooks.page.empty.projects")} />}
+      emptyState={<PageState kind="empty" title={t("playbooks.page.empty.projects")} />}
     />
     <ProjectDetailsDialog project={selected}
       executionEnvironment={selected?.default_execution_environment_id ? executionEnvironmentById.get(selected.default_execution_environment_id) : undefined}

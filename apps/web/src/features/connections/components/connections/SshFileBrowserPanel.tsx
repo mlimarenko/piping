@@ -1040,7 +1040,6 @@ const SshFileBrowserPanel = ({
           aria-label={t("connections.toolsMenu.searchFiles")}
           placeholder={t("connections.toolsMenu.searchFiles")}
           className="border-input bg-background"
-          containerClassName="min-w-[10rem] flex-[1_1_13rem]"
         />
         <Button
           variant="default"

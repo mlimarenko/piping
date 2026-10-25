@@ -2,11 +2,11 @@ import { useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Network } from "lucide-react";
 import { useApiMutation } from "@/shared/api/hooks";
 import { RequireCapability } from "@/shared/auth/permissions";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageState from "@/shared/ui-shared/PageState";
+import { Button } from "@/shared/ui-primitives/button";
 import { notify } from "@/shared/lib/notifications";
 import RecordForm from "./RecordForm";
 import { createRecord, listRecords, updateRecord, type ConnConfRecord } from "./api";
@@ -40,7 +40,6 @@ function RecordEditor({ record, records }: Readonly<{ record?: ConnConfRecord; r
     onError: () => setError(t(record ? "connectionConfig.updateFailed" : "connectionConfig.createFailed")),
   });
   return <EntityEditorPage scope="routed" title={t(record ? "connectionConfig.editTitle" : "connectionConfig.createTitle")}
-    width="form"
     description={t("connectionConfig.editorHint")} onBack={back} backLabel={t(record ? "connectionConfig.backToRecord" : "connectionConfig.backToList")}
     onCancel={back} cancelLabel={t("cancel")} onSave={() => {
       if (!draft.name.trim()) { setError(t("connectionConfig.nameRequired")); return; }
@@ -60,15 +59,15 @@ export default function ConnectionConfigEditor() {
   const query = useQuery({ queryKey: ["connection-config", "records", "options"], queryFn: () => listRecords() });
   const back = () => { void navigate(CONNECTION_CONFIG_ROUTE); };
   const renderState = (content: ReactNode) => <EntityEditorPage scope="routed"
-    width="form" title={t(id ? "connectionConfig.editTitle" : "connectionConfig.createTitle")}
+    title={t(id ? "connectionConfig.editTitle" : "connectionConfig.createTitle")}
     description={t("connectionConfig.editorHint")} onBack={back} backLabel={t("connectionConfig.backToList")}
     onCancel={back} cancelLabel={t("cancel")}>
     {content}
   </EntityEditorPage>;
-  if (query.isPending) return renderState(<output className="flex justify-center p-8"><Loader2 className="size-6 animate-spin" aria-label={t("loading")} /></output>);
-  if (query.isError) return renderState(<EmptyState icon={Network} title={t("connectionConfig.loadFailed")} actionLabel={t("retry")} onAction={() => { void query.refetch(); }} />);
+  if (query.isPending) return renderState(<PageState kind="loading" title={t("loading")} />);
+  if (query.isError) return renderState(<PageState kind="error" title={t("connectionConfig.loadFailed")} action={<Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button>} />);
   const record = query.data.find(candidate => candidate.id === id);
-  if (id && !record) return renderState(<EmptyState icon={Network} title={t("connectionConfig.notFound")} />);
+  if (id && !record) return renderState(<PageState kind="empty" title={t("connectionConfig.notFound")} />);
   return <RequireCapability check={p => p.can(id ? "UPDATE" : "CREATE", "CONFIG_CONTEXT")}>
     <RecordEditor key={id ?? "create"} record={record} records={query.data} />
   </RequireCapability>;

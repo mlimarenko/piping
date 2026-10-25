@@ -15,8 +15,6 @@ import {
 } from "lucide-react";
 
 import PageChrome from "@/shared/ui-shared/PageChrome";
-import PageLayout from "@/shared/ui-shared/PageLayout";
-import SurfaceCard from "@/shared/ui-shared/SurfaceCard";
 import FormSection from "@/shared/ui-shared/FormSection";
 import SectionTabs from "@/shared/ui-shared/SectionTabs";
 import DataTable, { type Column } from "@/shared/ui-shared/DataTable";
@@ -241,10 +239,9 @@ const BackupPage = () => {
   );
 
   return (
-    <PageLayout width="form" className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageChrome title={t("backup.title")} description={t("backup.description")} />
 
-      <SurfaceCard className="p-4 md:p-6">
       <Tabs value={tab} onValueChange={next => { if (!importMutation.isPending) setTab(next); }}>
         <SectionTabs
           items={[
@@ -592,8 +589,7 @@ const BackupPage = () => {
           )}
         </TabsContent>
       </Tabs>
-      </SurfaceCard>
-    </PageLayout>
+    </div>
   );
 };
 

@@ -92,10 +92,11 @@ describe("SyncMappingEditor workbench", () => {
     }
   });
 
-  function expectStandardOwner() {
-    const owners = document.querySelectorAll('[data-slot="page-layout"], [data-slot="entity-editor-page"]');
-    expect(owners).toHaveLength(1);
-    expect(owners[0]).toHaveClass("max-w-[1280px]");
+  function expectPageOwner(editor = true) {
+    expect(document.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(0);
+    expect(document.querySelectorAll('[data-slot="entity-editor-page"]')).toHaveLength(
+      editor ? 1 : 0,
+    );
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   }
 
@@ -183,33 +184,33 @@ describe("SyncMappingEditor workbench", () => {
     expect(api.update).not.toHaveBeenCalled();
   });
 
-  it("owns standard geometry and back navigation while configuration is pending", () => {
+  it("owns editor chrome and back navigation while configuration is pending", () => {
     api.get.mockReturnValue(new Promise(() => {}));
     renderEditor();
-    expectStandardOwner();
+    expectPageOwner();
     expect(screen.queryByRole("button", { name: /save as/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: en.sync.mapping.backToList }));
     expect(screen.getByRole("heading", { name: "Mapping list" })).toBeInTheDocument();
   });
 
-  it("retains one standard owner through load failure, retry and loaded editor", async () => {
+  it("retains one editor owner through load failure, retry and loaded editor", async () => {
     api.get.mockRejectedValueOnce(new Error("private backend detail")).mockResolvedValue(config);
     renderEditor();
     await screen.findByText(en.sync.mapping.loadConfigError);
-    expectStandardOwner();
+    expectPageOwner();
     expect(screen.queryByText("private backend detail")).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: en.sync.mapping.backToList })).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await screen.findByRole("textbox", { name: /configuration name/i });
-    expectStandardOwner();
+    expectPageOwner();
   });
 
-  it.each(["404", "empty"])("owns standard geometry for a missing configuration (%s)", async (kind) => {
+  it.each(["404", "empty"])("owns editor chrome for a missing configuration (%s)", async (kind) => {
     if (kind === "404") api.get.mockRejectedValue(new ApiError({ status: 404, message: "private missing detail" }));
     else api.get.mockResolvedValue(null);
     renderEditor();
     await screen.findByRole("alert");
-    expectStandardOwner();
+    expectPageOwner();
     expect(screen.queryByRole("textbox", { name: /configuration name/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /save as/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: en.sync.mapping.backToList }));
@@ -221,7 +222,7 @@ describe("SyncMappingEditor workbench", () => {
     renderEditor("/inventory/sync/mappings/mapping-1/readonly?context=inventory#fields");
     await screen.findByRole("heading", { level: 1, name: "Inventory pull v1" });
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expectStandardOwner();
+    expectPageOwner(false);
     expect(screen.getByText("provider-1", { selector: "dd" })).toBeInTheDocument();
     expect(screen.getByText(en.sync.mapping.targetLocalInventory, { selector: "dd" })).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /configuration name/i })).not.toBeInTheDocument();

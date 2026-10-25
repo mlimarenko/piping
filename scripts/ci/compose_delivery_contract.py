@@ -61,7 +61,8 @@ def preservation_manifest(value, *, context, package_sha256, now=None):
             "preservation approval expired or has invalid freshness")
     def sha256(raw):
         return isinstance(raw, str) and re.fullmatch(r"[0-9a-f]{64}", raw) is not None
-    require(sha256(value["check_capture_sha256"]), "invalid preservation capture authority")
+    require(value["check_capture_sha256"] is None or sha256(value["check_capture_sha256"]),
+            "invalid preservation capture authority")
     inventory = value["inventory"]
     require(isinstance(inventory, list), "preservation requires an exact object inventory")
     identities = set()
@@ -72,11 +73,13 @@ def preservation_manifest(value, *, context, package_sha256, now=None):
                 "invalid or duplicate preservation object")
         identities.add((item["kind"], item["name"]))
     require(isinstance(value["position_pairs"], dict), "invalid preservation position authority")
+    require(value["check_capture_sha256"] is not None or not value["position_pairs"],
+            "historical layout exceptions require authenticated native CHECK capture")
     for name, pair in value["position_pairs"].items():
         require(isinstance(name, str) and isinstance(pair, list) and len(pair) == 2
                 and all(type(p) is int and 1 <= p <= 1600 for p in pair) and pair[0] != pair[1],
                 "invalid preservation position pair")
-    require(isinstance(value["append_slots"], dict) and value["append_slots"]
+    require(isinstance(value["append_slots"], dict)
             and all(isinstance(k, str) and type(v) is int and 1 <= v < 1600
                     for k, v in value["append_slots"].items()), "invalid preservation append slots")
     return value

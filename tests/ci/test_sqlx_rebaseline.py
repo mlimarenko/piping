@@ -1,6 +1,7 @@
 """Maintenance command boundaries; native transactions are exercised by schema proof."""
 
 import contextlib
+import copy
 import io
 import json
 from pathlib import Path
@@ -12,6 +13,26 @@ from scripts import rebaseline_sqlx as maintenance
 
 
 class MaintenanceBoundaryTests(unittest.TestCase):
+    def test_installed_layout_rejects_duplicate_object_identity(self):
+        contract = json.loads(maintenance.CONTRACT.read_text())
+        contract["installed_layout"]["columns"].append(
+            copy.deepcopy(contract["installed_layout"]["columns"][0]))
+        with self.assertRaisesRegex(ValueError, "Duplicate installed-layout"):
+            maintenance.installed_catalog_digest_sql(contract)
+
+    def test_installed_layout_rejects_invalid_physical_position(self):
+        for value in (0, -1, True, "1"):
+            contract = json.loads(maintenance.CONTRACT.read_text())
+            contract["installed_layout"]["columns"][0]["from"] = value
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "Invalid installed-layout"):
+                maintenance.installed_catalog_digest_sql(contract)
+
+    def test_installed_layout_must_bind_the_existing_historical_catalog(self):
+        contract = json.loads(maintenance.CONTRACT.read_text())
+        contract["installed_layout"]["provenance"]["reference_catalog_sha256"] = "00" * 32
+        with self.assertRaisesRegex(ValueError, "bind the historical source"):
+            maintenance.installed_catalog_digest_sql(contract)
+
     def test_mutation_requires_both_operator_acknowledgements_before_contact(self):
         for flags in ([], ["--backup-confirmed"], ["--maintenance-confirmed"]):
             with self.subTest(flags=flags), patch.object(maintenance.subprocess, "run") as run:

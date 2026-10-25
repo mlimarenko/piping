@@ -8,7 +8,6 @@ import PageChrome from "@/shared/ui-shared/PageChrome";
 import RowActions from "@/shared/ui-shared/RowActions";
 import { useInventoryRowActionFocus } from "./useInventoryRowActionFocus";
 import { DropdownMenuItem } from "@/shared/ui-primitives/dropdown-menu";
-import FormSection from "@/shared/ui-shared/FormSection";
 import DataTable, { type Column } from "@/shared/ui-shared/DataTable";
 import { useServerTable } from "@/shared/ui-shared/useServerTable";
 import StatusChip from "@/shared/ui-shared/StatusChip";
@@ -254,7 +253,11 @@ const RecentRunsSection = ({ templates }: RecentRunsSectionProps) => {
   ];
 
   return (
-    <FormSection title={t("inventory.templates.recentRuns.title")} action={total > 0 ? <Badge variant="outline" className="text-xs">{total}</Badge> : undefined} contentClassName="flex flex-col gap-4">
+    <section aria-label={t("inventory.templates.recentRuns.title")} className="flex min-w-0 flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <h2 className="text-base font-semibold">{t("inventory.templates.recentRuns.title")}</h2>
+        {total > 0 && <Badge variant="outline" className="text-xs">{total}</Badge>}
+      </div>
 
       <DataTable
         tableId="inventory.templateRuns"
@@ -306,7 +309,7 @@ const RecentRunsSection = ({ templates }: RecentRunsSectionProps) => {
           <RunStepsDetail runId={expandedRun.id} />
         </div>
       )}
-    </FormSection>
+    </section>
   );
 };
 
@@ -480,7 +483,6 @@ const InventoryTemplates = () => {
             value={table.search}
             onValueChange={table.setSearch}
             placeholder={t("inventory.templates.searchPlaceholder")}
-            containerClassName="flex-1 max-w-xs"
           />
         }
       />

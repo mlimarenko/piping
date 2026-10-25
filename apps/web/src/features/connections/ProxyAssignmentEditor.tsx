@@ -2,11 +2,13 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Route } from "lucide-react";
+import { Route } from "lucide-react";
 import { useApiMutation } from "@/shared/api/hooks";
 import { RequireCapability } from "@/shared/auth/permissions";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
 import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageState from "@/shared/ui-shared/PageState";
+import { Button } from "@/shared/ui-primitives/button";
 import FormField from "@/shared/ui-shared/FormField";
 import EntitySelect from "@/shared/ui-shared/EntitySelect";
 import FormSelect from "@/shared/ui-shared/FormSelect";
@@ -141,7 +143,6 @@ function AssignmentEditor({
 
   return (
     <EntityEditorPage scope="routed"
-      width="compact"
       title={t(assignment ? "proxyNodes.editAssignment" : "proxyNodes.addAssignmentTitle")}
       description={t("proxyNodes.assignmentDialogDescription")}
       onBack={back}
@@ -263,7 +264,7 @@ export default function ProxyAssignmentEditor() {
   }, [targetableScopes, scopeQueries]);
 
   const renderEditorState = (content: ReactNode) => (
-    <EntityEditorPage scope="routed" width="compact"
+    <EntityEditorPage scope="routed"
       title={t(id ? "proxyNodes.editAssignment" : "proxyNodes.addAssignmentTitle")}
       description={t("proxyNodes.assignmentDialogDescription")}
       onBack={() => { void navigate(PROXY_NODES_ROUTE); }}
@@ -274,15 +275,14 @@ export default function ProxyAssignmentEditor() {
   );
 
   if (assignmentsQuery.isPending || proxyOptionsQuery.isPending) {
-    return renderEditorState(<output className="flex justify-center p-8"><Loader2 className="size-6 animate-spin" aria-label={t("loading")} /></output>);
+    return renderEditorState(<PageState kind="loading" title={t("loading")} />);
   }
   if (assignmentsQuery.isError || proxyOptionsQuery.isError) {
-    return renderEditorState(<EmptyState icon={Route} title={t("proxyNodes.loadFailed")} actionLabel={t("retry")}
-      onAction={() => { void assignmentsQuery.refetch(); void proxyOptionsQuery.refetch(); }} />);
+    return renderEditorState(<PageState kind="error" title={t("proxyNodes.loadFailed")} action={<Button variant="outline" onClick={() => { void assignmentsQuery.refetch(); void proxyOptionsQuery.refetch(); }}>{t("retry")}</Button>} />);
   }
   const assignment = assignmentsQuery.data.items.find(candidate => candidate.id === id);
   if (id && !assignment) {
-    return renderEditorState(<EmptyState icon={Route} title={t("proxyNodes.notFound")} />);
+    return renderEditorState(<PageState kind="empty" title={t("proxyNodes.notFound")} />);
   }
   const proxyOptions = proxyOptionsQuery.data.items;
   if (!assignment && proxyOptions.length === 0) {

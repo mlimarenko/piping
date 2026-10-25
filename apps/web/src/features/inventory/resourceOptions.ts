@@ -1,5 +1,37 @@
-import type { InventoryEntityKey, Resource } from "@/shared/api/types";
+import { queryOptions, skipToken, type QueryClient } from "@tanstack/react-query";
+import type { InventoryEntityKey, Paginated, Resource } from "@/shared/api/types";
 import type { EntityPickerOption } from "@/shared/forms/EntityPicker";
+import { listAllResources } from "./api";
+
+const completeResourceList = (items: Resource[]): Paginated<Resource> => ({
+  items, total: items.length, limit: items.length, offset: 0,
+});
+
+/** Shared FK options retain the inventory envelope and include every page. */
+export const inventoryResourceOptionsQuery = (entity: InventoryEntityKey | null) => queryOptions({
+  queryKey: ["inventory", "resources", entity, "options"],
+  queryFn: entity ? async () => completeResourceList(await listAllResources(entity)) : skipToken,
+  staleTime: 30_000,
+});
+
+export async function cacheCreatedInventoryResource(client: QueryClient, entity: InventoryEntityKey, created: Resource): Promise<void> {
+  const { queryKey } = inventoryResourceOptionsQuery(entity);
+  // An older list response must not overwrite a just-persisted option.
+  await client.cancelQueries({ queryKey });
+  const previous = client.getQueryData(queryKey);
+  const hadCompleteList = previous !== undefined
+    && previous.offset === 0 && previous.items.length === previous.total
+    && !client.getQueryState(queryKey)?.isInvalidated;
+  client.setQueryData(queryKey, (current) => completeResourceList([
+    ...(current?.items ?? []).filter((item) => item.id !== created.id), created,
+  ]));
+  if (!hadCompleteList) {
+    // A created-only envelope is immediately selectable, not a complete list.
+    // Keep it stale until a fresh full read succeeds; read failures must not
+    // turn the successful creation into an error or remove its cached option.
+    void client.invalidateQueries({ queryKey }, { throwOnError: false });
+  }
+}
 
 export interface InventoryResourceOption extends EntityPickerOption {
   slug?: string;

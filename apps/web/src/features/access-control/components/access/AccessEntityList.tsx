@@ -210,7 +210,6 @@ export function AccessEntityList<T extends { id: string }>({
         onColumnFilterChange={table.controls.onColumnFilterChange}
         toolbar={
           <SearchInput
-            containerClassName="flex-1 max-w-xs"
             value={table.search}
             onValueChange={table.handleSearchChange}
             placeholder={searchPlaceholder}

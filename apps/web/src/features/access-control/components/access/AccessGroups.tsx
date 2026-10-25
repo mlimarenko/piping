@@ -58,7 +58,6 @@ const AccessGroups = () => {
     <EntityEditorHost open={dialogOpen} onOpenChange={next => { if (!submitting) setDialogOpen(next); }}
       title={editing ? t("accessControl.groups.editGroup") : t("accessControl.groups.createGroup")}
       description={editing ? t("accessControl.groups.updateDescription") : t("accessControl.groups.createDescription")}
-      width="compact"
       dirty={name !== baseline.name || externalId !== baseline.externalId}
       saving={submitting}
       footer={<>

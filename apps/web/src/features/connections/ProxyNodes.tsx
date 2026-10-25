@@ -38,10 +38,10 @@ import StatusChip from "@/shared/ui-shared/StatusChip";
 import EmptyState from "@/shared/ui-shared/EmptyState";
 import EntityRef from "@/shared/ui-shared/EntityRef";
 import { Button } from "@/shared/ui-primitives/button";
-import { Input } from "@/shared/ui-primitives/input";
+import SearchInput from "@/shared/ui-shared/SearchInput";
 import { Switch } from "@/shared/ui-primitives/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/ui-primitives/alert-dialog";
-import { Plus, Pencil, Trash2, Radio, Search, Route, Globe, KeyRound } from "lucide-react";
+import { Plus, Pencil, Trash2, Radio, Route, Globe, KeyRound } from "lucide-react";
 import { notify } from "@/shared/lib/notifications";
 import ProxyNodeBootstrapDialog from "@/features/connections/ProxyNodeBootstrapDialog";
 import {
@@ -362,10 +362,7 @@ const ProxyNodes = () => {
         }}
         emptyState={<EmptyState icon={Radio} title={t("proxyNodes.noNodes")} description={t("proxyNodes.noNodesDescription")} actionLabel={canCreate ? t("proxyNodes.addNode") : undefined} onAction={canCreate ? () => { void navigate(PROXY_NODE_NEW_ROUTE); } : undefined} />}
         toolbar={
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input aria-label={t("proxyNodes.searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} placeholder={t("proxyNodes.searchPlaceholder")} className="pl-8 text-sm" />
-          </div>
+          <SearchInput value={search} onValueChange={setSearch} placeholder={t("proxyNodes.searchPlaceholder")} />
         }
       />
 

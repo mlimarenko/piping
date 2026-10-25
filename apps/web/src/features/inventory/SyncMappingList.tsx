@@ -373,7 +373,6 @@ const SyncMappingList = () => {
         }
         toolbar={
           <SearchInput
-            containerClassName="flex-1 max-w-xs"
             value={search}
             onValueChange={setSearch}
             placeholder={t("sync.mapping.searchPlaceholder", "Search configurations…")}

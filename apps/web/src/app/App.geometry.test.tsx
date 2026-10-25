@@ -161,7 +161,7 @@ vi.mock("@/features/connections/connection-config/ConnectionConfigEditor", async
   const { default: EntityEditorPage } = await import("@/shared/ui-shared/EntityEditorPage");
   return {
     default: () => (
-      <EntityEditorPage scope="routed" width="form" title="Editor" onBack={() => {}} backLabel="Back">
+      <EntityEditorPage scope="routed" title="Editor" onBack={() => {}} backLabel="Back">
         <div>editor body</div>
       </EntityEditorPage>
     ),
@@ -183,16 +183,15 @@ beforeEach(() => {
   for (const mock of Object.values(customFieldsApi)) mock.mockClear();
 });
 
-describe("feature-owned route geometry", () => {
-  it("uses full definition width and keeps the same readable owner for choice sets", async () => {
+describe("shared management route canvas", () => {
+  it("keeps the same route owner when switching custom-field panels", async () => {
     router.initialPath = "/inventory/custom-fields";
     const { container } = render(<App />);
     await screen.findByRole("tab", { name: "Definitions" });
     const owner = container.querySelector('[data-slot="page-layout"]');
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
-    expect(owner).toHaveClass("max-w-none", "px-4", "md:px-6");
     fireEvent.keyDown(screen.getByRole("tab", { name: "Choice Sets" }), { key: "Enter" });
-    await waitFor(() => expect(owner).toHaveClass("max-w-[1280px]"));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Choice Sets" })).toHaveAttribute("aria-selected", "true"));
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
     expect(container.querySelector('[data-slot="page-layout"]')).toBe(owner);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
@@ -204,22 +203,18 @@ describe("feature-owned route geometry", () => {
     const { container } = render(<App />);
     await screen.findByText(/Your role doesn't grant|Ваша роль не предоставляет/i);
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
-    expect(container.querySelector('[data-slot="page-layout"]')).toHaveClass("max-w-[1280px]", "px-4", "md:px-6");
     expect(customFieldsApi.listCustomFields).not.toHaveBeenCalled();
     expect(customFieldsApi.listChoiceSets).not.toHaveBeenCalled();
     expect(customFieldsApi.listContentTypes).not.toHaveBeenCalled();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
 
-  it.each([
-    ["/automation/runs", "max-w-none"],
-    ["/playbooks", "max-w-[1280px]"],
-  ])("retains the explicit role for %s", async (path, width) => {
+  it.each(["/automation/runs", "/playbooks"])("uses the shared canvas for %s", async path => {
     router.initialPath = path;
     const { container } = render(<App />);
     await screen.findByTestId("automation-workspace");
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
-    expect(container.querySelector('[data-slot="page-layout"]')).toHaveClass(width, "px-4", "md:px-6");
+    expect(screen.getByTestId("automation-workspace").closest('[data-slot="page-layout"]')).not.toBeNull();
   });
 
   it("gives both observability workbenches available width without replacing their geometry owner", async () => {
@@ -228,28 +223,25 @@ describe("feature-owned route geometry", () => {
     await screen.findByTestId("service-discovery-screen");
     const owner = container.querySelector('[data-slot="page-layout"]');
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
-    expect(owner).toHaveClass("max-w-none", "px-4", "md:px-6", "h-full", "min-h-0");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("link", { name: /inspector metrics/i }));
     await screen.findByTestId("inspector-metrics-screen");
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
     expect(container.querySelector('[data-slot="page-layout"]')).toBe(owner);
-    expect(owner).toHaveClass("max-w-none", "px-4", "md:px-6", "h-full", "min-h-0");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
   it.each([
-    ["ipam-workspace", "max-w-none", "ipam-workspace"],
-    ["cabling-workstation", "max-w-[1280px]", "cabling-workspace"],
-    ["Sites", "max-w-[1280px]", undefined],
-  ])("retains the feature-owned inventory role for %s", async (entity, width, workspace) => {
+    ["ipam-workspace", "ipam-workspace"],
+    ["cabling-workstation", "cabling-workspace"],
+    ["Sites", undefined],
+  ])("retains one route canvas for inventory view %s", async (entity, workspace) => {
     router.initialPath = `/inventory/resources?entity=${entity}`;
     const { container } = render(<App />);
     if (workspace) await screen.findByTestId(workspace);
     else await screen.findByRole("heading", { level: 1, name: "Sites" });
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
-    expect(container.querySelector('[data-slot="page-layout"]')).toHaveClass(width, "px-4", "md:px-6", "h-full", "min-h-0");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
@@ -259,7 +251,6 @@ describe("feature-owned route geometry", () => {
     const { container } = render(<App />);
     await screen.findByText(/Your role doesn't grant|Ваша роль не предоставляет/i);
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
-    expect(container.querySelector('[data-slot="page-layout"]')).toHaveClass("max-w-[1280px]", "px-4", "md:px-6");
     expect(customFieldsApi.listCustomFields).not.toHaveBeenCalled();
     expect(customFieldsApi.listChoiceSets).not.toHaveBeenCalled();
     expect(customFieldsApi.listContentTypes).not.toHaveBeenCalled();
@@ -272,7 +263,6 @@ describe("feature-owned route geometry", () => {
     const { container } = render(<App />);
     await screen.findByText(/Your role doesn't grant|Ваша роль не предоставляет/i);
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
-    expect(container.querySelector('[data-slot="page-layout"]')).toHaveClass("max-w-[1280px]", "px-4", "md:px-6");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.queryByTestId("service-discovery-screen")).not.toBeInTheDocument();
     expect(screen.queryByTestId("inspector-metrics-screen")).not.toBeInTheDocument();
@@ -285,7 +275,6 @@ describe("feature-owned route geometry", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const layouts = container.querySelectorAll('[data-slot="page-layout"]');
     expect(layouts).toHaveLength(1);
-    expect(layouts[0]).toHaveClass("max-w-[1280px]");
     expect(container.querySelector('[data-slot="entity-editor-page"]')).toBeNull();
   });
   it("denies inventory detail without READ INVENTORY", async () => {
@@ -307,7 +296,8 @@ describe("feature-owned route geometry", () => {
       await screen.findByTestId("entity-editor-page");
       if (state !== "pending") await waitFor(() => expect(router.client?.isFetching()).toBe(0));
       expect(container.querySelectorAll('[data-slot="entity-editor-page"]')).toHaveLength(1);
-      expect(container.querySelector('[data-slot="page-layout"]')).toBeNull();
+      expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
+      expect(screen.getByTestId("entity-editor-page").closest('[data-slot="page-layout"]')).not.toBeNull();
       expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     });
   });
@@ -317,7 +307,6 @@ describe("feature-owned route geometry", () => {
     const { container } = render(<App />);
     await screen.findByRole("heading", { level: 1, name: "Inventory pull v1" });
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
-    expect(container.querySelector('[data-slot="page-layout"]')).toHaveClass("max-w-[1280px]");
     expect(container.querySelector('[data-slot="entity-editor-page"]')).toBeNull();
   });
 
@@ -327,7 +316,6 @@ describe("feature-owned route geometry", () => {
     await screen.findByRole("heading", { level: 1, name: "Loaded playbook" });
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
-    expect(container.querySelector('[data-slot="page-layout"]')).toHaveClass("max-w-[1280px]");
   });
 
   it.each(["PLAYBOOK_RUN_GROUP", "PLAYBOOK_RUN"] as const)("authorizes the global group entry with %s", async resourceType => {
@@ -358,7 +346,7 @@ describe("feature-owned route geometry", () => {
     const { container } = render(<App />);
     await screen.findByTestId("entity-editor-page");
     await waitFor(() => expect(router.client?.isFetching()).toBe(0));
-    expect(container.querySelector('[data-slot="page-layout"]')).toBeNull();
+    expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
     expect(container.querySelectorAll('[data-slot="entity-editor-page"]')).toHaveLength(1);
   });
 
@@ -369,11 +357,11 @@ describe("feature-owned route geometry", () => {
     expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
   });
 
-  it("mounts the actual automation create editor without an ancestor page layout", async () => {
+  it("mounts the actual automation create editor inside the shared route canvas", async () => {
     router.initialPath = "/automation/service-principals/new";
     const { container } = render(<App />);
     const editor = await screen.findByTestId("entity-editor-page");
-    expect(editor.parentElement?.closest('[data-slot="page-layout"]')).toBeNull();
+    expect(editor.closest('[data-slot="page-layout"]')).not.toBeNull();
     expect(container.querySelectorAll('[data-slot="entity-editor-page"]')).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
   });
@@ -386,7 +374,7 @@ describe("feature-owned route geometry", () => {
     if (state === "loaded") await screen.findByDisplayValue("Proxy");
     if (state === "error") await screen.findByRole("button", { name: "Retry" });
     if (state === "missing") await screen.findByText(/not found/i);
-    expect(container.querySelector('[data-slot="page-layout"]')).toBeNull();
+    expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
     expect(container.querySelectorAll('[data-slot="entity-editor-page"]')).toHaveLength(1);
   });
 
@@ -396,7 +384,7 @@ describe("feature-owned route geometry", () => {
     const { container } = render(<App />);
     expect(await screen.findByText(/Your role doesn't grant|Ваша роль не предоставляет/i)).toBeInTheDocument();
     expect(container.querySelector('[data-slot="entity-editor-page"]')).toBeNull();
-    expect(container.querySelector('[data-slot="page-layout"]')).toBeNull();
+    expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
   });
 
   it.each(["/automation/service-principals/new", "/playbooks/11111111-1111-4111-8111-111111111111"])("does not mount privileged content for a denied deep link: %s", async path => {
@@ -414,7 +402,6 @@ describe("feature-owned route geometry", () => {
     await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
     const layouts = container.querySelectorAll('[data-slot="page-layout"]');
     expect(layouts).toHaveLength(1);
-    expect(layouts[0]).toHaveClass("max-w-none");
   });
 });
 
@@ -426,24 +413,24 @@ describe("App route geometry", () => {
     expect(await screen.findByTestId("config-list")).toBeInTheDocument();
     const layouts = container.querySelectorAll('[data-slot="page-layout"]');
     expect(layouts).toHaveLength(1);
-    expect(layouts[0]!.className).toContain("max-w-none");
-    expect(layouts[0]!.className).not.toContain("max-w-[1280px]");
+    expect(screen.getByTestId("config-list").closest('[data-slot="page-layout"]')).toBe(layouts[0]);
   });
 
-  it("wraps the detail route in a standard-width page layout", async () => {
+  it("uses the same route owner for detail pages", async () => {
     router.initialPath = "/connections/config/abc";
     const { container } = render(<App />);
     expect(await screen.findByTestId("config-detail")).toBeInTheDocument();
     const layouts = container.querySelectorAll('[data-slot="page-layout"]');
     expect(layouts).toHaveLength(1);
-    expect(layouts[0]!.className).toContain("max-w-[1280px]");
+    expect(screen.getByTestId("config-detail").closest('[data-slot="page-layout"]')).toBe(layouts[0]);
   });
 
-  it("leaves the editor route self-hosted with no route layout wrapper", async () => {
+  it("uses one route owner around editor semantics rather than a second canvas", async () => {
     router.initialPath = "/connections/config/new";
     const { container } = render(<App />);
     expect(await screen.findByTestId("entity-editor-page")).toBeInTheDocument();
-    expect(container.querySelector('[data-slot="page-layout"]')).toBeNull();
+    expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
+    expect(screen.getByTestId("entity-editor-page").closest('[data-slot="page-layout"]')).not.toBeNull();
     expect(container.querySelector('[data-slot="entity-editor-page"]')).not.toBeNull();
   });
 });

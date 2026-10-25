@@ -305,8 +305,6 @@ const HostDetailsDialog = ({ host, open, onOpenChange }: { host: ConnectionTarge
             { value: "activity", label: t("connections.inspector.events") },
           ]}
           wrapperClassName="mb-4"
-          className="surface-chip h-9"
-          triggerClassName="h-9 px-3 text-sm"
         />
 
         <TabsContent value="general" className="space-y-1">

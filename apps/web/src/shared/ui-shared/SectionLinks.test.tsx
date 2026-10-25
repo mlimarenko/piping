@@ -44,7 +44,7 @@ describe("SectionLinks", () => {
 
   it("notifies only same-view navigation, leaving modified native links alone", () => {
     const onNavigate = vi.fn();
-    render(<MemoryRouter><SectionLinks label="Entities" activeValue="sites" variant="secondary" wrap onNavigate={onNavigate} items={[
+    render(<MemoryRouter><SectionLinks label="Entities" activeValue="sites" onNavigate={onNavigate} items={[
       { value: "sites", label: "Sites", to: "?entity=Sites", badge: 4 },
       { value: "devices", label: "Devices", to: "?entity=Devices", badge: 0 },
     ]} /></MemoryRouter>);

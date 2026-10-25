@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ListChecks, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useApiMutation } from "@/shared/api/hooks";
 import type { ApiError } from "@/shared/api/client";
 import { RequireCapability } from "@/shared/auth/permissions";
@@ -14,7 +14,7 @@ import FormField, { FormFieldControl } from "@/shared/ui-shared/FormField";
 import FormSelect from "@/shared/ui-shared/FormSelect";
 import FormSection from "@/shared/ui-shared/FormSection";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageState from "@/shared/ui-shared/PageState";
 import {
   createMetricQuery,
   listMetricQueries,
@@ -431,7 +431,6 @@ const MetricQueryForm = ({ item }: { item: MetricQueryItem | null }) => {
   const renderEditor = () => (
     <EntityEditorPage scope="routed"
       dirtyMessage={t("editor.unsavedChanges")}
-      width="form"
       dirty={JSON.stringify(draft) !== JSON.stringify(baseline)}
       title={item ? t("observability.metric.editTitle") : t("observability.metric.createTitle")}
       onBack={back}
@@ -741,14 +740,13 @@ const MetricQueryEditor = () => {
   const query = useQuery({ queryKey: METRIC_QUERIES_KEY, queryFn: () => listMetricQueries() });
   const item = query.data?.items.find(candidate => candidate.id === id) ?? null;
   if (query.isPending || query.isError || (id && !item)) {
-    return <EntityEditorPage scope="routed" width="form"
+    return <EntityEditorPage scope="routed"
       title={t(id ? "observability.metric.editTitle" : "observability.metric.createTitle")}
       onBack={() => { void navigate(observabilityListHref(METRIC_QUERIES_VIEW)); }}
       backLabel={t("back")} cancelLabel={t("cancel")}>
-      {query.isPending ? <output className="flex justify-center p-8"><Loader2 className="size-6 animate-spin" aria-label={t("loading")} /></output>
-        : <EmptyState icon={ListChecks} title={t(query.isError ? "observability.entityLoadFailed" : "observability.entityNotFound")}
-          actionLabel={query.isError ? t("retry") : undefined}
-          onAction={query.isError ? () => { void query.refetch(); } : undefined} />}
+      <PageState kind={query.isPending ? "loading" : query.isError ? "error" : "empty"}
+        title={t(query.isPending ? "loading" : query.isError ? "observability.entityLoadFailed" : "observability.entityNotFound")}
+        action={query.isError ? <Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button> : undefined} />
     </EntityEditorPage>;
   }
 

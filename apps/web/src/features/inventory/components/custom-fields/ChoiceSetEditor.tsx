@@ -96,7 +96,6 @@ const ChoiceSetEditor = ({ open, onOpenChange, editing, saving, onCreate, onUpda
   return (
     <EntityEditorHost
       open={open}
-      width="compact"
       onOpenChange={onOpenChange}
       title={editing ? t("customFields.choiceSet.editTitle") : t("customFields.choiceSet.createTitle")}
       description={t("customFields.choiceSet.dialogDescription")}

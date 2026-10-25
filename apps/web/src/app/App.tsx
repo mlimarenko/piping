@@ -162,23 +162,14 @@ const App = () => (
                           `gate:` entries in app/navigation.ts — a deep link must not
                           render a privileged frame the nav already hides. */}
                       <Route path="/connections" element={null} />
-                      {/* Full-width collection and run-group workspace owners. */}
-                      <Route element={<PageLayout width="full" inset fill><Outlet /></PageLayout>}>
+                      {/* All management routes share one canvas, in every load and permission state. */}
+                      <Route element={<PageLayout fill><Outlet /></PageLayout>}>
                         <Route path="/connections/config" element={<RequireCapability check={(p) => p.can("READ", "CONFIG_CONTEXT")}><ConnectionConfig /></RequireCapability>} />
                         <Route path="/automation/runs" element={<RequireCapability check={(p) => p.can("READ", "PLAYBOOK_RUN_GROUP")}><PlaybooksPage initialTab="runs" /></RequireCapability>} />
-                      </Route>
-
-                      {/* connection-config detail — readable standard width */}
-                      <Route element={<PageLayout width="standard" inset fill><Outlet /></PageLayout>}>
                         <Route path="/connections/config/:id" element={<RequireCapability check={(p) => p.can("READ", "CONFIG_CONTEXT")}><ConnectionConfigDetail /></RequireCapability>} />
-                      </Route>
-
-                      {/* connection-config editor — self-hosted, no route wrapper */}
                       <Route path="/connections/config/new" element={<RequireCapability check={(p) => p.can("READ", "CONFIG_CONTEXT")}><ConnectionConfigEditor /></RequireCapability>} />
                       <Route path="/connections/config/:id/edit" element={<RequireCapability check={(p) => p.can("READ", "CONFIG_CONTEXT")}><ConnectionConfigEditor /></RequireCapability>} />
 
-                      {/* Collections and mixed account sections retain explicit standard geometry. */}
-                      <Route element={<PageLayout width="standard" fill><Outlet /></PageLayout>}>
                       <Route path="/connections/active" element={<RequireCapability check={(p) => p.can("READ", "CONNECTION_SESSION")}><ActiveConnections /></RequireCapability>} />
                       <Route path="/connections/proxies" element={<RequireCapability check={(p) => p.can("READ", "PROXY_NODE")}><ProxyNodes /></RequireCapability>} />
                       <Route path="/inventory/sync" element={<RequireCapability check={(p) => p.can("READ", "INVENTORY")}><SyncPage /></RequireCapability>} />
@@ -221,14 +212,10 @@ const App = () => (
 
                       <Route path="/access-control" element={<RequireCapability check={(p) => p.can("READ", "USER") || p.can("READ", "ROLE") || p.can("READ", "POLICY") || p.can("READ", "GROUP") || p.can("READ", "KEYCLOAK")}><AccessControlWorkspace /></RequireCapability>} />
                       <Route path="/user/settings" element={<UserSettings />} />
-                      </Route>
-
                       <Route path="/observability" element={<ObservabilityPage />} />
                       <Route path="/inventory/custom-fields" element={<CustomFields />} />
                       <Route path="/inventory/resources" element={<InventoryResources />} />
 
-                      {/* Simple record details have no leaf inset owner: readable standard. */}
-                      <Route element={<PageLayout width="standard" inset fill><Outlet /></PageLayout>}>
                         <Route path="/inventory/resources/:entity/:id" element={<RequireCapability check={(p) => p.can("READ", "INVENTORY")}><InventoryResourceDetailPage /></RequireCapability>} />
                         <Route path={PLAYBOOK_DETAIL_PATH} element={<RequireCapability check={(p) => p.can("READ", "PLAYBOOK")}><PlaybookDetailPage /></RequireCapability>} />
                         <Route path="/connections/proxies/:id" element={<RequireCapability check={(p) => p.can("READ", "PROXY_NODE")}><ProxyNodeDetail /></RequireCapability>} />
@@ -237,10 +224,6 @@ const App = () => (
                         <Route path="/observability/metrics/:id" element={<RequireCapability check={(p) => p.can("READ", "MONITORING")}><MetricQueryDetail /></RequireCapability>} />
                         <Route path="/observability/sets/:id" element={<RequireCapability check={(p) => p.can("READ", "MONITORING")}><MetricSetDetail /></RequireCapability>} />
                         <Route path="/observability/alert-sources/:id" element={<RequireCapability check={(p) => p.can("READ", "MONITORING")}><AlertSourceDetail /></RequireCapability>} />
-                      </Route>
-
-                      {/* Complete self-hosted editor families: the feature owns every state shell. */}
-                      <Route>
                         <Route path={PLAYBOOK_EDITOR_NEW_PATH} element={<RequireCapability check={(p) => p.can("READ", "PLAYBOOK")}><PlaybookEditorPage /></RequireCapability>} />
                         <Route path={PLAYBOOK_EDITOR_EDIT_PATH} element={<RequireCapability check={(p) => p.can("READ", "PLAYBOOK")}><PlaybookEditorPage /></RequireCapability>} />
                         <Route path={TARGET_SET_EDITOR_NEW_PATH} element={<RequireCapability check={(p) => p.can("READ", "PLAYBOOK_TARGET_SET")}><TargetSetEditorPage /></RequireCapability>} />
@@ -254,7 +237,6 @@ const App = () => (
                         <Route path="/inventory/templates/:id/edit" element={<RequireCapability check={(p) => p.can("READ", "INVENTORY")}><TemplateEditorPage /></RequireCapability>} />
                         <Route path="/inventory/dataflows/new" element={<RequireCapability check={(p) => p.can("READ", "INVENTORY")}><DataflowEditorPage /></RequireCapability>} />
                         <Route path="/inventory/dataflows/:id/edit" element={<RequireCapability check={(p) => p.can("READ", "INVENTORY")}><DataflowEditorPage /></RequireCapability>} />
-                        {/* Mapping readonly owns PageLayout; editable and alternate states own EntityEditorPage. */}
                         <Route path="/inventory/sync/mappings/:id/:mode" element={<RequireCapability check={(p) => p.can("READ", "INVENTORY")}><SyncMappingEditor /></RequireCapability>} />
                         <Route path="/inventory/sync/mappings/new" element={<RequireCapability check={(p) => p.can("READ", "INVENTORY")}><SyncMappingEditor /></RequireCapability>} />
                         <Route path="/inventory/sync/:providerId/mappings/new" element={<RequireCapability check={(p) => p.can("READ", "INVENTORY")}><SyncMappingEditor /></RequireCapability>} />
@@ -279,10 +261,6 @@ const App = () => (
                         <Route path="/user/settings/credentials/new" element={<UserCredentialEditor />} />
                         <Route path="/user/settings/credentials/:id/edit" element={<UserCredentialEditor />} />
                         <Route path="/user/settings/tokens/new" element={<UserTokenEditor />} />
-                      </Route>
-
-                      {/* Leaf-owned PageLayout pages preserve their own form/standard/full tokens. */}
-                      <Route>
                         <Route path="/connections/devices/:targetId" element={<RequireCapability check={(p) => p.can("READ", "CONNECTION_TARGET")}><DeviceDashboardPage /></RequireCapability>} />
                         <Route path="/mcp" element={<RequireCapability check={(p) => p.isAdmin}><McpAdminPage /></RequireCapability>} />
                         <Route path="/audit-logs" element={<RequireCapability check={(p) => p.can("VIEW_AUDIT", "AUDIT_EVENT")}><AuditLog /></RequireCapability>} />

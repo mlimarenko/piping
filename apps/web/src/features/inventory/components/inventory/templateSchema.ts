@@ -8,6 +8,7 @@ import type {
   TemplateVariableValueType,
 } from "@/shared/api/types";
 import referenceRegistry from "../../../../../../api/contracts/inventory-template-references.json";
+import { analyzeTemplateStepOrder } from "./templateEditorOrder";
 
 export type TemplateFieldValueKind = "string" | "number" | "boolean";
 export type TemplateReferenceResource = keyof typeof referenceRegistry.targets;
@@ -439,6 +440,54 @@ const TEMPLATE_RESOURCE_PRESENTATION: TemplateResourceDefinition[] = [
       { key: "description", label: "Description", valueKind: "string" },
     ],
   },
+  {
+    resourceType: "tunnel_group",
+    label: "Tunnel group",
+    description: "Create a VPN tunnel group.",
+    defaultStepKey: "tunnel_group",
+    defaultTitle: "Create tunnel group",
+    payloadFields: [
+      { key: "name", label: "Name", valueKind: "string", required: true },
+      { key: "slug", label: "Slug", valueKind: "string" },
+      { key: "description", label: "Description", valueKind: "string" },
+      { key: "comments", label: "Comments", valueKind: "string" },
+    ],
+  },
+  {
+    resourceType: "tunnel",
+    label: "Tunnel",
+    description: "Create a VPN tunnel.",
+    defaultStepKey: "tunnel",
+    defaultTitle: "Create tunnel",
+    payloadFields: [
+      { key: "name", label: "Name", valueKind: "string", required: true },
+      { key: "status", label: "Status", valueKind: "string", placeholder: "active" },
+      { key: "encapsulation", label: "Encapsulation", valueKind: "string", placeholder: "ipsec-tunnel" },
+      { key: "description", label: "Description", valueKind: "string" },
+      { key: "comments", label: "Comments", valueKind: "string" },
+      { key: "group_id", label: "Group ID", valueKind: "string", placeholder: "{{steps.tunnel_group.id}}" },
+      { key: "ipsec_profile_id", label: "IPsec profile ID", valueKind: "string" },
+      { key: "tunnel_id", label: "Tunnel identifier", valueKind: "number" },
+      { key: "tenant_id", label: "Tenant ID", valueKind: "string" },
+    ],
+  },
+  {
+    resourceType: "tunnel_termination",
+    label: "Tunnel termination",
+    description: "Terminate a VPN tunnel on a device or VM interface.",
+    defaultStepKey: "tunnel_termination",
+    defaultTitle: "Create tunnel termination",
+    payloadFields: [
+      { key: "role", label: "Role", valueKind: "string", required: true },
+      { key: "tunnel_id", label: "Tunnel ID", valueKind: "string", required: true, placeholder: "{{steps.tunnel.id}}" },
+      { key: "interface_id", label: "Device interface ID", valueKind: "string", description: "Choose a device interface, a VM interface, or both a content type and object ID." },
+      { key: "vm_interface_id", label: "VM interface ID", valueKind: "string" },
+      { key: "termination_type_id", label: "Termination content type ID", valueKind: "string" },
+      { key: "termination_id", label: "Termination object ID", valueKind: "string" },
+      { key: "outside_ip_id", label: "Outside IP address ID", valueKind: "string" },
+      { key: "outside_ip", label: "Outside IP address", valueKind: "string", description: "Created if needed when no outside IP address ID is supplied." },
+    ],
+  },
 ];
 
 const referenceFields = referenceRegistry.fields as Partial<Record<TemplateStepResourceType, Record<string, { resource: TemplateReferenceResource; idField: string }>>>;
@@ -656,6 +705,10 @@ export function formatTemplateValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
+export function isRequiredTemplateVariableWithoutDefault(variable: TemplateVariable): boolean {
+  return Boolean(variable.required) && !formatTemplateValue(variable.default_value).trim();
+}
+
 export function parseConfiguredValue(rawValue: string, kind: TemplateFieldValueKind): unknown {
   const value = rawValue.trim();
   if (!value) return undefined;
@@ -737,7 +790,7 @@ export function parseTemplateVariableDefault(
     return { value, error: "invalid_boolean" };
   }
   if (valueType === "integer") {
-    if (/^-?\d+$/.test(value)) return { value: Number.parseInt(value, 10) };
+    if (/^-?\d+$/.test(value) && Number.isSafeInteger(Number(value))) return { value: Number(value) };
     return { value, error: "invalid_integer" };
   }
   if (valueType === "number") {
@@ -754,7 +807,83 @@ export function getTemplateVariableOptions(variable: TemplateVariable): string[]
 
   const options = (rules).options ?? (rules).enum;
   if (!Array.isArray(options)) return [];
-  return options.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return [...new Set(options.filter((item): item is string => typeof item === "string" && item.trim().length > 0))];
+}
+
+export function getTemplateVariableFields(variable: TemplateVariable): TemplateVariable[] | null {
+  if (variable.value_type !== "json" || !Object.hasOwn(variable.validation_rules ?? {}, "fields")) return null;
+  const fields = variable.validation_rules?.fields;
+  if (!Array.isArray(fields) || !fields.length) return [];
+  const keys = new Set<string>();
+  for (const candidate of fields as unknown[]) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return [];
+    const field = candidate as Record<string, unknown>;
+    const rawRules = field.validation_rules;
+    if (rawRules !== undefined && (!rawRules || typeof rawRules !== "object" || Array.isArray(rawRules))) return [];
+    const rules = (rawRules ?? {}) as Record<string, unknown>;
+    if (typeof field.key !== "string" || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(field.key)
+      || ["__proto__", "constructor", "prototype"].includes(field.key)
+      || keys.has(field.key) || typeof field.label !== "string"
+      || (field.description !== undefined && typeof field.description !== "string")
+      || !TEMPLATE_VARIABLE_VALUE_TYPES.some(({ value }) => value === field.value_type)
+      || (field.required !== undefined && typeof field.required !== "boolean")
+      || (field.value_type === "resource_ref" && (typeof rules.resource !== "string" || !Object.hasOwn(referenceRegistry.targets, rules.resource)))
+      || Object.hasOwn(rules, "fields")) return [];
+    keys.add(field.key);
+  }
+  return fields as TemplateVariable[];
+}
+
+export function parseTemplateObjectRows(rawValue: unknown, fields: readonly TemplateVariable[] = []): { rows: Record<string, unknown>[]; error?: string } {
+  if (rawValue === undefined || rawValue === null || rawValue === "") return { rows: [] };
+  let parsed: unknown = rawValue;
+  if (typeof rawValue === "string") {
+    try { parsed = JSON.parse(rawValue); }
+    catch { return { rows: [], error: "invalid_collection" }; }
+  }
+  return Array.isArray(parsed) && parsed.every((row) => row && typeof row === "object" && !Array.isArray(row))
+    ? { rows: (parsed as Record<string, unknown>[]).map((row) => ({
+      ...Object.fromEntries(fields.filter((field) => field.default_value !== undefined && !Object.hasOwn(row, field.key)).map((field) => [field.key, field.default_value])),
+      ...row,
+    })) }
+    : { rows: [], error: "invalid_collection" };
+}
+
+function buildTemplateObjectValues(variable: TemplateVariable, fields: TemplateVariable[], rawValue: unknown) {
+  const parsed = parseTemplateObjectRows(rawValue, fields);
+  const errors: Record<string, string> = {};
+  if (!fields.length || parsed.error || (variable.required && !parsed.rows.length)) {
+    errors[variable.key] = !fields.length ? "invalid_fields" : parsed.error ?? "required";
+    return { values: [], errors };
+  }
+  const values = parsed.rows.map((row, index) => {
+    const value: Record<string, unknown> = {};
+    if (Object.keys(row).some((key) => !fields.some((field) => field.key === key))) errors[variable.key] = "invalid_collection";
+    for (const field of fields) {
+      const key = `${variable.key}.${index}.${field.key}`;
+      const raw = row[field.key];
+      if (raw !== null && typeof raw === "object" && field.value_type !== "json") {
+        errors[key] = "invalid_reference";
+        continue;
+      }
+      if (field.value_type === "resource_ref" && raw !== undefined && raw !== null && !(typeof raw === "string" && !raw.trim())) {
+        if (typeof raw !== "string" || !isTemplateReferenceId(raw)) errors[key] = "invalid_reference";
+        else value[field.key] = raw;
+        continue;
+      }
+      const result = buildTemplateVariableValues([field], Object.hasOwn(row, field.key)
+        ? { [field.key]: raw === null || typeof raw === "string" ? raw : formatTemplateValue(raw) } : {});
+      const error = result.errors[field.key];
+      if (error) errors[key] = error;
+      else if (result.values[field.key] !== undefined) {
+        if (field.validation_rules?.format === "email" && typeof result.values[field.key] === "string" && result.values[field.key] !== ""
+          && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(result.values[field.key] as string)) errors[key] = "invalid_email";
+        else value[field.key] = result.values[field.key];
+      }
+    }
+    return value;
+  });
+  return { values, errors };
 }
 
 export function buildTemplateVariableValues(
@@ -765,7 +894,28 @@ export function buildTemplateVariableValues(
   const errors: Record<string, string> = {};
 
   for (const variable of variables) {
-    const rawValue = rawValues[variable.key] ?? "";
+    const rawValue = rawValues[variable.key];
+    const fields = getTemplateVariableFields(variable);
+    if (fields !== null) {
+      const result = buildTemplateObjectValues(variable, fields, rawValue);
+      Object.assign(errors, result.errors);
+      if (!Object.keys(result.errors).length) values[variable.key] = result.values;
+      continue;
+    }
+    if (rawValue === undefined || rawValue === null || (typeof rawValue === "string" && !rawValue.trim())) {
+      if (variable.required) errors[variable.key] = "required";
+      else if (Object.hasOwn(rawValues, variable.key) && rawValue !== undefined) {
+        // Explicit clears must survive JSON serialization so the server does not
+        // restore a default. Numeric, boolean and JSON controls clear to null.
+        values[variable.key] = rawValue === null || !["string", "resource_ref"].includes(variable.value_type) ? null : "";
+      }
+      continue;
+    }
+    const options = getTemplateVariableOptions(variable);
+    if (options.length && rawValue !== "" && (typeof rawValue !== "string" || !options.includes(rawValue.trim()))) {
+      errors[variable.key] = "invalid_option";
+      continue;
+    }
     if (variable.value_type !== "json" && isTemplateSelection(rawValue)) {
       values[variable.key] = rawValue;
       continue;
@@ -802,7 +952,7 @@ export function buildTemplatePreview(
 
   for (const step of template.steps) {
     const repeat = resolveLocalRepeat(step.repeat, tokens);
-    if (repeat.count === 0) {
+    if (!repeat || repeat.count === 0) {
       tokens.set(`steps.${step.step_key}.ids`, []);
       continue;
     }
@@ -812,7 +962,13 @@ export function buildTemplatePreview(
       const position = repeat.start + iteration;
       const effectiveStepKey = repeat.count === 1 ? step.step_key : `${step.step_key}[${position}]`;
       const iterationTokens = new Map(tokens);
-      iterationTokens.set(repeat.indexToken, position);
+      if (repeat.collection) {
+        const { itemToken, items } = repeat.collection;
+        for (const key of iterationTokens.keys()) {
+          if (key === itemToken || key.startsWith(`${itemToken}.`)) iterationTokens.delete(key);
+        }
+        insertLocalItemTokens(iterationTokens, itemToken, items[iteration]);
+      } else iterationTokens.set(repeat.indexToken, position);
       iterationTokens.set("position", position);
       insertCurrentIterationTokens(iterationTokens, position);
 
@@ -838,30 +994,44 @@ export function buildTemplatePreview(
 function resolveLocalRepeat(
   repeat: unknown,
   tokens: Map<string, unknown>,
-): { count: number; start: number; indexToken: string } {
+): { count: number; start: number; indexToken: string; collection?: { itemToken: string; items: unknown[] } } | null {
   if (!repeat || typeof repeat !== "object" || Array.isArray(repeat)) {
     return { count: 1, start: 1, indexToken: "position" };
   }
   const record = repeat as Record<string, unknown>;
-  const count = clampRepeatCount(resolveLocalInteger(record.count, tokens) ?? 1);
-  const start = resolveLocalInteger(record.start, tokens) ?? 1;
+  if (Object.hasOwn(record, "for_each")) {
+    if (["count", "start", "index_token"].some((key) => Object.hasOwn(record, key))) return null;
+    const itemToken = record.item_token === undefined ? "item" : record.item_token;
+    if (typeof itemToken !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(itemToken) || ["position", "steps"].includes(itemToken)) return null;
+    if (!Array.isArray(record.for_each) && !(typeof record.for_each === "string" && isTemplatePlaceholder(record.for_each.trim()))) return null;
+    const items = resolveTemplateValue(record.for_each, tokens);
+    if (!Array.isArray(items) || items.length > 500) return null;
+    return { count: items.length, start: 1, indexToken: "position", collection: { itemToken, items: items as unknown[] } };
+  }
+  if (Object.hasOwn(record, "item_token")) return null;
+  const count = record.count === undefined ? 1 : resolveLocalInteger(record.count, tokens);
+  const start = record.start === undefined ? 1 : resolveLocalInteger(record.start, tokens);
+  if (count === undefined || count < 0 || count > 500 || start === undefined || !Number.isSafeInteger(start + count - 1)) return null;
   const indexToken = typeof record.index_token === "string" && record.index_token.trim()
     ? record.index_token.trim()
     : "position";
   return { count, start, indexToken };
 }
 
-function clampRepeatCount(value: number): number {
-  if (!Number.isFinite(value)) return 1;
-  return Math.max(0, Math.min(500, Math.trunc(value)));
+function insertLocalItemTokens(tokens: Map<string, unknown>, token: string, value: unknown): void {
+  tokens.set(token, value);
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const [key, nested] of Object.entries(value)) insertLocalItemTokens(tokens, `${token}.${key}`, nested);
+  }
 }
 
 function resolveLocalInteger(value: unknown, tokens: Map<string, unknown>): number | undefined {
   if (value === undefined || value === null) return undefined;
   const resolved = typeof value === "string" ? resolveTemplateValue(value, tokens) : value;
-  if (typeof resolved === "number" && Number.isFinite(resolved)) return Math.trunc(resolved);
+  if (typeof resolved === "number" && Number.isSafeInteger(resolved)) return resolved;
   if (typeof resolved === "string" && /^-?\d+$/.test(resolved.trim())) {
-    return Number.parseInt(resolved.trim(), 10);
+    const parsed = Number(resolved.trim());
+    return Number.isSafeInteger(parsed) ? parsed : undefined;
   }
   return undefined;
 }
@@ -1130,25 +1300,14 @@ export function validateTemplate(template: InventoryTemplate, structuredDefaults
     }
     seenStepKeys.add(step.step_key);
   });
-  normalizedSteps.forEach((step, index) => {
-    if (step.depends_on_step_keys.includes(step.step_key)) {
-      issues.push({
-        section: "steps",
-        target: `step-${index}-deps`,
-        code: "selfDependency",
-        params: { key: step.step_key },
-      });
-    }
-    for (const dep of step.depends_on_step_keys) {
-      if (!seenStepKeys.has(dep)) {
-        issues.push({
-          section: "steps",
-          target: `step-${index}-deps`,
-          code: "unknownDependency",
-          params: { key: dep },
-        });
-      }
-    }
+  analyzeTemplateStepOrder(normalizedSteps).forEach(violation => {
+    issues.push({
+      section: "steps",
+      target: `step-${violation.consumerIndex}-deps`,
+      code: violation.reason === "selfReference" ? "selfDependency"
+        : violation.reason === "missingProducer" ? "unknownDependency" : "dependencyOrder",
+      params: { key: violation.producerKey, step: violation.consumerKey, dependency: violation.producerKey },
+    });
   });
 
   return {

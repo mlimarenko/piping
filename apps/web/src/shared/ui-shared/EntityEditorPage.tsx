@@ -3,7 +3,6 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/shared/ui-primitives/button";
 import { cn } from "@/shared/lib/utils";
 import { useUnsavedChangesGuard } from "@/shared/ui-shared/useUnsavedChangesGuard";
-import PageLayout from "@/shared/ui-shared/PageLayout";
 import PageChrome from "./PageChrome";
 
 /**
@@ -59,8 +58,6 @@ export interface EntityEditorPageProps {
   dirtyMessage?: string;
   /** Page-level error/alerts rendered above the body. */
   error?: ReactNode;
-   /** Canonical page width. */
-  width?: "standard" | "form" | "compact";
   className?: string;
   bodyClassName?: string;
   testId?: string;
@@ -85,7 +82,6 @@ const EntityEditorPage = ({
   dirty = false,
   dirtyMessage,
   error,
-  width = "form",
   className,
   bodyClassName,
   testId = "entity-editor-page",
@@ -136,12 +132,10 @@ const EntityEditorPage = ({
 
   </>;
   return (
-    <PageLayout
-      width={width}
-      inset={false}
+    <div
       data-slot="entity-editor-page"
       data-testid={testId}
-      className={cn("flex min-h-0 flex-col rounded-xl border border-border/60 bg-card p-4 shadow-md md:p-8", className)}
+      className={cn("flex min-h-0 min-w-0 w-full flex-col", className)}
     >
       {scope === "routed" ? <PageChrome title={title} description={description} actions={navigation} /> :
       <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-4 pb-6">
@@ -178,7 +172,7 @@ const EntityEditorPage = ({
           event.preventDefault(); event.stopPropagation();
           confirmExit(() => button.click());
         }}
-        className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-6"
+        className="sticky bottom-0 z-10 mt-4 flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border bg-background py-4"
       >
         {footer ?? (
           <>
@@ -203,7 +197,7 @@ const EntityEditorPage = ({
         )}
       </footer>
       {discardDialog}
-    </PageLayout>
+    </div>
   );
 };
 

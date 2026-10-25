@@ -22,13 +22,13 @@ import {
 
 import { cn } from "@/shared/lib/utils";
 import { notify } from "@/shared/lib/notifications";
-import SurfaceCard, { SurfaceCardHeader, SurfaceCardContent } from "@/shared/ui-shared/SurfaceCard";
 import FormSection from "@/shared/ui-shared/FormSection";
 import { Badge } from "@/shared/ui-primitives/badge";
 import { Button } from "@/shared/ui-primitives/button";
 import { Input } from "@/shared/ui-primitives/input";
 import FormSelect from "@/shared/ui-shared/FormSelect";
 import SectionLinks from "@/shared/ui-shared/SectionLinks";
+import PageState from "@/shared/ui-shared/PageState";
 import EmptyState from "@/shared/ui-shared/EmptyState";
 import { Switch } from "@/shared/ui-primitives/switch";
 import { Textarea } from "@/shared/ui-primitives/textarea";
@@ -912,18 +912,17 @@ function SettingsGroup({
   const localCount = group.items.length - serverCount;
 
   return (
-    <FormSection>
-      <SurfaceCardHeader
-        className="flex-col items-stretch border-0 p-0 sm:flex-row sm:items-start md:p-0"
+    <FormSection
         title={<span className="flex items-center gap-2"><CategoryIcon className="size-4 text-primary" />{t(`settingsCatalog.category.${group.category}`)}</span>}
         description={t(`settingsCatalog.categoryDescription.${group.category}`)}
-        actions={<div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+        action={<div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
           <span className="rounded bg-muted px-2 py-1">{t("settingsCatalog.sectionSettings", { count: group.items.length })}</span>
           {serverCount > 0 && <span className="rounded bg-muted px-2 py-1">{t("settingsCatalog.serverCount", { count: serverCount })}</span>}
           {localCount > 0 && <span className="rounded bg-muted px-2 py-1">{t("settingsCatalog.localCount", { count: localCount })}</span>}
         </div>}
-      />
-      <SurfaceCardContent className="flex flex-col px-0 pb-0 pt-4 md:px-0 md:pb-0 md:pt-4">{children}</SurfaceCardContent>
+      contentClassName="flex flex-col"
+    >
+      {children}
     </FormSection>
   );
 }
@@ -969,12 +968,14 @@ export default function SettingsCatalog({
   const localCount = definitions.filter((definition) => definition.persistence !== "server").length;
 
   return (
-    <SurfaceCard className={cn("overflow-hidden", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-4", className)}>
       {showHeader && (
-        <SurfaceCardHeader
-          title={<span className="flex items-center gap-2"><Settings2 className="size-4 text-primary" />{t(mode === "admin" ? "settingsCatalog.adminTitle" : "settingsCatalog.userTitle")}</span>}
-          description={t(mode === "admin" ? "settingsCatalog.adminDescription" : "settingsCatalog.userDescription")}
-          actions={<div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <header className="flex min-w-0 flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h2 className="flex items-center gap-2 text-base font-semibold"><Settings2 className="size-4 text-primary" />{t(mode === "admin" ? "settingsCatalog.adminTitle" : "settingsCatalog.userTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t(mode === "admin" ? "settingsCatalog.adminDescription" : "settingsCatalog.userDescription")}</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="bg-muted rounded px-2 py-1">
               {t("settingsCatalog.serverCount", { count: serverCount })}
             </span>
@@ -983,11 +984,11 @@ export default function SettingsCatalog({
                 {t("settingsCatalog.localCount", { count: localCount })}
               </span>
             )}
-          </div>}
-        />
+          </div>
+        </header>
       )}
 
-      <SurfaceCardContent className="flex flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-4">
         {mode === "admin" && adminSettings.isError && (
           <div role="alert">
             <EmptyState
@@ -1000,10 +1001,7 @@ export default function SettingsCatalog({
           </div>
         )}
         {mode === "admin" && adminSettings.isLoading ? (
-          <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            {t("loading")}
-          </div>
+          <PageState kind="loading" title={t("loading")} />
         ) : mode === "admin" && adminSettings.isError && adminSettings.data === undefined ? null
         : activeGroup ? (
           <>
@@ -1037,7 +1035,7 @@ export default function SettingsCatalog({
         ) : (
           <EmptyState icon={Settings2} title={t("settingsCatalog.empty")} />
         )}
-      </SurfaceCardContent>
-    </SurfaceCard>
+      </div>
+    </div>
   );
 }

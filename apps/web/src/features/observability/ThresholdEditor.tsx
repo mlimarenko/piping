@@ -6,6 +6,7 @@ import { Button } from "@/shared/ui-primitives/button";
 import FormField from "@/shared/ui-shared/FormField";
 import FormSelect from "@/shared/ui-shared/FormSelect";
 import FormSection from "@/shared/ui-shared/FormSection";
+import { TogglePill } from "@/shared/ui-shared/TogglePill";
 import MetricLabel from "./MetricLabel";
 import type { HostLabelMetric } from "./api";
 import {
@@ -120,27 +121,22 @@ const ThresholdEditor = ({ value, onChange, preview, bare, disabled = false }: T
           quiet. */}
       {(value.mode === "numeric" || value.mode === "state") && (
         <div
-          role="tablist"
+          role="group"
           aria-label={t("observability.metric.customRuleMode", {
             defaultValue: "Threshold rule mode",
           })}
-          className="inline-flex rounded-md border border-border bg-background p-0.5 text-xs"
+          className="flex flex-wrap gap-2"
         >
           {(["numeric", "state"] as const).map((mode) => (
-            <button
+            <TogglePill
               key={mode}
-              type="button"
-              role="tab"
-              aria-selected={numericOrState === mode}
-              className={
-                numericOrState === mode
-                  ? "rounded-sm bg-accent px-3 py-1 font-medium text-accent-foreground"
-                  : "rounded-sm px-3 py-1 text-muted-foreground hover:text-foreground"
-              }
+              active={numericOrState === mode}
+              shape="md"
+              disabled={disabled}
               onClick={() => setNumericOrState(mode)}
             >
               {t(`observability.metric.statusModes.${mode}`, { defaultValue: mode })}
-            </button>
+            </TogglePill>
           ))}
         </div>
       )}

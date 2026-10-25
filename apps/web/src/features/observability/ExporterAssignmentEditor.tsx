@@ -2,7 +2,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { Radio } from "lucide-react";
 import { RequireCapability } from "@/shared/auth/permissions";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import { useApiMutation } from "@/shared/api/hooks";
@@ -14,7 +13,7 @@ import FormSection from "@/shared/ui-shared/FormSection";
 import FormSelect from "@/shared/ui-shared/FormSelect";
 import { Switch } from "@/shared/ui-primitives/switch";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageState from "@/shared/ui-shared/PageState";
 import {
   createExporterAssignment,
   listAllExporterAssignments,
@@ -420,7 +419,7 @@ function ExporterAssignmentEditorContent() {
   const pending = (id && assignments.isPending) || exporters.isPending;
   const failed = (id && assignments.isError && !assignments.data) || (exporters.isError && !exporters.data);
   if (pending || failed || (id && !item)) return <EntityEditorPage scope="routed" title={t(id ? "observability.sd.editTitle" : "observability.sd.createTitle")} onBack={() => { void navigate(exporterAssignmentsHref(search)); }} backLabel={t("back")} cancelLabel={t("cancel")}>
-    {pending ? <output aria-label={t("loading")}>{t("loading")}</output> : <EmptyState icon={Radio} title={t(failed ? "observability.entityLoadFailed" : "observability.entityNotFound")} actionLabel={failed ? t("retry") : undefined} onAction={failed ? () => { void assignments.refetch(); void exporters.refetch(); } : undefined} />}
+    <PageState kind={pending ? "loading" : failed ? "error" : "empty"} title={t(pending ? "loading" : failed ? "observability.entityLoadFailed" : "observability.entityNotFound")} action={failed ? <Button variant="outline" onClick={() => { void assignments.refetch(); void exporters.refetch(); }}>{t("retry")}</Button> : undefined} />
   </EntityEditorPage>;
   return <ExporterAssignmentForm key={id ?? "new"} editing={item ?? null} exporters={exporters.data?.items ?? []} entities={entities}
     refreshError={(id && assignments.isError) || exporters.isError ? <span className="flex flex-wrap items-center gap-2">{t("observability.entityLoadFailed")}<Button variant="outline" onClick={() => { void assignments.refetch(); void exporters.refetch(); }}>{t("retry")}</Button></span> : undefined} />;

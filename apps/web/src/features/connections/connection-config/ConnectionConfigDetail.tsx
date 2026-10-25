@@ -2,14 +2,14 @@ import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Network, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Network, Pencil, Trash2 } from "lucide-react";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import { useApiMutation } from "@/shared/api/hooks";
 import { Button } from "@/shared/ui-primitives/button";
 import { Tabs, TabsContent } from "@/shared/ui-primitives/tabs";
 import { notify } from "@/shared/lib/notifications";
 import PageState from "@/shared/ui-shared/PageState";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageChrome from "@/shared/ui-shared/PageChrome";
 import SectionTabs from "@/shared/ui-shared/SectionTabs";
 import StatusChip from "@/shared/ui-shared/StatusChip";
 import EntityDetail from "@/shared/ui-shared/EntityDetail";
@@ -31,13 +31,11 @@ export default function ConnectionConfigDetail() {
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ["connection-config", "records"] }); notify("success", t("connectionConfig.recordDeleted")); void navigate(CONNECTION_CONFIG_ROUTE); },
     onError: () => setError(t("connectionConfig.deleteFailed")),
   });
-  const renderState = (content: ReactNode) => <PageState title={t("connectionConfig.title")} icon={Network} backHref={CONNECTION_CONFIG_ROUTE} backLabel={t("connectionConfig.backToList")}>
-    {content}
-  </PageState>;
-  if (query.isPending) return renderState(<output className="flex justify-center p-8"><Loader2 className="size-6 animate-spin" aria-label={t("loading")} /></output>);
-  if (query.isError) return renderState(<EmptyState icon={Network} title={t("connectionConfig.loadFailed")} actionLabel={t("retry")} onAction={() => { void query.refetch(); }} />);
+  const renderState = (content: ReactNode) => <><PageChrome title={t("connectionConfig.title")} icon={Network} actions={<Button asChild variant="ghost"><Link to={CONNECTION_CONFIG_ROUTE}><ArrowLeft className="size-4" />{t("connectionConfig.backToList")}</Link></Button>} />{content}</>;
+  if (query.isPending) return renderState(<PageState kind="loading" title={t("loading")} />);
+  if (query.isError) return renderState(<PageState kind="error" title={t("connectionConfig.loadFailed")} action={<Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button>} />);
   const record = query.data.find(candidate => candidate.id === id);
-  if (!record) return renderState(<EmptyState icon={Network} title={t("connectionConfig.notFound")} />);
+  if (!record) return renderState(<PageState kind="empty" title={t("connectionConfig.notFound")} />);
   const config = asParams(record.params);
   const tab = ["assignments", "preview"].includes(params.get("tab") ?? "") ? params.get("tab")! : "overview";
   const items = [

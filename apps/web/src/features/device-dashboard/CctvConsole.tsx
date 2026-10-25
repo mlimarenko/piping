@@ -325,11 +325,9 @@ export const CctvConsole = ({ targetId, className, active = true }: CctvConsoleP
           onValueChange={(value) => setActiveTab(value as CctvTab)}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="sticky top-0 z-20 shrink-0 border-b border-border bg-background px-4 py-3  ">
+          <div className="sticky top-0 z-20 shrink-0 bg-background px-4 py-3">
             <SectionTabs
               items={tabs}
-              className="h-10 bg-muted p-1"
-              triggerClassName="h-8 min-w-28 px-4"
             />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">

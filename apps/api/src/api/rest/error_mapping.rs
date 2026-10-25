@@ -193,6 +193,13 @@ fn rest_error_metadata(error: AppError) -> RestErrorMetadata {
                 details: None,
             }
         }
+        AppError::ValidationFields(fields) => RestErrorMetadata {
+            status: StatusCode::BAD_REQUEST,
+            code: "VALIDATION_ERROR",
+            message: "Check the highlighted input fields".to_string(),
+            reason_code: None,
+            details: Some(serde_json::json!({"fields":fields})),
+        },
         AppError::ValidationJson(_) => RestErrorMetadata {
             status: StatusCode::BAD_REQUEST,
             code: "VALIDATION_ERROR",
@@ -432,6 +439,26 @@ mod tests {
         assert_eq!(payload["message"], "refresh and retry");
         assert_eq!(payload["reason_code"], reason_codes::SEAT_VERSION_CONFLICT);
         assert_eq!(payload["trace_id"], "req-123");
+    }
+
+    #[tokio::test]
+    async fn template_field_validation_preserves_paths_without_input_values() {
+        let response = map_app_error_to_http(AppError::ValidationFields(
+            [("contacts.1.role_id".to_string(), "required".to_string())]
+                .into_iter()
+                .collect(),
+        ));
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("body");
+        let payload: Value = serde_json::from_slice(&bytes).expect("JSON");
+        assert_eq!(payload["code"], "VALIDATION_ERROR");
+        assert_eq!(
+            payload["details"]["fields"]["contacts.1.role_id"],
+            "required"
+        );
+        assert!(payload.get("fields").is_none());
     }
 
     #[tokio::test]

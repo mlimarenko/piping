@@ -2,9 +2,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import PageState from "@/shared/ui-shared/PageState";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
-import PageLayout from "@/shared/ui-shared/PageLayout";
 import InventoryResourceDetailPage from "./InventoryResourceDetailPage";
 import { Button } from "@/shared/ui-primitives/button";
 import FormSection from "@/shared/ui-shared/FormSection";
@@ -31,10 +30,9 @@ import {
   createResource,
   customFieldEntityKind,
   getResource,
-  listAllResources,
   updateResource,
 } from "@/features/inventory/api";
-import { inventoryResourceOption } from "@/features/inventory/resourceOptions";
+import { inventoryResourceOption, inventoryResourceOptionsQuery } from "@/features/inventory/resourceOptions";
 import {
   isInventoryEntityKey,
   INVENTORY_RESOURCES_PATH,
@@ -111,18 +109,14 @@ interface OptionLoaders {
  *  prefix so inline-create invalidations refresh them). */
 function useEntityOptions(entities: InventoryEntityKey[]): OptionLoaders {
   const optionQueries = useQueries({
-    queries: entities.map((optionEntity) => ({
-      queryKey: ["inventory", "resources", optionEntity, "options"],
-      queryFn: () => listAllResources(optionEntity),
-      staleTime: 30_000,
-    })),
+    queries: entities.map(inventoryResourceOptionsQuery),
   });
 
   return useMemo(() => {
     const optionsByEntity = new Map<InventoryEntityKey, EntityPickerOption[]>();
     const loadingByEntity = new Map<InventoryEntityKey, boolean>();
     entities.forEach((optionEntity, idx) => {
-      const rows = optionQueries[idx]?.data ?? [];
+      const rows = optionQueries[idx]?.data?.items ?? [];
       optionsByEntity.set(optionEntity, rows.map((r) => inventoryResourceOption(optionEntity, r)));
       loadingByEntity.set(optionEntity, optionQueries[idx]?.isPending ?? false);
     });
@@ -532,7 +526,7 @@ const EntityResourceEditorPage = () => {
   if (!entity) {
     return (
       <EntityEditorPage scope="routed" title={stateTitle} onBack={onBack} backLabel={backLabel} cancelLabel={t("cancel")}>
-        <p role="alert">{t("inventory.resources.notFound")}</p>
+        <PageState kind="error" title={t("inventory.resources.notFound")} />
       </EntityEditorPage>
     );
   }
@@ -562,12 +556,10 @@ const EntityResourceEditorPage = () => {
         breadcrumbLabel={t("inventory.resources.title")}
         onBack={onBack} backLabel={backLabel} cancelLabel={t("cancel")}>
         {detailQuery.isPending ? (
-          <output className="flex items-center gap-2"><Loader2 aria-hidden className="size-6 animate-spin text-muted-foreground" />{t("loading")}</output>
+          <PageState kind="loading" title={t("loading")} />
         ) : (
-          <div className="flex flex-col items-start gap-4">
-            <p role="alert">{t("inventory.resources.form.loadFailed")}</p>
-            <Button variant="outline" onClick={() => void detailQuery.refetch()}>{t("retry")}</Button>
-          </div>
+          <PageState kind="error" title={t("inventory.resources.form.loadFailed")}
+            action={<Button variant="outline" onClick={() => void detailQuery.refetch()}>{t("retry")}</Button>} />
         )}
       </EntityEditorPage>
     );
@@ -591,7 +583,7 @@ export default function EntityResourceRoute() {
   const { entity, id } = useParams();
   const { can } = usePermissions();
   if (id && (!can("UPDATE", "INVENTORY") || (isInventoryEntityKey(entity) && inventoryEntityIsReadOnly(entity)))) {
-    return <PageLayout width="standard" inset fill><InventoryResourceDetailPage /></PageLayout>;
+    return <InventoryResourceDetailPage />;
   }
   return <EntityResourceEditorPage />;
 }

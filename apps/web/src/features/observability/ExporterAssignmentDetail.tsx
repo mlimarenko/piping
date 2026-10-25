@@ -1,13 +1,13 @@
-import { useLocation, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Copy, Pencil, Radio, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Pencil, Radio, Trash2 } from "lucide-react";
 import { useApiMutation } from "@/shared/api/hooks";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import { notify } from "@/shared/lib/notifications";
 import EntityDetail from "@/shared/ui-shared/EntityDetail";
 import PageState from "@/shared/ui-shared/PageState";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageChrome from "@/shared/ui-shared/PageChrome";
 import { useUnsavedChangesGuard } from "@/shared/ui-shared/useUnsavedChangesGuard";
 import { Button } from "@/shared/ui-primitives/button";
 import { deleteExporterAssignment, listAllExporterAssignments, type ExporterAssignmentItem } from "./api";
@@ -36,9 +36,10 @@ export default function ExporterAssignmentDetail() {
     },
   });
   useUnsavedChangesGuard(false, mutation.isPending);
-  if (query.isPending || query.isError || !query.data.some(row => row.id === id)) return <PageState icon={Radio} title={t("observability.title")} backHref={listHref}>
-    {query.isPending ? <output>{t("loading")}</output> : <EmptyState icon={Radio} title={t(query.isError ? "observability.entityLoadFailed" : "observability.entityNotFound")} actionLabel={query.isError ? t("retry") : undefined} onAction={() => { void query.refetch(); }} />}
-  </PageState>;
+  if (query.isPending || query.isError || !query.data.some(row => row.id === id)) return <>
+    <PageChrome icon={Radio} title={t("observability.title")} actions={<Button asChild variant="ghost"><Link to={listHref}><ArrowLeft className="size-4" />{t("back")}</Link></Button>} />
+    <PageState kind={query.isPending ? "loading" : query.isError ? "error" : "empty"} title={t(query.isPending ? "loading" : query.isError ? "observability.entityLoadFailed" : "observability.entityNotFound")} action={query.isError ? <Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button> : undefined} />
+  </>;
   const item = query.data.find(row => row.id === id)!;
   const copyValue = (value: string) => <div className="flex min-w-0 items-start gap-2"><code className="min-w-0 break-all">{value}</code><Button size="icon-sm" variant="ghost" aria-label={`${t("copy")}: ${value}`} onClick={() => { void navigator.clipboard.writeText(value).then(() => notify("success", t("copied")), () => notify("error", t("observability.workflow.copyFailed", { defaultValue: "Could not copy. Select and copy the value manually." }))); }}><Copy className="size-4" /></Button></div>;
   return <div aria-busy={mutation.isPending} className={mutation.isPending ? "pointer-events-none" : undefined}><EntityDetail icon={Radio} title={item.name || item.exporter_name} description={item.exporter_slug} backHref={listHref}

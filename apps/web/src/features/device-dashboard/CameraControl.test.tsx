@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@/shared/i18n";
@@ -101,7 +101,7 @@ describe("CameraControl", () => {
     // streaming-capable family opens the live stream, not stills.
     await waitFor(() => expect(liveRequestUrl()).toContain("/api/v1/cctv/t1/stream"));
     expect(liveRequestUrl()).not.toContain("channel=");
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: /channels/i })).not.toBeInTheDocument();
     expect(apiMock.getDeviceChannels).not.toHaveBeenCalled();
   });
 
@@ -126,9 +126,9 @@ describe("CameraControl", () => {
     });
     renderControl({ targetId: "t9", capabilities: CAPS(true) });
 
-    // Both channels appear as tabs; the first is selected and drives the picture.
-    const register = await screen.findByRole("tab", { name: /Register/ });
-    expect(screen.getByRole("tab", { name: /Entrance/ })).toBeInTheDocument();
+    // The first channel is selected and drives the picture.
+    const register = await screen.findByRole("button", { name: /Register/, pressed: false });
+    expect(screen.getByRole("button", { name: /Entrance/, pressed: true })).toBeInTheDocument();
     await waitFor(() => expect(liveRequestUrl()).toContain("channel=1"));
 
     // Selecting channel 2 repoints the picture at that camera.
@@ -140,9 +140,9 @@ describe("CameraControl", () => {
     apiMock.getDeviceChannels.mockResolvedValue({ channels: [] });
     renderControl({ targetId: "t3", capabilities: CAPS(true), infoChannelCount: 4 });
 
-    // Four numbered tabs, no names, from the info readout (locale-agnostic:
+    // Four numbered choices, no names, from the info readout (locale-agnostic:
     // assert the count, not the localized "Ch"/"Кан" label).
-    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(4));
+    await waitFor(() => expect(within(screen.getByRole("group", { name: /channels/i })).getAllByRole("button")).toHaveLength(4));
     await waitFor(() => expect(liveRequestUrl()).toContain("channel=1"));
   });
 
@@ -203,13 +203,13 @@ describe("CameraControl", () => {
     });
     renderControl({ targetId: "t7", capabilities: caps });
 
-    const movable = await screen.findByRole("tab", { name: /Movable/ });
+    const movable = await screen.findByRole("button", { name: /Movable/ });
     expect(screen.queryByRole("button", { name: /Up/i })).not.toBeInTheDocument();
 
     fireEvent.click(movable);
     expect(await screen.findByRole("button", { name: /Up/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: /Unverified/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Unverified/ }));
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: /Up/i })).not.toBeInTheDocument(),
     );

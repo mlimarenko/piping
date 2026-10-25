@@ -7,7 +7,7 @@ import {
   Layers,
   Settings2,
   AlertCircle,
-  CheckCircle2,
+  Eye,
 } from "lucide-react";
 
 import { Button } from "@/shared/ui-primitives/button";
@@ -16,6 +16,8 @@ import { Textarea } from "@/shared/ui-primitives/textarea";
 import { Switch } from "@/shared/ui-primitives/switch";
 import { Checkbox } from "@/shared/ui-primitives/checkbox";
 import { Badge } from "@/shared/ui-primitives/badge";
+import { Tabs, TabsContent } from "@/shared/ui-primitives/tabs";
+import SectionTabs from "@/shared/ui-shared/SectionTabs";
 import FormSelect from "@/shared/ui-shared/FormSelect";
 import {
   Collapsible,
@@ -58,9 +60,23 @@ import {
   useValueTypeHelp,
   type TokenOption,
 } from "./templateEditorHelp";
-import TemplatePreviewRail from "./TemplatePreviewRail";
+import TemplateEditorPreview from "./TemplateEditorPreview";
+import TemplateSortableList, { type TemplateSortableListLabels } from "./TemplateSortableList";
+import { moveTemplateStep } from "./templateEditorOrder";
+import { templatePayloadFieldLabel } from "./templateSchema";
+import {
+  applyAutoBoundReferences,
+  createTemplateEditorDraft,
+  emptyTemplate,
+  moveEditorRow,
+  stepRow,
+  templateFromEditorDraft,
+  variableRow,
+  type TemplateEditorDraft,
+} from "./templateEditorState";
 
 type SectionId = "meta" | "variables" | "steps";
+type EditorTab = SectionId | "preview";
 
 interface Props {
   /** The starting template; `null` for a fresh draft. */
@@ -71,44 +87,19 @@ interface Props {
   onCancel: () => void;
 }
 
-const emptyTemplate = (): InventoryTemplate => ({
-  id: "",
-  name: "",
-  slug: "",
-  status: "draft",
-  description: "",
-  variables: [],
-  steps: [],
-  updatedAt: "",
-});
-
-/**
- * Two-column guided authoring editor for inventory templates.
- *
- * Left: three anchored sections (Meta → Variables → Steps) with live issue
- * badges. Right: a preview rail showing the resolved payloads as you type.
- */
 const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) => {
   const { t } = useTranslation();
-  const [template, setTemplate] = useState<InventoryTemplate>(
-    () => (initial ? structuredClone(initial) : emptyTemplate()),
-  );
+  const [draft, setDraft] = useState(() => createTemplateEditorDraft(initial ?? emptyTemplate()));
+  const [baseline] = useState(() => templateFromEditorDraft(draft));
+  const template = useMemo(() => templateFromEditorDraft(draft), [draft]);
+  const structuredDefaults = useMemo(() => draft.variables.map(row => row.structuredDefault), [draft.variables]);
+  const [activeTab, setActiveTab] = useState<EditorTab>("meta");
   const [submitted, setSubmitted] = useState(false);
-  // Representation is edit-session intent, not inferred from draft text: a
-  // malformed intermediate edit must not switch an object default into a string.
-  const [structuredDefaults, setStructuredDefaults] = useState<boolean[]>(
-    () => initial?.variables.map((variable) => variable.value_type !== "json" && isTemplateSelection(variable.default_value)) ?? [],
-  );
-  // Per-item expand state, aligned by position to template.variables / .steps.
-  // Existing items load collapsed (scannable list); freshly added ones open so
-  // the author can fill them in. Mutators below keep these arrays in sync, and
-  // an item with submitted issues is force-expanded regardless (see isXOpen).
-  const [openVars, setOpenVars] = useState<boolean[]>(
-    () => (initial ? initial.variables.map(() => false) : []),
-  );
-  const [openSteps, setOpenSteps] = useState<boolean[]>(
-    () => (initial ? initial.steps.map(() => false) : []),
-  );
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const editable = canSave && !saving;
+  const edit = (update: (current: TemplateEditorDraft) => TemplateEditorDraft) => {
+    if (editable) { setOrderError(null); setDraft(update); }
+  };
   const conflictHelp = useConflictPolicyHelp();
   const valueTypeHelp = useValueTypeHelp();
 
@@ -140,9 +131,9 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
   // An item is shown expanded when the user opened it OR it has surfaced issues
   // (errors must never hide behind a collapsed row).
   const isVariableOpen = (index: number): boolean =>
-    (openVars[index] ?? false) || variableIssueCount(index) > 0;
+    (draft.variables[index]?.open ?? false) || variableIssueCount(index) > 0;
   const isStepOpen = (index: number): boolean =>
-    (openSteps[index] ?? false) || stepIssueCount(index) > 0;
+    (draft.steps[index]?.open ?? false) || stepIssueCount(index) > 0;
 
   const issueMessage = (issue: TemplateIssue): string =>
     t(`inventory.templates.editor.issues.${issue.code}`, issue.params ?? {});
@@ -165,8 +156,8 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
 
   // ── Mutators ────────────────────────────────────────────────────────────
 
-  const patch = (next: Partial<InventoryTemplate>) =>
-    setTemplate((current) => ({ ...current, ...next }));
+  const patch = (next: Partial<TemplateEditorDraft["details"]>) =>
+    edit(current => ({ ...current, details: { ...current.details, ...next } }));
 
   const onNameChange = (name: string) => {
     if (slugTouched.current) {
@@ -177,9 +168,9 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
     }
   };
 
-  const nextUniqueStepKey = (base: string, ignoreIndex?: number): string => {
+  const nextUniqueStepKey = (base: string, steps: TemplateStep[], ignoreIndex?: number): string => {
     const existing = new Set(
-      template.steps.filter((_, i) => i !== ignoreIndex).map((s) => s.step_key),
+      steps.filter((_, i) => i !== ignoreIndex).map((s) => s.step_key),
     );
     if (!existing.has(base)) return base;
     let counter = 2;
@@ -189,40 +180,29 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
 
   // Variables
   const addVariable = () => {
-    patch({ variables: [...template.variables, createEmptyTemplateVariable()] });
-    setStructuredDefaults((current) => [...template.variables.map((variable, index) => current[index]
-      ?? (variable.value_type !== "json" && isTemplateSelection(variable.default_value))), false]);
-    setOpenVars((prev) => [...prev, true]); // open the new one for editing
+    if (!editable) return;
+    const row = variableRow(createEmptyTemplateVariable(), true);
+    edit(current => ({ ...current, variables: [...current.variables, row] }));
+    requestAnimationFrame(() => focusEditorRow(row.editorId));
   };
   const updateVariable = (index: number, p: Partial<TemplateVariable>) => {
-    const next = [...template.variables];
-    const current = next[index];
-    if (!current) return;
-    next[index] = { ...current, ...p };
-    patch({ variables: next });
+    edit(current => ({ ...current, variables: current.variables.map((row, i) => i === index
+      ? { ...row, value: { ...row.value, ...p } } : row) }));
   };
   const removeVariable = (index: number) => {
-    patch({ variables: template.variables.filter((_, i) => i !== index) });
-    setStructuredDefaults((current) => template.variables.map((variable, i) => current[i]
-      ?? (variable.value_type !== "json" && isTemplateSelection(variable.default_value))).filter((_, i) => i !== index));
-    setOpenVars((prev) => prev.filter((_, i) => i !== index));
+    edit(current => ({ ...current, variables: current.variables.filter((_, i) => i !== index) }));
   };
   const setVariableOpen = (index: number, open: boolean) =>
-    setOpenVars((prev) => {
-      const next = prev.length === template.variables.length ? [...prev] : template.variables.map((_, i) => prev[i] ?? false);
-      next[index] = open;
-      return next;
-    });
+    setDraft(current => ({ ...current, variables: current.variables.map((row, i) => i === index ? { ...row, open } : row) }));
   const updateVariableDefault = (index: number, raw: string) => {
     const valueType = template.variables[index]?.value_type ?? "string";
     const variable = template.variables[index];
     const parsed = parseTemplateVariableDefault(valueType, raw,
       variable ? templateReferenceFor(template, variable)?.resource : undefined, structuredDefaults[index] ?? false);
-    if (valueType !== "json" && isTemplateSelection(parsed.value)) {
-      setStructuredDefaults((current) => template.variables.map((item, i) => i === index || (current[i]
-        ?? (item.value_type !== "json" && isTemplateSelection(item.default_value)))));
-    }
-    updateVariable(index, { default_value: parsed.value });
+    edit(current => ({ ...current, variables: current.variables.map((row, i) => i === index ? {
+      ...row, value: { ...row.value, default_value: parsed.value },
+      structuredDefault: row.structuredDefault || valueType !== "json" && isTemplateSelection(parsed.value),
+    } : row) }));
   };
   const updateVariableReference = (index: number, resource: string) => {
     const current = template.variables[index];
@@ -246,37 +226,63 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
     [t],
   );
 
+  const moveVariable = (from: number, to: number): boolean => {
+    if (!editable || from === to || from < 0 || to < 0 || from >= draft.variables.length || to >= draft.variables.length) return false;
+    edit(current => ({ ...current, variables: moveEditorRow(current.variables, from, to) }));
+    return true;
+  };
+  const moveStep = (from: number, to: number): boolean => {
+    if (!editable || from === to || from < 0 || to < 0 || from >= draft.steps.length || to >= draft.steps.length) return false;
+    const result = moveTemplateStep(template.steps, from, to);
+    if (result.blockingViolation) {
+      setOrderError(t("inventory.templates.editor.moveBlocked", {
+        step: result.blockingViolation.consumerKey, dependency: result.blockingViolation.producerKey,
+      }));
+      return false;
+    }
+    edit(current => ({ ...current, steps: moveEditorRow(current.steps, from, to) }));
+    return true;
+  };
+  const sortableLabels: TemplateSortableListLabels = {
+    handle: label => t("inventory.templates.editor.reorderHandle", { label }),
+    moveUp: label => t("inventory.templates.editor.moveUp", { label }),
+    moveDown: label => t("inventory.templates.editor.moveDown", { label }),
+    position: (position, total) => t("inventory.templates.editor.itemPosition", { position, total }),
+    instructions: t("inventory.templates.editor.reorderInstructions"),
+    roleDescription: t("inventory.templates.editor.sortableItem"),
+    pickedUp: (label, position, total) => t("inventory.templates.editor.reorderPickedUp", { label, position, total }),
+    moved: (label, position, total) => t("inventory.templates.editor.reorderMoved", { label, position, total }),
+    dropped: (label, position, total) => t("inventory.templates.editor.reorderDropped", { label, position, total }),
+    cancelled: label => t("inventory.templates.editor.reorderCancelled", { label }),
+  };
+
   // Steps
   const addStep = () => {
-    const step = createTemplateStep();
-    setTemplate((current) => {
-      const withStep: InventoryTemplate = {
+    if (!editable) return;
+    const row = stepRow(createTemplateStep(), true);
+    edit((current) => {
+      const values = templateFromEditorDraft(current);
+      const withStep: TemplateEditorDraft = {
         ...current,
-        steps: [
-          ...current.steps,
-          { ...step, step_key: nextUniqueStepKey(step.step_key), sort_order: current.steps.length },
-        ],
+        steps: [...current.steps, { ...row, value: { ...row.value, step_key: nextUniqueStepKey(row.value.step_key, values.steps), sort_order: current.steps.length } }],
       };
-      const bound = autoBindStepReferences(withStep, withStep.steps.length - 1);
-      return { ...withStep, steps: bound.steps, variables: bound.variables };
+      return applyAutoBoundReferences(withStep, autoBindStepReferences(templateFromEditorDraft(withStep), withStep.steps.length - 1));
     });
-    setOpenSteps((prev) => [...prev, true]); // open the new one for editing
+    requestAnimationFrame(() => focusEditorRow(row.editorId));
   };
   // General-purpose patch for a single step's fields. The dedicated step-key
   // rename path lives in `renameStep` so reference integrity is maintained.
   const updateStep = (index: number, p: Partial<TemplateStep>) => {
-    const next = [...template.steps];
-    const current = next[index];
-    if (!current) return;
-    next[index] = { ...current, ...p };
-    patch({ steps: next });
+    edit(current => ({ ...current, steps: current.steps.map((row, i) => i === index
+      ? { ...row, value: { ...row.value, ...p } } : row) }));
   };
   const renameStep = (index: number, rawKey: string) => {
-    setTemplate((current) => {
-      const target = current.steps[index];
+    edit((current) => {
+      const values = templateFromEditorDraft(current);
+      const target = values.steps[index];
       if (!target) return current;
       const oldKey = target.step_key;
-      const renamed = current.steps.map((s, i) =>
+      const renamed = values.steps.map((s, i) =>
         i === index ? { ...s, step_key: rawKey } : s,
       );
       // Cascade only when the key actually changed to a non-empty value.
@@ -284,47 +290,40 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
         rawKey.trim() && rawKey !== oldKey
           ? renameStepReferences(renamed, oldKey, rawKey)
           : renamed;
-      return { ...current, steps: cascaded };
+      return { ...current, steps: current.steps.map((row, i) => ({ ...row, value: cascaded[i]! })) };
     });
   };
   const removeStep = (index: number) => {
-    const removedKey = template.steps[index]?.step_key;
-    const next = template.steps
-      .filter((_, i) => i !== index)
-      .map((s) => ({
-        ...s,
-        depends_on_step_keys: s.depends_on_step_keys.filter((k) => k !== removedKey),
-      }));
-    // Blank any payload value that still points at the removed step so
-    // validation re-flags the now-missing required field.
-    patch({ steps: removedKey ? clearStepReferences(next, removedKey) : next });
-    setOpenSteps((prev) => prev.filter((_, i) => i !== index));
+    edit(current => {
+      const removedKey = current.steps[index]?.value.step_key;
+      const remaining = current.steps.filter((_, i) => i !== index);
+      const next = remaining.map(row => ({ ...row.value, depends_on_step_keys: row.value.depends_on_step_keys.filter(key => key !== removedKey) }));
+      const cleared = removedKey ? clearStepReferences(next, removedKey) : next;
+      return { ...current, steps: remaining.map((row, i) => ({ ...row, value: cleared[i]! })) };
+    });
   };
   const setStepOpen = (index: number, open: boolean) =>
-    setOpenSteps((prev) => {
-      const next = prev.length === template.steps.length ? [...prev] : template.steps.map((_, i) => prev[i] ?? false);
-      next[index] = open;
-      return next;
-    });
+    setDraft(current => ({ ...current, steps: current.steps.map((row, i) => i === index ? { ...row, open } : row) }));
   const replaceStepResource = (index: number, resourceType: TemplateStep["resource_type"]) => {
     const definition = TEMPLATE_RESOURCE_DEFINITION_MAP[resourceType];
-    setTemplate((current) => {
+    edit((current) => {
+      const values = templateFromEditorDraft(current);
       const reset: InventoryTemplate = {
-        ...current,
-        steps: current.steps.map((s, i) =>
+        ...values,
+        steps: values.steps.map((s, i) =>
           i === index
             ? {
                 ...s,
                 resource_type: resourceType,
                 title: definition.defaultTitle,
-                step_key: nextUniqueStepKey(definition.defaultStepKey, index),
+                step_key: nextUniqueStepKey(definition.defaultStepKey, values.steps, index),
                 payload_template: {},
               }
             : s,
         ),
       };
       const bound = autoBindStepReferences(reset, index);
-      return { ...reset, steps: bound.steps, variables: bound.variables };
+      return applyAutoBoundReferences(current, bound);
     });
   };
   const toggleDependency = (index: number, depKey: string) => {
@@ -383,18 +382,23 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
 
   // ── Submit ────────────────────────────────────────────────────────────────
 
+  const focusEditorRow = (editorId: string) => {
+    const row = scrollRef.current?.querySelector<HTMLElement>(`[data-editor-row="${editorId}"]`);
+    row?.scrollIntoView({ block: "nearest" });
+    row?.querySelector<HTMLElement>('input, textarea, [role="combobox"]')?.focus({ preventScroll: true });
+  };
+
   const handleSave = () => {
-    if (!canSave) return;
+    if (!editable) return;
     setSubmitted(true);
     const first = issues[0];
     if (first) {
-      // Setting `submitted` force-expands any collapsed item carrying an issue
-      // (see isVariableOpen / isStepOpen). Defer scroll+focus one frame so the
-      // newly-mounted CollapsibleContent exists before we target its field.
+      setActiveTab(first.section);
+      // The panel and its invalid row must mount before targeting the control.
       requestAnimationFrame(() => {
         const el = scrollRef.current?.querySelector<HTMLElement>(`[data-issue="${first.target}"]`);
         if (!el) return;
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.scrollIntoView({ block: "center" });
         // Focus the actual control, never the FieldHelp tooltip button rendered
         // inside the label (it precedes the input in DOM order). Native inputs +
         // Radix combobox/contenteditable or an explicitly labelled group; a row
@@ -414,21 +418,6 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
   // Because `issues` is derived live on every render, fixing the last issue hides
   // the banner immediately without any reset effect.
 
-  // ── Section header with live issue badge ──────────────────────────────────
-
-  const SectionBadge = ({ section }: { section: SectionId }) => {
-    const count = issuesBySection[section].length;
-    if (count === 0) {
-      return <CheckCircle2 className="h-3.5 w-3.5 text-status-positive/70" aria-hidden />;
-    }
-    return (
-      <Badge variant="outline" className="h-5 gap-1 text-xs text-status-warning">
-        <AlertCircle className="h-3 w-3" />
-        {count}
-      </Badge>
-    );
-  };
-
   // Small destructive count shown on a collapsed item's summary row so its
   // hidden validation errors stay visible at a glance.
   const IssuePip = ({ count }: { count: number }) => {
@@ -444,17 +433,15 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
     );
   };
 
-  const sections: Array<{ id: SectionId; label: string; icon: typeof VarIcon }> = [
-    { id: "meta", label: t("inventory.templates.editor.sectionMeta"), icon: Settings2 },
-    { id: "variables", label: t("inventory.templates.builder.variables"), icon: VarIcon },
-    { id: "steps", label: t("inventory.templates.builder.steps"), icon: Layers },
+  const sections: Array<{ value: EditorTab; label: string; icon: typeof VarIcon }> = [
+    { value: "meta", label: t("inventory.templates.editor.sectionMeta"), icon: Settings2 },
+    { value: "variables", label: `${t("inventory.templates.builder.variables")} (${template.variables.length})`, icon: VarIcon },
+    { value: "steps", label: `${t("inventory.templates.builder.steps")} (${template.steps.length})`, icon: Layers },
+    { value: "preview", label: t("inventory.templates.editor.previewTab"), icon: Eye },
   ];
-
-  const goToSection = (id: SectionId) => {
-    scrollRef.current
-      ?.querySelector(`#section-${id}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  const tabs = sections.map(section => ({ ...section, label: section.value !== "preview" && submitted && issuesBySection[section.value].length
+    ? `${section.label} · ${t("inventory.templates.editor.tabErrors", { count: issuesBySection[section.value].length })}`
+    : section.label }));
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
@@ -510,7 +497,6 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
 
   return (
     <EntityEditorPage scope="routed"
-      width="standard"
       title={template.name.trim() || (initial ? t("inventory.templates.builder.editTitle") : t("inventory.templates.createTemplate"))}
       onBack={onCancel}
       backLabel={t("inventory.templates.editor.backToList")}
@@ -519,43 +505,18 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
       onSave={canSave ? handleSave : undefined}
       saveLabel={initial ? t("saveChanges") : t("inventory.templates.createTemplate")}
       saving={saving}
-      dirty={canSave && JSON.stringify(template) !== JSON.stringify(initial ?? emptyTemplate())}
+      dirty={canSave && JSON.stringify(template) !== JSON.stringify(baseline)}
+      dirtyMessage={t("editor.unsavedChanges")}
       error={submitted && issues.length > 0 ? <p className="text-xs text-status-warning">{t("inventory.templates.editor.issueCount", { count: issues.length })}</p> : undefined}
     >
 
-      {/* Two-column workspace */}
-      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        {/* Editor column */}
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* Section anchors */}
-          <nav
-            className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-3 py-2"
-            aria-label={t("inventory.templates.editor.sections")}
-          >
-            {sections.map((s) => (
-              <Button
-                variant="ghost"
-                key={s.id}
-                type="button"
-                onClick={() => goToSection(s.id)}
-                className="shrink-0 gap-2 text-sm text-muted-foreground"
-              >
-                <s.icon className="h-3.5 w-3.5" />
-                {s.label}
-                <SectionBadge section={s.id} />
-              </Button>
-            ))}
-          </nav>
-
-           <div ref={scrollRef} className="min-w-0">
-             <div className="flex min-w-0 flex-col gap-6">
-            {/* Friendly intro: what templates are for. */}
-             <p className="text-xs leading-relaxed text-muted-foreground text-balance">
-              {t("inventory.templates.editor.intro")}
-            </p>
+      <Tabs value={activeTab} onValueChange={value => setActiveTab(value as EditorTab)} className="min-w-0">
+        <SectionTabs items={tabs} aria-label={t("inventory.templates.editor.sections")} />
+        <div ref={scrollRef} className="min-w-0 py-4">
             {/* ── META ─────────────────────────────────────────────────── */}
-             <div id="section-meta" className="scroll-mt-4">
-             <FormSection title={t("inventory.templates.editor.sectionMeta")} contentClassName="flex flex-col gap-4">
+             <TabsContent value="meta" className="mt-0">
+             <fieldset disabled={!editable} className="min-w-0">
+             <FormSection title={t("inventory.templates.editor.sectionMeta")} description={t("inventory.templates.editor.intro")} contentClassName="flex flex-col gap-4">
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div data-issue="meta-name">
@@ -608,7 +569,7 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[10rem_1fr]">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <FormSelect<InventoryTemplate["status"]>
                     id="meta-status"
@@ -650,13 +611,15 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                   {"{{site_name}}"} · {"{{steps.site.id}}"}
                 </p>
               </div>
-             </FormSection></div>
+             </FormSection></fieldset></TabsContent>
 
             {/* ── VARIABLES ────────────────────────────────────────────── */}
-             <div id="section-variables" className="scroll-mt-4">
-             <FormSection divider title={t("inventory.templates.builder.variables")} contentClassName="flex flex-col gap-4" action={<>
+             <TabsContent value="variables" className="mt-0">
+             <FormSection title={t("inventory.templates.builder.variables")} description={t("inventory.templates.editor.variableOrderHelp")} contentClassName="flex flex-col gap-4" action={<>
                <FieldHelp text={t("inventory.templates.editor.help_variables")} />
-               <Badge variant="outline" className="text-xs">{template.variables.length}</Badge>
+               <Button variant="outline" size="sm" disabled={!editable} onClick={addVariable} className="gap-1.5">
+                 <Plus className="size-4" aria-hidden />{t("inventory.templates.builder.addVariable")}
+               </Button>
              </>}>
 
               {template.variables.length === 0 && (
@@ -665,8 +628,13 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                 </p>
               )}
 
-              <div className="space-y-2">
-                {template.variables.map((variable, index) => {
+              <TemplateSortableList disabled={!editable} ariaLabel={t("inventory.templates.builder.variables")}
+                items={draft.variables.map((row, index) => ({ id: row.editorId, label: row.value.label || row.value.key || t("inventory.templates.editor.variablePosition", { position: index + 1 }) }))}
+                labels={sortableLabels} onMove={moveVariable}>
+                {(index, { dragHandle, moveControls }) => {
+                  const row = draft.variables[index];
+                  if (!row) return null;
+                  const variable = row.value;
                   const keyIssue = issueFor(`var-${index}-key`);
                   const open = isVariableOpen(index);
                   const issueCount = variableIssueCount(index);
@@ -677,31 +645,35 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                   const referenceResource = templateReferenceFor(template, variable)?.resource ?? null;
                   return (
                     <Collapsible
-                      key={`var-${index}`}
+                      key={row.editorId}
+                      data-editor-row={row.editorId}
                       open={open}
                       onOpenChange={(next) => setVariableOpen(index, next)}
                       className={cn(
-                        "border-b pb-4 transition-colors",
+                        "rounded-md border bg-background p-2 transition-colors",
                         issueCount > 0 ? "border-status-negative/40" : "border-border",
                       )}
                     >
-                      {/* Collapsed summary row — the whole row toggles the card. */}
+                      <div className="flex min-w-0 flex-wrap items-center gap-1">
+                      {dragHandle}
                       <CollapsibleTrigger
-                        className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:rounded-b-none"
+                        className="group flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <ChevronDown
                           className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
                           aria-hidden
                         />
-                        <code className="shrink-0 font-mono text-xs text-foreground">
+                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <code className="order-2 truncate font-mono text-xs text-muted-foreground">
                           {`{{${variable.key || "var"}}}`}
                         </code>
                         {variable.label && (
-                          <span className="truncate text-xs text-muted-foreground">
+                          <span className="order-1 truncate text-sm font-medium">
                             {variable.label}
                           </span>
                         )}
-                        <Badge variant="outline" className="ml-auto h-5 shrink-0 text-xs">
+                        </span>
+                        <Badge variant="outline" className="ml-auto hidden h-5 shrink-0 text-xs sm:inline-flex">
                           {typeLabel}
                         </Badge>
                         {variable.required && (
@@ -713,8 +685,14 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                         )}
                         <IssuePip count={issueCount} />
                       </CollapsibleTrigger>
+                      {moveControls}
+                      <Button variant="ghost" size="icon-sm" disabled={!editable} onClick={() => removeVariable(index)}
+                        className="text-muted-foreground hover:text-destructive" aria-label={t("inventory.templates.builder.deleteVariable")}>
+                        <Trash2 className="size-4" aria-hidden />
+                      </Button>
+                      </div>
 
-                      <CollapsibleContent className="pt-4">
+                      <CollapsibleContent className="pt-4"><fieldset disabled={!editable} className="min-w-0">
                       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-12">
                         <div className="sm:col-span-4" data-issue={`var-${index}-key`}>
                           <FormField
@@ -819,39 +797,23 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                               /></FormFieldControl>
                             </div>
                           </FormField>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:text-destructive"
-                            onClick={() => removeVariable(index)}
-                            aria-label={t("inventory.templates.builder.deleteVariable")}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       </div>
-                      </CollapsibleContent>
+                      </fieldset></CollapsibleContent>
                     </Collapsible>
                   );
-                })}
-              </div>
+                }}
+              </TemplateSortableList>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 w-full gap-1.5 text-sm"
-                onClick={addVariable}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t("inventory.templates.builder.addVariable")}
-              </Button>
-             </FormSection></div>
+             </FormSection></TabsContent>
 
             {/* ── STEPS ────────────────────────────────────────────────── */}
-             <div id="section-steps" className="scroll-mt-4" data-issue="steps-add" tabIndex={-1}>
-             <FormSection divider title={t("inventory.templates.builder.steps")} contentClassName="flex flex-col gap-4" action={<>
+             <TabsContent value="steps" className="mt-0" data-issue="steps-add" tabIndex={-1}>
+             <FormSection title={t("inventory.templates.builder.steps")} description={t("inventory.templates.editor.stepOrderHelp")} contentClassName="flex flex-col gap-4" action={<>
                <FieldHelp text={t("inventory.templates.editor.help_steps")} />
-               <Badge variant="outline" className="text-xs">{template.steps.length}</Badge>
+               <Button variant="outline" size="sm" disabled={!editable} onClick={addStep} className="gap-1.5">
+                 <Plus className="size-4" aria-hidden />{t("inventory.templates.builder.addStep")}
+               </Button>
              </>}>
 
               {template.steps.length === 0 && (
@@ -860,8 +822,14 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                 </p>
               )}
 
-              <div className="space-y-2">
-                {template.steps.map((step, index) => {
+              {orderError && <p role="alert" className="rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-sm text-status-warning">{orderError}</p>}
+              <TemplateSortableList disabled={!editable} ariaLabel={t("inventory.templates.builder.steps")}
+                items={draft.steps.map((row, index) => ({ id: row.editorId, label: row.value.title || row.value.step_key || t("inventory.templates.editor.stepPosition", { position: index + 1 }) }))}
+                labels={sortableLabels} onMove={moveStep}>
+                {(index, { dragHandle, moveControls }) => {
+                  const row = draft.steps[index];
+                  if (!row) return null;
+                  const step = row.value;
                   const definition = TEMPLATE_RESOURCE_DEFINITION_MAP[step.resource_type];
                   const keyIssue = issueFor(`step-${index}-key`);
                   const depsIssue = issueFor(`step-${index}-deps`);
@@ -873,17 +841,19 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                   const depCount = step.depends_on_step_keys.length;
                   return (
                     <Collapsible
-                      key={`step-${index}`}
+                      key={row.editorId}
+                      data-editor-row={row.editorId}
                       open={open}
                       onOpenChange={(next) => setStepOpen(index, next)}
                       className={cn(
-                        "border-b pb-4 transition-colors",
+                        "rounded-md border bg-background p-2 transition-colors",
                         issueCount > 0 ? "border-status-negative/40" : "border-border",
                       )}
                     >
                       {/* Collapsed summary row + always-available delete control. */}
-                      <div className="flex items-center gap-1.5 pr-2">
-                        <CollapsibleTrigger className="group flex min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:rounded-b-none">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1">
+                        {dragHandle}
+                        <CollapsibleTrigger className="group flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                           <ChevronDown
                             className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
                             aria-hidden
@@ -907,10 +877,12 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                           </span>
                           <IssuePip count={issueCount} />
                         </CollapsibleTrigger>
+                        {moveControls}
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                           className="shrink-0 text-muted-foreground hover:text-destructive"
+                           disabled={!editable}
                           onClick={() => removeStep(index)}
                           aria-label={t("inventory.templates.builder.deleteStep")}
                         >
@@ -918,7 +890,7 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                         </Button>
                       </div>
 
-                      <CollapsibleContent className="pt-4">
+                      <CollapsibleContent className="pt-4"><fieldset disabled={!editable} className="min-w-0">
                       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-12">
                         <div className="space-y-1.5 sm:col-span-4">
                           <FormSelect<TemplateStep["resource_type"]>
@@ -1035,6 +1007,7 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                         </div>
                       </div>
 
+                      </fieldset>
                       {/* Payload fields */}
                       <Collapsible defaultOpen className="mt-3">
                         <CollapsibleTrigger className="flex min-h-8 w-full items-center gap-1.5 rounded-md py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&[data-state=open]>svg]:rotate-180">
@@ -1044,10 +1017,11 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                             {definition.payloadFields.length}
                           </Badge>
                         </CollapsibleTrigger>
-                        <CollapsibleContent className="pt-2">
+                        <CollapsibleContent className="pt-2"><fieldset disabled={!editable} className="min-w-0">
                           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
                             {definition.payloadFields.map((field) => {
                               const fieldId = `step-${index}-field-${field.key}`;
+                              const fieldLabel = templatePayloadFieldLabel(step.resource_type, field, t);
                               const fieldIssue = issueFor(fieldId);
                               const supportsTokens = field.valueKind === "string";
                               return (
@@ -1055,7 +1029,7 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                                   <FormField
                                     label={
                                       <>
-                                        {field.label}
+                                        {fieldLabel}
                                         <FieldHelp text={fieldHelpText(field)} />
                                       </>
                                     }
@@ -1087,7 +1061,7 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                                             insertPayloadToken(index, field.key, token)
                                           }
                                           ariaLabel={t("inventory.templates.editor.insertTokenInto", {
-                                            field: field.label,
+                                            field: fieldLabel,
                                           })}
                                         />
                                       )}
@@ -1097,7 +1071,7 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                               );
                             })}
                           </div>
-                        </CollapsibleContent>
+                        </fieldset></CollapsibleContent>
                       </Collapsible>
 
                       {/* Variables used by this step */}
@@ -1105,28 +1079,15 @@ const TemplateEditor = ({ initial, saving, canSave, onSave, onCancel }: Props) =
                       </CollapsibleContent>
                     </Collapsible>
                   );
-                })}
-              </div>
+                }}
+              </TemplateSortableList>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 w-full gap-1.5 text-sm"
-                onClick={addStep}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t("inventory.templates.builder.addStep")}
-              </Button>
-             </FormSection></div>
-            </div>
-          </div>
+             </FormSection></TabsContent>
+        <TabsContent value="preview" className="mt-0">
+          <TemplateEditorPreview template={template} />
+        </TabsContent>
         </div>
-
-        {/* Preview rail */}
-        <div className="hidden min-w-0 lg:block">
-          <TemplatePreviewRail template={template} templateId={initial?.id ?? null} />
-        </div>
-      </div>
+      </Tabs>
     </EntityEditorPage>
   );
 };

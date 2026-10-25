@@ -46,11 +46,7 @@ RENDERED_TEMPLATES = (("install.sh",), ("README.md",))
 RENDERED_TEMPLATE_PATHS = tuple("/".join(relative) for relative in RENDERED_TEMPLATES)
 TIMEOUT = 120
 MAX_CHANGELOG_BYTES = 1024 * 1024
-MAX_CHANGELOG_COMMITS = 4096
 INITIAL_VERSION = "1.0.0"
-CONVENTIONAL_SUBJECT = re.compile(
-    r"(?P<type>feat|fix|perf|refactor|docs|build|ci|chore|style|test|revert)"
-    r"(?:\([^()\n]*\))?!?:\s*(?P<subject>.+)")
 
 
 class PublishError(ValueError):
@@ -286,28 +282,12 @@ def preceding_changelog(directory: Path, parent: str) -> str:
         raise PublishError("preceding public changelog is not UTF-8") from None
 
 
-def changelog_subject(subject: str) -> str:
-    # Subjects are the only private commit metadata eligible for publication.
-    # Remove references, not their linked prose; never emit URLs or identifiers.
-    subject = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", subject)
-    subject = re.sub(r"(?:[a-zA-Z][a-zA-Z0-9+.-]*://|git@)\S+", "", subject)
-    subject = re.sub(r"\b[A-Z][A-Z0-9]*-[0-9]+\b", "", subject)
-    subject = re.sub(r"\b[0-9a-fA-F]{40,64}\b", "", subject)
-    subject = re.sub(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]+\b", "", subject)
-    subject = re.sub(r"\b(?:pipeline|пайплайн)\s*#?[0-9]+\b", "", subject, flags=re.I)
-    subject = re.sub(r"\(\s*\)|\[\s*\]", "", subject)
-    subject = " ".join(subject.split()).strip(" :;,-")
-    # Treat the result as plain Markdown text, never a link, heading or HTML.
-    return re.sub(r"([\\`*_\[\]<>#])", r"\\\1", subject)
-
-
 def write_changelog(source: Path, commit: str, directory: Path, parent: str,
-                    version: str, notes_path: Path) -> None:
+                    version: str) -> None:
     target = snapshot_target(directory, ("CHANGELOG.md",))
     previous = preceding_changelog(directory, parent)
     if re.search(rf"^##\s+\[?{re.escape(version)}\]?(?:\s|$)", previous, flags=re.M):
         raise PublishError("preceding public changelog already contains the selected version")
-    groups = {"Added": [], "Fixed": [], "Changed": []}
     if parent:
         body = git(directory, "show", "-s", "--format=%B", parent).decode().rstrip("\n") + "\n"
         provenance = MESSAGE.fullmatch(body)
@@ -319,32 +299,10 @@ def write_changelog(source: Path, commit: str, directory: Path, parent: str,
         if run_git(source, "merge-base", "--is-ancestor", previous_source, commit,
                    allowed=(0, 1, 128)).returncode != 0:
             raise PublishError("preceding public source is not an ancestor of the selected source")
-        source_range = f"{previous_source}..{commit}"
-        count = int(git(source, "rev-list", "--count", source_range))
-        if count > MAX_CHANGELOG_COMMITS:
-            raise PublishError("public changelog source range exceeds commit limit")
-        with notes_path.open("xb") as stream:
-            git(source, "log", "--topo-order", "--reverse", "--format=%s", source_range, output=stream)
-        if notes_path.stat().st_size > MAX_CHANGELOG_BYTES:
-            raise PublishError("public changelog source notes exceed size limit")
-        try:
-            subjects = notes_path.read_text(encoding="utf-8").splitlines()
-        except UnicodeDecodeError:
-            raise PublishError("public changelog subjects are not UTF-8") from None
-        for subject in subjects:
-            match = CONVENTIONAL_SUBJECT.fullmatch(subject)
-            if match is None:
-                continue
-            note = changelog_subject(match["subject"])
-            category = {"feat": "Added", "fix": "Fixed", "revert": "Fixed"}.get(match["type"], "Changed")
-            if note and note not in groups[category]:
-                groups[category].append(note)
-    if not any(groups.values()):
-        groups["Changed"].append("Initial public snapshot." if not parent else "Updated public snapshot.")
-    section = f"## {version}\n"
-    for category, notes in groups.items():
-        if notes:
-            section += f"\n### {category}\n\n" + "".join(f"- {note}\n" for note in notes)
+    # Private commit prose can contain client details even without tracker IDs.
+    # Generate no release prose from it; retain only already-public history.
+    note = "Initial public snapshot." if not parent else "Updated public snapshot."
+    section = f"## {version}\n\n### Changed\n\n- {note}\n"
     # Keep published history verbatim. A missing predecessor file starts here;
     # it is not evidence from which to fabricate older release notes.
     content = "# Changelog\n\n" + section
@@ -417,7 +375,7 @@ def publish(*, source: Path, release: Path, expected_commit: str,
         # A historical retry must reconstruct that version from its own parent,
         # not incorporate changelog entries from today's newer public HEAD.
         parent = history[version][2] if version in history else refs.get("refs/heads/main", "")
-        write_changelog(source, expected_commit, projected, parent, version, private / "notes")
+        write_changelog(source, expected_commit, projected, parent, version)
         git(projected, "add", "--all", "--force")
         if run_git(projected, "grep", "--cached", "-a", "-l", "-F", "-e",
                    VERSION_TOKEN, "--", *RENDERED_TEMPLATE_PATHS,

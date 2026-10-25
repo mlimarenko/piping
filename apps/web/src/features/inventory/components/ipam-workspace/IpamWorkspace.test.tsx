@@ -15,7 +15,7 @@ const apiMocks = vi.hoisted(() => ({
   listIpAddressesForPrefix: vi.fn(),
   listIpRangesForPrefix: vi.fn(),
   listPrefixTree: vi.fn(),
-  listResources: vi.fn(),
+  listAllResources: vi.fn(),
   previewNextAvailablePrefix: vi.fn(),
 }));
 
@@ -27,7 +27,7 @@ vi.mock("@/features/inventory/api", async (importOriginal) => {
     listIpAddressesForPrefix: apiMocks.listIpAddressesForPrefix,
     listIpRangesForPrefix: apiMocks.listIpRangesForPrefix,
     listPrefixTree: apiMocks.listPrefixTree,
-    listResources: apiMocks.listResources,
+    listAllResources: apiMocks.listAllResources,
     previewNextAvailablePrefix: apiMocks.previewNextAvailablePrefix,
   };
 });
@@ -124,7 +124,7 @@ describe("IpamWorkspace", () => {
     apiMocks.listIpAddressesForPrefix.mockReset();
     apiMocks.listIpRangesForPrefix.mockReset();
     apiMocks.listPrefixTree.mockReset();
-    apiMocks.listResources.mockReset();
+    apiMocks.listAllResources.mockReset();
     apiMocks.previewNextAvailablePrefix.mockReset();
     apiMocks.createResource.mockResolvedValue({
       id: "created-prefix",
@@ -134,12 +134,7 @@ describe("IpamWorkspace", () => {
       status: "active",
       siteId: "site-a",
     });
-    apiMocks.listResources.mockResolvedValue({
-      items: [],
-      total: 0,
-      limit: 50,
-      offset: 0,
-    });
+    apiMocks.listAllResources.mockResolvedValue([]);
     apiMocks.listIpAddressesForPrefix.mockResolvedValue({
       items: [
         {

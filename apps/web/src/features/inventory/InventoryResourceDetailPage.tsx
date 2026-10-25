@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Database } from "lucide-react";
+import { ArrowLeft, Database } from "lucide-react";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import EntityDetail from "@/shared/ui-shared/EntityDetail";
 import PageState from "@/shared/ui-shared/PageState";
+import PageChrome from "@/shared/ui-shared/PageChrome";
 import { Button } from "@/shared/ui-primitives/button";
 import { customFieldEntityKind, getResourceWithRaw, type ResourceWithRaw } from "./api";
 import { inventoryResourceEditPath, isInventoryEntityKey } from "./resourceLinks";
@@ -54,10 +55,13 @@ export default function InventoryResourceDetailPage() {
   const title = query.data?.resource.name ?? (entity
     ? t(`inventory.resources.entities.${entity}.one`, { defaultValue: tabConfig.find(config => config.key === entity)?.singular ?? entity })
     : t("inventory.resources.title"));
-  const state = (children: ReactNode) => <PageState title={title} icon={Database} backHref={backHref}>{children}</PageState>;
-  if (!readable) return state(<p role="alert">{t("accessDenied.title")}</p>);
-  if (!entity || !id || (query.error as { status?: number } | null)?.status === 404 || (query.isSuccess && !query.data)) return state(<div role="alert">{t("inventory.resources.notFound")}</div>);
-  if (query.isPending) return state(<p role="status">{t("loading")}</p>);
-  if (query.isError) return state(<div role="alert">{t("inventory.resources.form.loadFailed")}<Button onClick={() => void query.refetch()}>{t("retry")}</Button></div>);
+  const state = (children: ReactNode) => <div className="flex min-w-0 flex-col gap-4">
+    <PageChrome title={title} icon={Database} actions={<Button asChild variant="ghost"><Link to={backHref}><ArrowLeft className="size-4" />{t("back")}</Link></Button>} />
+    {children}
+  </div>;
+  if (!readable) return state(<PageState kind="error" title={t("accessDenied.title")} />);
+  if (!entity || !id || (query.error as { status?: number } | null)?.status === 404 || (query.isSuccess && !query.data)) return state(<PageState kind="error" title={t("inventory.resources.notFound")} />);
+  if (query.isPending) return state(<PageState kind="loading" title={t("loading")} />);
+  if (query.isError) return state(<PageState kind="error" title={t("inventory.resources.form.loadFailed")} action={<Button onClick={() => void query.refetch()}>{t("retry")}</Button>} />);
   return <DetailBody key={`${entity}:${id}`} entity={entity} item={query.data} backHref={backHref} />;
 }

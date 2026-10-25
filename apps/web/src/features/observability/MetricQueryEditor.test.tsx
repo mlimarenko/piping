@@ -108,7 +108,7 @@ describe("Metric query editor test button", () => {
   function expectFormOwner() {
     const owner = screen.getByTestId("entity-editor-page");
     expect(document.querySelectorAll('[data-slot="page-layout"], [data-slot="entity-editor-page"]')).toHaveLength(1);
-    expect(owner).toHaveClass("max-w-[960px]");
+    expect(owner).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   }
 
@@ -127,8 +127,8 @@ describe("Metric query editor test button", () => {
     if (state === "pending") apiMocks.listMetricQueries.mockReturnValue(new Promise(() => {}));
     if (state === "error") apiMocks.listMetricQueries.mockRejectedValue(new Error("Unavailable"));
     renderPage("/observability/metrics/metric-1/edit");
-    if (state === "pending") expect(await screen.findByLabelText(/loading/i)).toBeInTheDocument();
-    else await waitFor(() => expect(screen.queryByLabelText(/loading/i)).not.toBeInTheDocument());
+    if (state === "pending") expect(await screen.findByRole("status")).toHaveTextContent(/loading/i);
+    else await waitFor(() => expect(screen.queryByText(/loading/i)).not.toBeInTheDocument());
     expectFormOwner();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^(save|create)$/i })).not.toBeInTheDocument();

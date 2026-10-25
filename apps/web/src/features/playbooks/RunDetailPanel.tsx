@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import PageState from "@/shared/ui-shared/PageState";
 
 import { cn } from "@/shared/lib/utils";
 import {
@@ -262,13 +262,10 @@ export const RunDetailPanel = ({
 
   let eventStreamContent: ReactNode;
   if ((groupId && !canReadGroup) || (!groupId && fallbackRun && !canReadRun)) {
-    eventStreamContent = <p role="alert">{t("accessDenied.title")}</p>;
+    eventStreamContent = <PageState kind="error" title={t("accessDenied.title")} />;
   } else if (awaitingGroupData) {
     eventStreamContent = (
-      <div className="flex h-full items-center justify-center rounded-md border border-border bg-background py-12 text-sm text-muted-foreground">
-        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-        {t("loading")}
-      </div>
+      <PageState kind="loading" title={t("loading")} />
     );
   } else if (groupId) {
     eventStreamContent = (
@@ -291,9 +288,7 @@ export const RunDetailPanel = ({
     );
   } else {
     eventStreamContent = (
-      <div className="flex h-full items-center justify-center rounded-md border border-border bg-background py-12 text-sm text-muted-foreground">
-        {t("playbooks.runDetail.selectRun")}
-      </div>
+      <PageState kind="empty" title={t("playbooks.runDetail.selectRun")} />
     );
   }
 
@@ -354,14 +349,9 @@ export const RunDetailPanel = ({
                 ) : null}
               </p>
               {loadingGroup ? (
-                <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  {t("loading")}
-                </div>
+                <PageState kind="loading" title={t("loading")} />
               ) : runs.length === 0 ? (
-                <p className="px-1 py-6 text-center text-sm text-muted-foreground">
-                  {t("playbooks.runDetail.noRuns")}
-                </p>
+                <PageState kind="empty" title={t("playbooks.runDetail.noRuns")} />
               ) : compact ? (
                 <div className="min-h-0 shrink-0">
                   <div className="flex max-h-[22vh] flex-wrap gap-1.5 overflow-y-auto px-3 pb-1.5">

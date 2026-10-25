@@ -180,7 +180,7 @@ export default function TargetSetEditorPage() {
 
   if (editing && !targetSetQuery.data) {
     return (
-      <EntityEditorPage scope="routed" width="form"
+      <EntityEditorPage scope="routed"
         title={t("playbooks.page.dialogs.targetSet.editTitle")}
         description={t("playbooks.page.dialogs.targetSet.description")}
         onBack={() => back()} backLabel={t("back")} cancelLabel={t("cancel")}

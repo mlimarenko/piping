@@ -1,7 +1,8 @@
 import { useApiMutation } from "@/shared/api/hooks";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import SurfaceCard from "@/shared/ui-shared/SurfaceCard";
+import SurfaceCard, { SurfaceCardHeader, SurfaceCardContent } from "@/shared/ui-shared/SurfaceCard";
+import PageState from "@/shared/ui-shared/PageState";
 import FormField from "@/shared/ui-shared/FormField";
 import FormSelect from "@/shared/ui-shared/FormSelect";
 import EntitySelect from "@/shared/ui-shared/EntitySelect";
@@ -46,11 +47,8 @@ const AccessCheck = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <SurfaceCard className="overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
-          <Search className="size-4 text-primary" />
-          <h2 className="text-sm font-medium text-foreground">{t("accessControl.accessCheck.title")}</h2>
-        </div>
-        <div className="p-4 space-y-3">
+        <SurfaceCardHeader title={<span className="flex items-center gap-2"><Search className="size-4 text-primary" />{t("accessControl.accessCheck.title")}</span>} />
+        <SurfaceCardContent className="flex flex-col gap-3">
            <FormField
              htmlFor="access-check-subject"
             label={t("accessControl.accessCheck.subjectLabel")}
@@ -109,20 +107,14 @@ const AccessCheck = () => {
               </>
             )}
           </Button>
-        </div>
+        </SurfaceCardContent>
       </SurfaceCard>
 
       <SurfaceCard className="overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
-          <Shield className="size-4 text-primary" />
-          <h2 className="text-sm font-medium text-foreground">{t("accessControl.accessCheck.results")}</h2>
-        </div>
-        <div className="p-4">
+        <SurfaceCardHeader title={<span className="flex items-center gap-2"><Shield className="size-4 text-primary" />{t("accessControl.accessCheck.results")}</span>} />
+        <SurfaceCardContent>
           {!evaluated || !result ? (
-            <div className="flex w-full flex-col items-center justify-center py-12 text-center">
-              <Shield className="mb-4 h-8 w-8 text-muted-foreground" />
-              <p className="mx-auto max-w-xs text-xs text-muted-foreground text-balance">{t("accessControl.accessCheck.noResult")}</p>
-            </div>
+            <PageState kind="empty" title={t("accessControl.accessCheck.noResult")} />
           ) : (
             <div className="space-y-4 animate-fade-in">
               <div className={cn("flex items-center gap-3 p-3 rounded-lg border",
@@ -176,7 +168,7 @@ const AccessCheck = () => {
               </div>
             </div>
           )}
-        </div>
+        </SurfaceCardContent>
       </SurfaceCard>
     </div>
   );

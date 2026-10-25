@@ -84,9 +84,6 @@ for (const viewport of [
       await page.setViewportSize(viewport);
       await page.goto("/inventory/resources?entity=Sites");
       await expectRoutedPage(page);
-      if (viewport.width < 768) {
-        await page.getByRole("button", { name: /navigation and search|навигация и поиск/i }).click();
-      }
       const picker = page.getByRole("combobox", { name: /DCIM/i });
       await expect(picker).toContainText(/sites|площадк/i);
       await picker.click();

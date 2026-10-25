@@ -5195,7 +5195,7 @@ export interface TemplatePreviewResult {
  * POST /api/v1/inventory/templates/{id}/preview-run — server-side dry run that
  * resolves placeholders (`{{var}}`, `{{steps.<key>.id}}`) against the supplied
  * variables and returns the payloads that *would* be created, without writing
- * anything. Used by the authoring editor's live-preview rail and the run wizard.
+ * anything. The run wizard previews the persisted template before execution.
  */
 export async function previewTemplateRun(
   id: string,

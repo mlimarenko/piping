@@ -13,6 +13,26 @@ import { emptyExecutionEnvironmentForm, emptyJobTemplateForm, emptyProjectForm, 
 import { emptySelectorModel } from "./selectorModel";
 
 describe("automation authoring", () => {
+  it("changes target mode as a field choice and locks it during submission", () => {
+    const onModeChange = vi.fn();
+    const editor = (submitting: boolean) => <AllPermissions><TargetSetEditor
+      editing={false} name="Targets" onNameChange={vi.fn()} mode="static" onModeChange={onModeChange}
+      selectorModel={emptySelectorModel()} onSelectorModelChange={vi.fn()}
+      staticHosts={[]} onStaticHostsChange={vi.fn()} connectionTargets={[]} connectionTargetsPending={false}
+      onBack={vi.fn()} onSubmit={vi.fn()} submitting={submitting}
+    /></AllPermissions>;
+    const { rerender } = render(editor(false));
+    const dynamic = screen.getByRole("radio", { name: /dynamic/i });
+    expect(screen.getByRole("radio", { name: /static/i })).toBeChecked();
+    fireEvent.click(dynamic);
+    expect(onModeChange).toHaveBeenCalledWith("dynamic");
+    onModeChange.mockClear();
+    rerender(editor(true));
+    expect(dynamic).toBeDisabled();
+    fireEvent.click(dynamic);
+    expect(onModeChange).not.toHaveBeenCalled();
+  });
+
   for (const family of ["project", "job template", "execution environment", "service principal", "target set", "schedule"] as const) {
     it(`associates the ${family} name and locks changes only during submission`, () => {
       const change = vi.fn();

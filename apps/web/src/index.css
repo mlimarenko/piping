@@ -181,8 +181,19 @@
 }
 
 @layer components {
+  .page-gutters {
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .page-gutters {
+      padding-inline: 1.5rem;
+    }
+  }
+
   .section-tab-list {
     display: flex;
+    min-width: 0;
     flex-shrink: 0;
     align-items: center;
     gap: 4px;
@@ -215,23 +226,6 @@
   .section-tab[data-state="active"] {
     color: hsl(var(--primary));
     border-color: hsl(var(--primary));
-  }
-
-  .section-tab-list[data-variant="secondary"] {
-    gap: 8px;
-    border: 0;
-  }
-
-  .section-tab-list[data-variant="secondary"] .section-tab {
-    height: 36px;
-    border: 1px solid transparent;
-    border-radius: calc(var(--radius) - 2px);
-  }
-
-  .section-tab-list[data-variant="secondary"] .section-tab[data-state="active"] {
-    border-color: hsl(var(--primary));
-    background: hsl(var(--primary-fill));
-    color: hsl(var(--primary-foreground));
   }
 
   .desktop-shell-frame {

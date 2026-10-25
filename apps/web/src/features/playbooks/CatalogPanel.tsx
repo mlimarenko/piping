@@ -26,7 +26,8 @@ import { usePermissions } from "@/shared/auth/permissionsContext";
 import type { PlaybookCatalogItem, PlaybookTargetSet } from "@/features/playbooks/api";
 
 import { targetSetLabel } from "./playbookPageFormat";
-import { ListState, RiskBadge, StatusBadge } from "./PlaybookPanelUi";
+import { RiskBadge, StatusBadge } from "./PlaybookPanelUi";
+import PageState from "@/shared/ui-shared/PageState";
 
 export function CatalogPanel({
   playbooks,
@@ -54,9 +55,9 @@ export function CatalogPanel({
   const { t } = useTranslation();
   let content: React.ReactNode;
   if (loading) {
-    content = <ListState label={t("loading")} />;
+    content = <PageState kind="loading" title={t("loading")} />;
   } else if (playbooks.length === 0) {
-    content = <ListState label={t("playbooks.page.empty.catalog")} />;
+    content = <PageState kind="empty" title={t("playbooks.page.empty.catalog")} />;
   } else {
     content = playbooks.map((item) => (
       <PlaybookRow

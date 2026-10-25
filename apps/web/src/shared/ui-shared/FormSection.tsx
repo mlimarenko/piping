@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/lib/utils";
+import SurfaceCard, { SurfaceCardContent, SurfaceCardHeader } from "./SurfaceCard";
 
 export interface FormSectionProps {
   title?: ReactNode;
@@ -16,7 +17,7 @@ export interface FormSectionProps {
   children: ReactNode;
 }
 
-/** A shared field group with a readable heading and a quiet inset surface. */
+/** Form groups use the same surface and header as other page sections. */
 const FormSection = ({
   title,
   description,
@@ -30,12 +31,10 @@ const FormSection = ({
   const { t } = useTranslation();
 
   return (
-    <section data-slot="form-section" className={cn("flex min-w-0 flex-col gap-4 rounded-lg bg-muted/45 p-4 md:p-6", divider && "mt-2", className)}>
+    <SurfaceCard data-slot="form-section" className={cn("min-w-0", divider && "mt-2", className)}>
       {(title || description || action) && (
-        <div data-slot="form-section-header" className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            {title ? (
-              <h2 className="text-base font-semibold tracking-tight text-foreground">
+        <SurfaceCardHeader data-slot="form-section-header" description={description} actions={action}
+          title={title ? <>
                 {title}
                 {required && (
                   <>
@@ -45,17 +44,10 @@ const FormSection = ({
                     <span className="sr-only"> ({t("required")})</span>
                   </>
                 )}
-              </h2>
-            ) : null}
-            {description ? (
-              <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">{description}</p>
-            ) : null}
-          </div>
-          {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
-        </div>
+          </> : undefined} />
       )}
-       <div data-slot="form-section-content" className={cn("min-w-0", contentClassName)}>{children}</div>
-    </section>
+      <SurfaceCardContent data-slot="form-section-content" className={contentClassName}>{children}</SurfaceCardContent>
+    </SurfaceCard>
   );
 };
 

@@ -18,12 +18,11 @@ import {
   listIpAddressesForPrefix,
   listIpRangesForPrefix,
   listPrefixTree,
-  listResources,
   previewNextAvailablePrefix,
   type PrefixPlanningPreview,
   type PrefixTreeNode,
 } from "@/features/inventory/api";
-import { inventoryResourceOption } from "@/features/inventory/resourceOptions";
+import { inventoryResourceOption, inventoryResourceOptionsQuery } from "@/features/inventory/resourceOptions";
 import type { InventoryEntityKey, Resource } from "@/shared/api/types";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import EntityCreateEditor from "@/shared/forms/EntityCreateEditor";
@@ -300,8 +299,7 @@ const IpamWorkspace = () => {
 
   const createOptionQueries = useQueries({
     queries: createRelatedEntities.map((entity) => ({
-      queryKey: ["inventory", "resources", entity, "options"],
-      queryFn: () => listResources(entity),
+      ...inventoryResourceOptionsQuery(entity),
       enabled: createDialogOpen,
     })),
   });
@@ -635,7 +633,7 @@ const IpamWorkspace = () => {
               resetScopedPages();
             }}
             placeholder={t("inventory.ipamWorkspace.filters.search")}
-            containerClassName="col-span-2 min-w-0 lg:col-span-1 lg:flex-1"
+            containerClassName="col-span-2 lg:col-span-1"
           />
         <Input
           value={rootPrefix}
@@ -685,7 +683,7 @@ const IpamWorkspace = () => {
           exposed as an empty tabpanel in the accessibility tree. At `lg` every
           pane is visible again, so the wrappers return to `contents`. */}
       <Tabs value={mobilePane} onValueChange={(value) => setMobilePane(value as MobilePane)} className="contents">
-        <SectionTabs aria-label={t("inventory.ipamWorkspace.navLabel")} wrapperClassName="lg:hidden" className="w-full" triggerClassName="flex-1" items={(["browse", "list", "inspect"] as const).map((pane) => ({
+        <SectionTabs aria-label={t("inventory.ipamWorkspace.navLabel")} wrapperClassName="lg:hidden" items={(["browse", "list", "inspect"] as const).map((pane) => ({
           value: pane, label: t(`inventory.ipamWorkspace.mobile.${pane}`),
         }))} />
 

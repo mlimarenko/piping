@@ -226,6 +226,32 @@ class ComposeDeploymentBoundaryTests(unittest.TestCase):
         with self.assertRaises(OSError), first.lock():
             self.fail("symlinked deployment lock opened")
 
+    def test_root_lock_rechecks_inode_and_metadata_after_flock(self):
+        lock = self.root / ".deploy-release.lock"
+        retained = self.root / "retained-lock"
+        native_flock = deploy.fcntl.flock
+        for change in ("hardlink", "replacement", "symlink", "permissions"):
+            with self.subTest(change=change):
+                lock.unlink(missing_ok=True)
+                retained.unlink(missing_ok=True)
+
+                def interleaved_flock(descriptor, operation):
+                    if change == "hardlink":
+                        os.link(lock, retained)
+                    elif change == "permissions":
+                        lock.chmod(0o644)
+                    else:
+                        lock.rename(retained)
+                        if change == "symlink":
+                            lock.symlink_to(retained)
+                        else:
+                            deploy.write(lock, b"")
+                    return native_flock(descriptor, operation)
+
+                with patch.object(deploy.fcntl, "flock", side_effect=interleaved_flock):
+                    with self.assertRaises(deploy.DeployError), deploy.Deployment(self.args).lock():
+                        self.fail("a changed deployment lock admitted a protected operation")
+
     def test_journal_interruption_cannot_skip_or_replay_phase(self):
         deployment = self.journal()
         self.assertEqual(deployment.phase(), "staging")
@@ -373,6 +399,89 @@ class ComposeDeploymentBoundaryTests(unittest.TestCase):
 
 
 class PreservationAuthorityTests(unittest.TestCase):
+    def inventory_manifest(self, package):
+        context = {name: "b" * 64 for name in PRESERVATION_CONTEXT}
+        context.update(target="synthetic", root="/data/synthetic", project_name="synthetic",
+                       application_source=package["commit"], helper_sha256=package["helper_sha256"],
+                       release_sha256=package["release_sha256"],
+                       postgres_image="sha256:" + "b" * 64, backend_image="sha256:" + "c" * 64)
+        now = datetime.now(timezone.utc)
+        return {"schema": "piping.compose-preservation/v1", "status": "approved", "context": context,
+                "package_binding_sha256": package_binding(package),
+                "issued_at": now.isoformat().replace("+00:00", "Z"),
+                "expires_at": (now + timedelta(hours=24)).isoformat().replace("+00:00", "Z"),
+                "inventory": [], "position_pairs": {}, "check_capture_sha256": None,
+                "append_slots": {"public.owned": 2}}
+
+    def test_inventory_only_manifest_retains_binding_freshness_and_rejects_forged_exceptions(self):
+        package = {"commit": "a" * 40, "helper_sha256": "b" * 64, "release_sha256": "c" * 64}
+        manifest = self.inventory_manifest(package)
+        preservation_manifest(manifest, context=manifest["context"], package_sha256=package_binding(package))
+        for field in PRESERVATION_CONTEXT:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                preservation_manifest(manifest, context=dict(manifest["context"], **{field: "changed"}),
+                                      package_sha256=package_binding(package))
+        for change in ({"mode": "inventory-only"}, {"position_pairs": {"public.owned.value": [1, 2]}},
+                       {"check_capture_sha256": "inventory-only"}, {"expires_at": "2020-01-01T00:00:00Z"},
+                       {"package_binding_sha256": "f" * 64}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                preservation_manifest(dict(manifest, **change), context=manifest["context"],
+                                      package_sha256=package_binding(package))
+
+    def test_prepare_attachment_without_capture_and_missing_historical_capture(self):
+        package = {"commit": "a" * 40, "helper_sha256": "b" * 64, "release_sha256": "c" * 64}
+        manifest = self.inventory_manifest(package)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            approval_path = root / "approval.json"
+            output = root / "package"
+            output.mkdir(mode=0o700)
+            deploy.write_json(approval_path, manifest)
+            args = argparse.Namespace(package=output, preservation_manifest=approval_path, check_capture=None)
+            deploy.attach_preservation(args, package)
+            self.assertEqual(package["preservation"]["capture_sha256"], None)
+            self.assertFalse((output / "check-capture.json").exists())
+            owner = deploy.Deployment.__new__(deploy.Deployment)
+            owner.stage = output
+            owner.plan = {"preservation_sha256": deploy.file_sha(output / "preservation.json"),
+                          "check_capture_sha256": None, "package_binding_sha256": package_binding(package),
+                          "installed_append_slots": manifest["append_slots"]}
+            with patch.object(owner, "preservation_context", return_value=manifest["context"]):
+                self.assertEqual(owner.approval(), manifest)
+                changed = copy.deepcopy(manifest)
+                changed["inventory"] = [{"kind": "table", "name": "archive.extra", "definition_sha256": "d" * 64}]
+                (output / "preservation.json").write_bytes(canonical(changed))
+                with self.assertRaisesRegex(deploy.DeployError, "authority bytes changed"):
+                    owner.approval()
+            manifest["check_capture_sha256"] = "d" * 64
+            approval_path.write_bytes(canonical(manifest))
+            with self.assertRaisesRegex(deploy.DeployError, "source/capture mismatch"):
+                deploy.attach_preservation(args, package)
+
+    def test_baseline_preservation_accepts_exact_empty_append_slots(self):
+        package = {"commit": "a" * 40, "helper_sha256": "b" * 64, "release_sha256": "c" * 64}
+        owner = deploy.Deployment.__new__(deploy.Deployment)
+        owner.plan = {"contract": {"deltas": []}}
+        manifest = self.inventory_manifest(package)
+        manifest["append_slots"] = owner.append_slots()
+        self.assertEqual(manifest["append_slots"], {})
+        preservation_manifest(manifest, context=manifest["context"], package_sha256=package_binding(package))
+        with tempfile.TemporaryDirectory() as temporary:
+            owner.stage = Path(temporary)
+            deploy.write_json(owner.stage / "preservation.json", manifest)
+            owner.plan.update(preservation_sha256=deploy.file_sha(owner.stage / "preservation.json"),
+                              check_capture_sha256=None, package_binding_sha256=package_binding(package),
+                              installed_append_slots={})
+            with patch.object(owner, "preservation_context", return_value=manifest["context"]):
+                self.assertEqual(owner.approval(), manifest)
+                owner.plan["installed_append_slots"] = {"public.owned": 2}
+                with self.assertRaisesRegex(deploy.DeployError, "layout/capture mismatch"):
+                    owner.approval()
+        for invalid in (None, [], {"public.owned": 0}, {"public.owned": True}, {"public.owned": 1600}):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                preservation_manifest(dict(manifest, append_slots=invalid), context=manifest["context"],
+                                      package_sha256=package_binding(package))
+
     def test_baseline_declares_no_catalog_delta_and_refuses_old_cohorts(self):
         owner = deploy.Deployment.__new__(deploy.Deployment)
         contract = json.loads((Path(__file__).resolve().parents[2] / "apps/api/migrations/compose-deployment.json").read_bytes())
@@ -419,7 +528,8 @@ class PreservationAuthorityTests(unittest.TestCase):
         owner = deploy.Deployment.__new__(deploy.Deployment)
         catalog = [{"kind": "column", "name": "public.owned.value", "definition": {"position": 2}}]
         owner.plan = {"installed_target_catalog": catalog, "installed_append_slots": {"public.owned": 4},
-                      "preservation_sha256": "a" * 64, "installed_check_bindings": [{"ast": "native-tree"}]}
+                      "preservation_sha256": "a" * 64, "check_capture_sha256": "b" * 64,
+                      "installed_check_bindings": [{"ast": "native-tree"}]}
         with patch.object(owner, "catalog", return_value=catalog), patch.object(owner, "approval"), \
                 patch.object(owner, "guard_original_check_identity"), \
                 patch.object(owner, "append_slots", return_value={"public.owned": 4}), \
@@ -433,6 +543,21 @@ class PreservationAuthorityTests(unittest.TestCase):
         with patch.object(owner, "catalog", return_value=catalog), \
                 patch.object(owner, "append_slots", return_value={"public.owned": 5}), self.assertRaises(deploy.DeployError):
             owner.guard_target_catalog()
+
+    def test_inventory_only_target_guard_keeps_check_and_layout_drift_guards_without_original_capture(self):
+        owner = deploy.Deployment.__new__(deploy.Deployment)
+        catalog = [{"kind": "table", "name": "archive.retained", "definition": {"owner": "piping"}}]
+        owner.plan = {"installed_target_catalog": catalog, "installed_append_slots": {"public.owned": 2},
+                      "preservation_sha256": "a" * 64, "check_capture_sha256": None,
+                      "installed_check_bindings": [{"ast": "native-tree"}]}
+        with patch.object(owner, "catalog", return_value=catalog), patch.object(owner, "approval"), \
+                patch.object(owner, "append_slots", return_value={"public.owned": 2}), \
+                patch.object(owner, "guard_original_check_identity", side_effect=AssertionError("no capture")), \
+                patch.object(owner, "installed_check_bindings", return_value=[{"ast": "native-tree"}]) as bindings:
+            owner.guard_target_catalog()
+            bindings.return_value = [{"ast": "changed"}]
+            with self.assertRaisesRegex(deploy.DeployError, "CHECK binding changed"):
+                owner.guard_target_catalog()
 
 
 class TargetBindingRegressionTests(unittest.TestCase):
@@ -604,6 +729,52 @@ class CheckSourceWiringTests(unittest.TestCase):
                       "installed_check_bindings": [], "installed_target_catalog": []}
         return owner
 
+    def test_inventory_only_source_accepts_exact_canonical_plus_extras_without_historical_proof(self):
+        owner = self.owner()
+        canonical = [{"kind": "column", "name": "public.owned.value",
+                      "definition": {"position": 1, "type": "text"}},
+                     {"kind": "constraint", "name": "public.owned.check", "definition": "CHECK (true)"}]
+        extra = {"kind": "table", "name": "archive.retained", "definition": {"owner": "piping"}}
+        installed = copy.deepcopy(canonical) + [extra]
+        inventory = [{"kind": extra["kind"], "name": extra["name"],
+                      "definition_sha256": deploy.definition_hash(extra["definition"])}]
+        approval = {"check_capture_sha256": None, "position_pairs": {}, "inventory": inventory}
+        owner.plan.update(installed_target_catalog=installed, installed_append_slots={"public.owned": 1})
+        with patch.object(owner, "approval", return_value=approval), \
+                patch.object(owner, "database_target", return_value=nullcontext()), \
+                patch.object(owner, "append_slots", return_value={"public.owned": 1}), \
+                patch.object(owner, "native_sql_session", side_effect=AssertionError("historical proof forbidden")), \
+                patch.object(deploy, "write_json"):
+            owner.source_readiness(canonical, {})
+            for failure in ("omitted", "changed", "unlisted", "position", "check", "missing"):
+                with self.subTest(failure=failure):
+                    approval["inventory"] = inventory if failure != "omitted" else []
+                    owner.plan["installed_target_catalog"] = copy.deepcopy(installed)
+                    if failure == "changed":
+                        owner.plan["installed_target_catalog"][-1]["definition"]["owner"] = "other"
+                    elif failure == "unlisted":
+                        owner.plan["installed_target_catalog"].append(dict(extra, name="archive.unlisted"))
+                    elif failure == "position":
+                        owner.plan["installed_target_catalog"][0]["definition"]["position"] = 2
+                    elif failure == "check":
+                        owner.plan["installed_target_catalog"][1]["definition"] = "CHECK (false)"
+                    elif failure == "missing":
+                        owner.plan["installed_target_catalog"].pop(0)
+                    with self.assertRaises(ValueError):
+                        owner.source_readiness(canonical, {})
+
+    def test_inventory_only_cannot_authorize_historical_check_roundtrip(self):
+        owner = self.owner()
+        form = next(iter(deploy.historical_check_forms().values()))
+        before = [{"kind": "constraint", "name": form.name, "definition": form.historical}]
+        after = [{"kind": "constraint", "name": form.name, "definition": form.canonical}]
+        owner.plan.update(installed_target_catalog=before, source_roundtrip_checks={})
+        with patch.object(owner, "catalog", return_value=after), \
+                patch.object(owner, "approval", return_value={"check_capture_sha256": None}), \
+                patch.object(owner, "native_sql_session", return_value=nullcontext(lambda q: "")), \
+                self.assertRaisesRegex(deploy.DeployError, "unapproved native CHECK roundtrip"):
+            owner.roundtrip_target({})
+
     def test_source_readiness_supplies_same_plan_binding_to_native_and_catalog_guards(self):
         owner = self.owner()
         capture = b'{"bindings":[]}'
@@ -627,7 +798,7 @@ class CheckSourceWiringTests(unittest.TestCase):
         after = [{"kind": "constraint", "name": form.name, "definition": form.canonical}]
         owner.plan.update(installed_target_catalog=before, source_roundtrip_checks={})
         with patch.object(owner, "catalog", return_value=after), \
-                patch.object(owner, "approval", return_value={"approved": True}), \
+                 patch.object(owner, "approval", return_value={"check_capture_sha256": "c" * 64}), \
                 patch.object(owner, "native_sql_session", return_value=nullcontext(
                     lambda q: json.dumps([{"name": form.name, "definition": form.canonical}]))), \
                 patch.object(deploy, "prove_native_check") as native:

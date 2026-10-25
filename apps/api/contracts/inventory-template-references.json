@@ -24,9 +24,15 @@
     "contact_assignment": { "entity": "Contact Assignments", "table": "tenancy_contactassignment" },
     "cluster": { "entity": "Clusters", "table": "virtualization_cluster" },
     "cluster_type": { "entity": "Cluster Types", "table": "virtualization_clustertype" },
-    "cluster_group": { "entity": "Cluster Groups", "table": "virtualization_clustergroup" }
+    "cluster_group": { "entity": "Cluster Groups", "table": "virtualization_clustergroup" },
+    "tunnel_group": { "entity": "Tunnel Groups", "table": "vpn_tunnelgroup" },
+    "tunnel": { "entity": "Tunnels", "table": "vpn_tunnel" },
+    "ipsec_profile": { "entity": "IPsec Profiles", "table": "vpn_ipsecprofile" }
   },
   "fields": {
+    "tenant": {
+      "group_id": { "resource": "tenant_group", "idField": "group_id" }
+    },
     "site": {
       "tenant_id": { "resource": "tenant", "idField": "tenant_id" },
       "tenant": { "resource": "tenant", "idField": "tenant_id" },
@@ -82,6 +88,17 @@
     "contact_assignment": {
       "contact_id": { "resource": "contact", "idField": "contact_id" },
       "role_id": { "resource": "contact_role", "idField": "role_id" }
+    },
+    "tunnel": {
+      "tenant_id": { "resource": "tenant", "idField": "tenant_id" },
+      "group_id": { "resource": "tunnel_group", "idField": "group_id" },
+      "ipsec_profile_id": { "resource": "ipsec_profile", "idField": "ipsec_profile_id" }
+    },
+    "tunnel_termination": {
+      "tunnel_id": { "resource": "tunnel", "idField": "tunnel_id" },
+      "interface_id": { "resource": "device_interface", "idField": "interface_id" },
+      "vm_interface_id": { "resource": "vm_interface", "idField": "vm_interface_id" },
+      "outside_ip_id": { "resource": "ip_address", "idField": "outside_ip_id" }
     },
     "platform": { "manufacturer_id": { "resource": "manufacturer", "idField": "manufacturer_id" } },
     "cluster": {

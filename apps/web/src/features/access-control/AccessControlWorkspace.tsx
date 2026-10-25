@@ -2,8 +2,7 @@ import { Shield, FileCheck, Users, Lock } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import PageChrome from "@/shared/ui-shared/PageChrome";
-import SectionTabs from "@/shared/ui-shared/SectionTabs";
-import { Tabs, TabsContent } from "@/shared/ui-primitives/tabs";
+import SectionLinks from "@/shared/ui-shared/SectionLinks";
 import AccessRules from "@/features/access-control/components/access/AccessRules";
 import AccessDirectory from "@/features/access-control/components/access/AccessDirectory";
 import AccessSSO from "@/features/access-control/components/access/AccessSSO";
@@ -40,7 +39,7 @@ function resolveTab(rawTab: string | null, rawSection: string | null): Resolved 
 const AccessControlWorkspace = () => {
   const { t } = useTranslation();
   const { can } = usePermissions();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const resolved = resolveTab(
     searchParams.get("tab"),
     searchParams.get("section"),
@@ -58,11 +57,6 @@ const AccessControlWorkspace = () => {
     ? resolved.tab
     : (tabConfig[0]?.key ?? resolved.tab);
 
-  const handleTabChange = (next: string) => {
-    if (next === "directory") setSearchParams({ tab: "directory", section: resolved.initialSection });
-    else setSearchParams({ tab: next });
-  };
-
   return (
     <AccessDataProvider>
       <div className="flex min-w-0 flex-col gap-4">
@@ -72,19 +66,13 @@ const AccessControlWorkspace = () => {
           description={t("accessControl.description")}
         />
 
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex min-w-0 flex-col gap-4">
-          <SectionTabs items={tabConfig.map((x) => ({ value: x.key, label: x.label, icon: x.icon }))} />
+        <div className="flex min-w-0 flex-col gap-4">
+          <SectionLinks label={t("accessControl.title")} activeValue={activeTab} items={tabConfig.map((x) => ({ value: x.key, label: x.label, icon: x.icon, to: { search: `?${new URLSearchParams(x.key === "directory" ? { tab: x.key, section: resolved.initialSection } : { tab: x.key })}` } }))} />
 
-          <TabsContent value="access" className="mt-0">
-            <AccessRules />
-          </TabsContent>
-          <TabsContent value="directory" className="mt-0">
-            <AccessDirectory initialSection={resolved.initialSection} />
-          </TabsContent>
-          <TabsContent value="sso" className="mt-0">
-            <AccessSSO />
-          </TabsContent>
-        </Tabs>
+          {activeTab === "access" && <AccessRules />}
+          {activeTab === "directory" && <AccessDirectory initialSection={resolved.initialSection} />}
+          {activeTab === "sso" && <AccessSSO />}
+        </div>
       </div>
     </AccessDataProvider>
   );

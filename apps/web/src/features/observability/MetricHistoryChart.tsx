@@ -14,6 +14,7 @@ import {
 import type { MetricSparklinePoint } from "@/features/observability/MetricWidgetCard";
 import { useMetricHistory } from "@/features/observability/useMetricHistory";
 import { cn } from "@/shared/lib/utils";
+import { TogglePill } from "@/shared/ui-shared/TogglePill";
 
 interface RangePreset {
   id: string;
@@ -107,22 +108,16 @@ const MetricHistoryChart = ({ targetId, metric }: MetricHistoryChartProps) => {
   return (
     <div className="grid gap-2" data-testid="metric-history-chart">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 rounded-md border border-border p-0.5">
+        <div className="flex flex-wrap items-center gap-2">
           {RANGE_PRESETS.map((entry) => (
-            <button
+            <TogglePill
               key={entry.id}
-              type="button"
               onClick={() => setPresetId(entry.id)}
-              className={cn(
-                "h-8 rounded-md px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                entry.id === presetId
-                  ? "bg-accent text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-              aria-pressed={entry.id === presetId}
+              active={entry.id === presetId}
+              shape="md"
             >
               {t(entry.labelKey)}
-            </button>
+            </TogglePill>
           ))}
         </div>
         <span className="min-h-4 text-xs tabular-nums text-muted-foreground" aria-live="polite">

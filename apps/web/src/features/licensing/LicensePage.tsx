@@ -4,8 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiMutation } from "@/shared/api/hooks";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import PageChrome from "@/shared/ui-shared/PageChrome";
-import PageLayout from "@/shared/ui-shared/PageLayout";
-import SurfaceCard, { SurfaceCardHeader, SurfaceCardContent } from "@/shared/ui-shared/SurfaceCard";
 import FormSection from "@/shared/ui-shared/FormSection";
 import StatusChip from "@/shared/ui-shared/StatusChip";
 import EmptyState from "@/shared/ui-shared/EmptyState";
@@ -102,17 +100,14 @@ const LicensePage = () => {
   const seatsValue = info ? `${info.seats.used} / ${info.seats.total}` : "—";
 
   return (
-    <PageLayout width="form" className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageChrome
         title={t("licensePage.title")}
         description={t("licensePage.description")}
       />
 
-       <SurfaceCard className="p-4 md:p-6">
         <div className="flex flex-col gap-6">
-         <FormSection>
-           <SurfaceCardHeader title={<span className="flex items-center gap-2"><Shield className="size-4 text-primary" aria-hidden="true" />{t("licensePage.status")}</span>} />
-           <SurfaceCardContent className="flex flex-col gap-2.5">
+         <FormSection title={<span className="flex items-center gap-2"><Shield className="size-4 text-primary" aria-hidden="true" />{t("licensePage.status")}</span>} contentClassName="flex flex-col gap-2.5">
             {licenseQuery.isPending ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
@@ -194,7 +189,6 @@ const LicensePage = () => {
                 )}
               </>
              )}
-           </SurfaceCardContent>
          </FormSection>
 
         {canUpdate && (
@@ -203,9 +197,7 @@ const LicensePage = () => {
                <Button variant="outline">{t("licensePage.moreSeats")}</Button>
              </CollapsibleTrigger>
              <CollapsibleContent className="pt-4">
-           <FormSection>
-             <SurfaceCardHeader title={<span className="flex items-center gap-2"><Zap className="size-4 text-primary" aria-hidden="true" />{t("licensePage.activation")}</span>} />
-             <SurfaceCardContent className="flex flex-col gap-3">
+           <FormSection title={<span className="flex items-center gap-2"><Zap className="size-4 text-primary" aria-hidden="true" />{t("licensePage.activation")}</span>} contentClassName="flex flex-col gap-3">
               <p className="text-sm leading-relaxed text-muted-foreground text-balance">
                 {t("licensePage.activationHelp")}
               </p>
@@ -238,15 +230,13 @@ const LicensePage = () => {
                   {t("licensePage.activate")}
                 </Button>
               </div>
-             </SurfaceCardContent>
              </FormSection>
              </CollapsibleContent>
            </Collapsible>
         )}
 
        </div>
-       </SurfaceCard>
-    </PageLayout>
+    </div>
   );
 };
 

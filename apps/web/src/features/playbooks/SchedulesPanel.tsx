@@ -25,7 +25,7 @@ import type {
 
 import { formatDateTime, targetSetLabel } from "./playbookPageFormat";
 import { concurrencyPolicies } from "./playbookFormModels";
-import { ListState } from "./PlaybookPanelUi";
+import PageState from "@/shared/ui-shared/PageState";
 import { PLAYBOOK_SCHEDULES_TABLE_CONFIG } from "./tableConfig";
 
 export function SchedulesPanel({
@@ -256,7 +256,7 @@ export function SchedulesPanel({
       columnFilters={sanitizedColumnFilters}
       onColumnFilterChange={onColumnFilterChange}
       pagination={pagination}
-      emptyState={<ListState label={t("playbooks.page.empty.schedules")} />}
+      emptyState={<PageState kind="empty" title={t("playbooks.page.empty.schedules")} />}
     />
   );
 }

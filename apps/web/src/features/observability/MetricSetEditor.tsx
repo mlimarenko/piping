@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Layers, Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useApiMutation } from "@/shared/api/hooks";
 import type { ApiError } from "@/shared/api/client";
 import { RequireCapability } from "@/shared/auth/permissions";
@@ -14,7 +14,7 @@ import { Switch } from "@/shared/ui-primitives/switch";
 import FormSelect from "@/shared/ui-shared/FormSelect";
 import EntitySelect from "@/shared/ui-shared/EntitySelect";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageState from "@/shared/ui-shared/PageState";
 import {
   createMetricSet,
   createMetricSetItem,
@@ -413,14 +413,13 @@ const MetricSetEditor = () => {
   const query = useQuery({ queryKey: METRIC_SETS_KEY, queryFn: () => listMetricSets() });
   const item = query.data?.items.find(candidate => candidate.id === id) ?? null;
   if (query.isPending || query.isError || (id && !item)) {
-    return <EntityEditorPage scope="routed" width="form"
+    return <EntityEditorPage scope="routed"
       title={t(id ? "observability.set.editTitle" : "observability.set.createTitle")}
       onBack={() => { void navigate(observabilityListHref(METRIC_SETS_VIEW)); }}
       backLabel={t("back")} cancelLabel={t("cancel")}>
-      {query.isPending ? <output className="flex justify-center p-8"><Loader2 className="size-6 animate-spin" aria-label={t("loading")} /></output>
-        : <EmptyState icon={Layers} title={t(query.isError ? "observability.entityLoadFailed" : "observability.entityNotFound")}
-          actionLabel={query.isError ? t("retry") : undefined}
-          onAction={query.isError ? () => { void query.refetch(); } : undefined} />}
+      <PageState kind={query.isPending ? "loading" : query.isError ? "error" : "empty"}
+        title={t(query.isPending ? "loading" : query.isError ? "observability.entityLoadFailed" : "observability.entityNotFound")}
+        action={query.isError ? <Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button> : undefined} />
     </EntityEditorPage>;
   }
 

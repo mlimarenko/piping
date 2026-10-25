@@ -161,7 +161,8 @@ def verify_package(directory, key):
         description = package["preservation"]
         require(set(description) == {"manifest_sha256", "capture_sha256"}, "invalid preservation package attachment")
         require(file_sha(directory / "preservation.json") == description["manifest_sha256"]
-                and file_sha(directory / "check-capture.json") == description["capture_sha256"],
+                and (description["capture_sha256"] is None
+                     or file_sha(directory / "check-capture.json") == description["capture_sha256"]),
                 "preservation attachment bytes changed")
     loaded = {}
     for role, image in package["images"].items():
@@ -210,9 +211,16 @@ def prepare(args):
         require(len(inspected) == 1 and ref in inspected[0].get("RepoDigests", []), "published pull identity mismatch")
         package["images"][role] = {"published_ref": ref, "revision": args.commit,
             **save_image(ref, args.package, role, config, args.platform, args.commit)}
+    attach_preservation(args, package)
+    write_json(args.package / "package.json", package)
+    sign(args.package / "package.json", args.signing_key, args.package / "package.sig")
+
+
+def attach_preservation(args, package):
+    """Attach exact inventory authority, with capture only for historical exceptions."""
     if getattr(args, "preservation_manifest", None):
-        require(args.check_capture, "preservation requires its authenticated native CHECK capture")
-        for private in (args.preservation_manifest, args.check_capture):
+        capture_path = getattr(args, "check_capture", None)
+        for private in (args.preservation_manifest, *([capture_path] if capture_path else [])):
             checked_path(private)
             require(stat.S_IMODE(private.stat().st_mode) == 0o600, "preservation inputs must be private")
         approval = read_json(args.preservation_manifest)
@@ -220,16 +228,15 @@ def prepare(args):
         require(approval["context"]["helper_sha256"] == package["helper_sha256"]
                 and approval["context"]["application_source"] == package["commit"]
                 and approval["context"]["release_sha256"] == package["release_sha256"]
-                and approval["check_capture_sha256"] == file_sha(args.check_capture),
+                and approval["check_capture_sha256"] == (file_sha(capture_path) if capture_path else None),
                 "preservation source/capture mismatch")
         write(args.package / "preservation.json", read(args.preservation_manifest))
-        write(args.package / "check-capture.json", read(args.check_capture))
+        if capture_path:
+            write(args.package / "check-capture.json", read(capture_path))
         package["preservation"] = {"manifest_sha256": file_sha(args.package / "preservation.json"),
-                                    "capture_sha256": file_sha(args.package / "check-capture.json")}
+                                    "capture_sha256": approval["check_capture_sha256"]}
     else:
         require(not getattr(args, "check_capture", None), "native CHECK capture requires explicit approval")
-    write_json(args.package / "package.json", package)
-    sign(args.package / "package.json", args.signing_key, args.package / "package.sig")
 
 
 def prepare_local_package(directory, signing_key, images):
@@ -279,7 +286,7 @@ def local_update(args):
         deployment.plan = {"image_file": args.image_file}
         # Omitted roles retain the running immutable image, not a mutable tag.
         images = {role: deployment.service_image(role) for role in ROLES}
-        services = run(deployment.compose() + ["ps", "--status", "running", "--services"]).decode().splitlines()
+        services = deployment.running_declared_services()
         for role, reference in selected.items():
             if not args.skip_pull and not re.fullmatch(r"sha256:[0-9a-f]{64}", reference):
                 run(["docker", "pull", "--platform", "linux/amd64", reference], timeout=300)
@@ -325,8 +332,9 @@ def local_update(args):
             args.receipt, args.receipt_signature = dossier / "restore-receipt.json", dossier / "restore-receipt.sig"
             deployment.apply()
             try:
-                run(deployment.compose() + ["up", "-d", "--no-deps", "--no-build", "--pull", "never",
-                                            "--wait", "--wait-timeout", "180", *services], timeout=210)
+                if services:
+                    run(deployment.compose() + ["up", "-d", "--no-deps", "--no-build", "--pull", "never",
+                                                "--wait", "--wait-timeout", "180", *services], timeout=210)
                 deployment.verify_runtime_health()
             except BaseException:
                 run(deployment.compose() + ["stop", "--timeout", "60", *WRITERS])
@@ -386,7 +394,9 @@ def verify_backup(args):
                 and (directory / name).stat().st_size == description["size"], "copied backup bytes mismatch")
     required_files = {"offline-pre-upgrade.dump", "fingerprint.json", "proof-backend.env", "installed-target-schema.dump"}
     if plan["preservation_sha256"]:
-        required_files |= {"preservation.json", "check-capture.json"}
+        required_files.add("preservation.json")
+    if plan["check_capture_sha256"]:
+        required_files.add("check-capture.json")
     require(set(request["files"]) == required_files,
             "incomplete backup dossier")
     require(request["preservation_sha256"] == plan["preservation_sha256"]
@@ -786,15 +796,22 @@ class Deployment:
         path = self.root / ".deploy-release.lock"
         descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
         try:
-            metadata = os.fstat(descriptor)
-            require(
-                stat.S_ISREG(metadata.st_mode) and metadata.st_nlink == 1 and stat.S_IMODE(metadata.st_mode) == 0o600,
-                "unsafe deployment lock",
-            )
+            def guard():
+                opened = os.fstat(descriptor)
+                named = path.lstat()
+                require(
+                    all(stat.S_ISREG(item.st_mode) and item.st_nlink == 1
+                        and stat.S_IMODE(item.st_mode) == 0o600 for item in (opened, named))
+                    and (opened.st_dev, opened.st_ino) == (named.st_dev, named.st_ino),
+                    "unsafe deployment lock",
+                )
+
+            guard()
             try:
                 fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError as error:
                 raise ConcurrentOperation("Another installation/update is active") from error
+            guard()
             yield
         finally:
             os.close(descriptor)
@@ -860,12 +877,37 @@ class Deployment:
                 raise RecoveryRequired("Unresolved update journal; inspect backups and recover explicitly before starting or updating")
 
     def refresh_edge_upstreams(self):
-        if "nginx" in self.running():
-            # A replaced application container can receive a different address.
-            # The retained edge's live DNS cache can still target its former
-            # address even while /health and the new backend are both healthy.
-            run(self.compose() + ["up", "-d", "--no-deps", "--no-build", "--pull", "never",
-                                  "--force-recreate", "--wait", "--wait-timeout", "90", "nginx"], timeout=120)
+        # Compose ps includes retained services absent from the current file.
+        # Address the unique owned container, not a declaration or mutable name.
+        identifiers = run([
+            "docker", "ps", "-a", "--no-trunc",
+            "--filter", "label=com.docker.compose.project=" + self.args.project_name,
+            "--filter", "label=com.docker.compose.service=nginx", "--format", "{{.ID}}",
+        ]).decode().splitlines()
+        if not identifiers:
+            require("nginx" not in self.declared_services(), "declared nginx container is missing")
+            return
+        require(len(identifiers) == 1 and re.fullmatch(r"[0-9a-f]{64}", identifiers[0]),
+                "unique Compose-owned nginx container required")
+        identifier = identifiers[0]
+        inspected = json.loads(run(["docker", "inspect", identifier]))
+        require(isinstance(inspected, list) and len(inspected) == 1 and isinstance(inspected[0], dict),
+                "invalid edge container inspection")
+        container = inspected[0]
+        config, state = container.get("Config"), container.get("State")
+        require(isinstance(config, dict) and isinstance(state, dict), "invalid edge container inspection")
+        labels = config.get("Labels")
+        require(container.get("Id") == identifier
+                and isinstance(labels, dict)
+                and labels.get("com.docker.compose.project") == self.args.project_name
+                and labels.get("com.docker.compose.service") == "nginx"
+                and labels.get("com.docker.compose.oneoff", "False") in ("False", "false")
+                and state.get("Running") is True,
+                "edge container identity or running state changed")
+        # Reload re-resolves application DNS without replacing customer ingress.
+        # A failed config check must leave the existing master configuration live.
+        run(["docker", "exec", identifier, "nginx", "-t"])
+        run(["docker", "exec", identifier, "nginx", "-s", "reload"])
 
     def verify_runtime_health(self):
         """Accept a completed apply only after observing its actual candidate runtime."""
@@ -1043,6 +1085,7 @@ class Deployment:
         write(self.stage / "package.sig", read(args.package / "package.sig"))
         if "preservation" in package:
             write(self.stage / "preservation.json", read(args.package / "preservation.json"))
+        if self.plan["check_capture_sha256"]:
             write(self.stage / "check-capture.json", read(args.package / "check-capture.json"))
         self.inspect_images()
         self.plan["migrations"], self.plan["contract"], self.plan["contract_sha256"] = self.published_migrations()
@@ -1134,7 +1177,8 @@ class Deployment:
                 "proof-backend.env",
                 "installed-target-schema.dump",
                 "verification-key.pem", "package.json", "package.sig",
-                *(["preservation.json", "check-capture.json"] if "preservation" in package else []),
+                *(["preservation.json"] if "preservation" in package else []),
+                *(["check-capture.json"] if self.plan["check_capture_sha256"] else []),
                 *(name + ".original" for name in config_names),
             ],
         )
@@ -1214,7 +1258,8 @@ class Deployment:
             self.approval()
             require(self.installed_check_bindings() == self.plan["installed_check_bindings"],
                     "installed native CHECK binding changed")
-            self.guard_original_check_identity()
+            if self.plan["check_capture_sha256"]:
+                self.guard_original_check_identity()
 
     def guard_original_check_identity(self):
         names = "(" + ",".join("'" + name.replace("'", "''") + "'" for name in historical_check_forms()) + ")"
@@ -1250,7 +1295,8 @@ class Deployment:
         if self.plan["preservation_sha256"] is None:
             return None
         require(file_sha(self.stage / "preservation.json") == self.plan["preservation_sha256"]
-                and file_sha(self.stage / "check-capture.json") == self.plan["check_capture_sha256"],
+                and (self.plan["check_capture_sha256"] is None
+                     or file_sha(self.stage / "check-capture.json") == self.plan["check_capture_sha256"]),
                 "preservation authority bytes changed")
         value = preservation_manifest(read_json(self.stage / "preservation.json"), context=self.preservation_context(),
                                       package_sha256=self.plan["package_binding_sha256"])
@@ -1299,7 +1345,7 @@ class Deployment:
     def source_readiness(self, canonical_catalog, database):
         approval = self.approval()
         proofs, bindings = (), ()
-        if approval:
+        if approval and approval["check_capture_sha256"] is not None:
             capture = read(self.stage / "check-capture.json", maximum=262144)
             require(sorted(json.loads(capture)["bindings"], key=lambda b: b["name"])
                     == self.plan["installed_check_bindings"], "approved CHECK capture differs from installed target")
@@ -1346,7 +1392,7 @@ class Deployment:
             for position, obj in enumerate(sorted(columns, key=lambda o: o["definition"]["position"]), 1):
                 obj["definition"]["position"] = position
         approved = self.approval()
-        forms = historical_check_forms() if approved else {}
+        forms = historical_check_forms() if approved and approved["check_capture_sha256"] is not None else {}
         with self.native_sql_session(database) as sql:
             sql("SET search_path=pg_catalog,public")
             for obj in expected:
@@ -1663,7 +1709,8 @@ class Deployment:
             if self.plan["preservation_sha256"]:
                 require(self.installed_check_bindings() == self.plan["installed_check_bindings"],
                         "migration changed original native CHECK bindings")
-                self.guard_original_check_identity()
+                if self.plan["check_capture_sha256"]:
+                    self.guard_original_check_identity()
         old_rows = dict(baseline["rows"])
         new_rows = dict(actual["rows"])
         # The ledger is checked as a precise append above, never globally ignored.
@@ -1682,6 +1729,12 @@ class Deployment:
 
     def running(self):
         return set(run(self.compose() + ["ps", "--services", "--status", "running"]).decode().splitlines())
+
+    def declared_services(self):
+        return set(run(self.compose() + ["config", "--services"]).decode().splitlines())
+
+    def running_declared_services(self):
+        return sorted(self.running() & self.declared_services())
 
     def stopped(self):
         require(
@@ -1776,7 +1829,8 @@ class Deployment:
                    "files": {name: {"sha256": file_sha(self.stage / name), "size": (self.stage / name).stat().st_size}
                              for name in ("offline-pre-upgrade.dump", "fingerprint.json", "proof-backend.env",
                                           "installed-target-schema.dump",
-                                          *(["preservation.json", "check-capture.json"] if self.plan["preservation_sha256"] else []))}}
+                                           *(["preservation.json"] if self.plan["preservation_sha256"] else []),
+                                           *(["check-capture.json"] if self.plan["check_capture_sha256"] else []))}}
         write_json(self.stage / "backup-request.json", request)
         self.seal(
             "backup-seal.json",

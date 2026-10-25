@@ -61,6 +61,10 @@ pub enum AppError {
     #[error("Validation error: {0}")]
     Validation(String),
 
+    /// Form field paths and machine-readable constraints, without input values.
+    #[error("Invalid input fields: {0:?}")]
+    ValidationFields(std::collections::BTreeMap<String, String>),
+
     /// Validation error (JSON)
     #[error("Validation error: {0}")]
     ValidationJson(#[from] SerdeJsonError),

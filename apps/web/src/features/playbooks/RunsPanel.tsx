@@ -17,7 +17,7 @@ import {
 import type { PlaybookCatalogItem, PlaybookRunGroup } from "@/features/playbooks/api";
 
 import { formatDateTime } from "./playbookPageFormat";
-import { ListState } from "./PlaybookPanelUi";
+import PageState from "@/shared/ui-shared/PageState";
 import { PLAYBOOK_RUN_GROUPS_TABLE_CONFIG } from "./tableConfig";
 
 // Statuses offered in the run-history filter — 6 user-facing buckets, each
@@ -189,7 +189,7 @@ export function RunsPanel({
       columnFilters={sanitizedColumnFilters}
       onColumnFilterChange={onColumnFilterChange}
       pagination={pagination}
-      emptyState={<ListState label={t("playbooks.page.empty.runs")} />}
+      emptyState={<PageState kind="empty" title={t("playbooks.page.empty.runs")} />}
     />
   );
 }

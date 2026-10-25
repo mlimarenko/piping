@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Camera, Film, Grid2x2, Square, Video } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import SurfaceCard from "@/shared/ui-shared/SurfaceCard";
+import { TogglePill } from "@/shared/ui-shared/TogglePill";
 import { Skeleton } from "@/shared/ui-primitives/skeleton";
 import DeviceSnapshotView from "@/features/connections/components/connections/DeviceSnapshotView";
 import DeviceLiveView from "@/features/connections/components/connections/DeviceLiveView";
@@ -386,21 +387,11 @@ function ViewToggle({
   title: string;
 }>) {
   return (
-    <button
-      type="button"
-      title={title}
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "flex h-8 items-center gap-1 rounded-md border px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        active
-          ? "border-primary/50 bg-accent text-primary"
-          : "border-input/30 bg-background text-muted-foreground hover:border-input/60 hover:text-foreground",
-      )}
-    >
-      {icon}
-      {label}
-    </button>
+    <span title={title}>
+      <TogglePill active={active} onClick={onClick} icon={icon} shape="md">
+        {label}
+      </TogglePill>
+    </span>
   );
 }
 
@@ -422,7 +413,7 @@ function ChannelSelector({
   return (
     <div
       className="mb-3 flex gap-1.5 overflow-x-auto stable-scrollbar-gutter pb-1"
-      role="tablist"
+      role="group"
       aria-label={t("deviceDashboard.channels", "Channels")}
     >
       {channels.map((channel) => {
@@ -431,22 +422,11 @@ function ChannelSelector({
           ? `${channel.index} · ${channel.name.trim()}`
           : `${t("deviceDashboard.channelShort", "Ch")} ${channel.index}`;
         return (
-          <button
-            key={channel.index}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            title={channel.name?.trim() || label}
-            onClick={() => onSelect(channel.index)}
-            className={cn(
-              "h-8 shrink-0 rounded-md border px-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              isActive
-                ? "border-primary/50 bg-accent text-primary"
-                : "border-input/30 bg-background text-muted-foreground hover:text-foreground hover:border-input/60",
-            )}
-          >
-            {label}
-          </button>
+          <span key={channel.index} title={channel.name?.trim() || label} className="shrink-0">
+            <TogglePill active={isActive} onClick={() => onSelect(channel.index)} shape="md">
+              {label}
+            </TogglePill>
+          </span>
         );
       })}
     </div>

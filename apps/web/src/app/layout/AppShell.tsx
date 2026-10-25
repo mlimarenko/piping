@@ -22,19 +22,15 @@ import { Sheet, SheetContent, SheetTitle } from "@/shared/ui-primitives/sheet";
 import ConnectionsWorkspaceOutlet from "@/features/connections/ConnectionsWorkspaceOutlet";
 import { PageChromeProvider } from "@/shared/ui-shared/pageChromeContext";
 import PageChrome from "@/shared/ui-shared/PageChrome";
+import PageLayout from "@/shared/ui-shared/PageLayout";
+import PageState from "@/shared/ui-shared/PageState";
 
 function ShellPageError({ reset }: { reset: () => void }) {
   const { t } = useTranslation();
-  return <>
+  return <PageLayout>
     <PageChrome title={t("dataTable.errorTitle")} icon={AlertCircle} />
-    <div className="flex min-h-40 items-center justify-center p-6">
-      <div role="alert" className="flex max-w-sm flex-col items-center gap-4 rounded-lg border border-border bg-card p-6 text-center">
-        <AlertCircle className="size-6 text-destructive" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground">{t("unknownError")}</p>
-        <Button onClick={reset}>{t("retry")}</Button>
-      </div>
-    </div>
-  </>;
+    <PageState kind="error" title={t("unknownError")} action={<Button onClick={reset}>{t("retry")}</Button>} />
+  </PageLayout>;
 }
 
 const AppShell = () => {
@@ -139,7 +135,7 @@ const AppShell = () => {
                   page registers chrome, without replacing the shell/workspace.
                 */}
                 <ErrorBoundary key={location.pathname} scope="Page" fallback={({ reset }) => <ShellPageError reset={reset} />}>
-                  <Suspense fallback={<div role="status" className="flex min-h-40 items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>}>
+                   <Suspense fallback={<PageLayout><PageState kind="loading" /></PageLayout>}>
                     <Outlet />
                   </Suspense>
                 </ErrorBoundary>

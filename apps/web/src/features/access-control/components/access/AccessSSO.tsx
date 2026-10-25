@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiMutation } from "@/shared/api/hooks";
 import { usePermissions } from "@/shared/auth/permissionsContext";
-import SurfaceCard from "@/shared/ui-shared/SurfaceCard";
+import SurfaceCard, { SurfaceCardHeader, SurfaceCardContent } from "@/shared/ui-shared/SurfaceCard";
+import PageState from "@/shared/ui-shared/PageState";
 import { Button } from "@/shared/ui-primitives/button";
 import { Input } from "@/shared/ui-primitives/input";
 import { Switch } from "@/shared/ui-primitives/switch";
@@ -229,12 +230,11 @@ const AccessSSO = () => {
   });
 
   return (
-    <SurfaceCard className="p-4">
-      <h2 className="text-sm font-medium text-foreground mb-4">{t("accessControl.sso.title")}</h2>
+    <SurfaceCard>
+      <SurfaceCardHeader title={t("accessControl.sso.title")} />
+      <SurfaceCardContent>
       {ssoQuery.isPending ? (
-        <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-          <Loader2 className="mr-2 animate-spin" /> {t("loading")}
-        </div>
+        <PageState kind="loading" title={t("loading")} />
       ) : (
         <SsoConfigEditor
           // Remount (re-seed the draft) only when the fetched config content
@@ -252,6 +252,7 @@ const AccessSSO = () => {
           onRefresh={() => ssoQuery.refetch()}
         />
       )}
+      </SurfaceCardContent>
     </SurfaceCard>
   );
 };

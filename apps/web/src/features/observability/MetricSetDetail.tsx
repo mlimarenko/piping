@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
+import PageChrome from "@/shared/ui-shared/PageChrome";
+import { Button } from "@/shared/ui-primitives/button";
 import PageState from "@/shared/ui-shared/PageState";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Layers, Loader2, Pencil, Trash2 } from "lucide-react";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import { ArrowLeft, Layers, Pencil, Trash2 } from "lucide-react";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import EntityDetail from "@/shared/ui-shared/EntityDetail";
 import { deleteMetricSet, listMetricSets } from "./api";
@@ -34,11 +35,11 @@ export default function MetricSetDetail() {
     },
     listHref,
   });
-  const renderState = (content: ReactNode) => <PageState title={t("observability.title")} icon={Layers} backHref={listHref}>{content}</PageState>;
-  if (query.isPending) return renderState(<output className="flex justify-center p-8"><Loader2 className="size-6 animate-spin" aria-label={t("loading")} /></output>);
-  if (query.isError) return renderState(<EmptyState icon={Layers} title={t("observability.entityLoadFailed")} actionLabel={t("retry")} onAction={() => { void query.refetch(); }} />);
+  const renderState = (content: ReactNode) => <><PageChrome title={t("observability.title")} icon={Layers} actions={<Button asChild variant="ghost"><Link to={listHref}><ArrowLeft className="size-4" />{t("back")}</Link></Button>} />{content}</>;
+  if (query.isPending) return renderState(<PageState kind="loading" title={t("loading")} />);
+  if (query.isError) return renderState(<PageState kind="error" title={t("observability.entityLoadFailed")} action={<Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button>} />);
   const item = query.data.items.find(candidate => candidate.id === id);
-  if (!item) return renderState(<EmptyState icon={Layers} title={t("observability.entityNotFound")} />);
+  if (!item) return renderState(<PageState kind="empty" title={t("observability.entityNotFound")} />);
 
   const items = [...item.items].sort((a, b) => a.sort_order - b.sort_order);
   return (

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { render } from "@/test/pageChrome";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -42,10 +42,14 @@ for (const family of families) {
             <Route path="/observability" element={<Location />} />
           </Routes>
         </MemoryRouter></AllPermissions></QueryClientProvider>);
-        if (state === "loading") await screen.findByLabelText(i18n.t("loading"));
+        if (state === "loading") expect(await screen.findByRole("status")).toHaveTextContent(i18n.t("loading"));
         else await screen.findByText(i18n.t(state === "error" ? "observability.entityLoadFailed" : "observability.entityNotFound"));
         expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
         expect(screen.queryByRole("button", { name: /^save|^create/i })).not.toBeInTheDocument();
+        if (state === "error") {
+          fireEvent.click(screen.getByRole("button", { name: i18n.t("retry") }));
+          await waitFor(() => expect(family.query).toHaveBeenCalledTimes(2));
+        }
         const back = screen.queryByRole("link", { name: /^back$/i }) ?? screen.getByRole("button", { name: /^cancel$/i });
         fireEvent.click(back);
         expect(await screen.findByTestId("location")).toHaveTextContent("/observability");

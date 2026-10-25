@@ -63,7 +63,6 @@ const AccessRoles = () => {
     <EntityEditorHost open={dialogOpen} onOpenChange={next => { if (!submitting) setDialogOpen(next); }}
       title={editing ? t("accessControl.roles.editRole") : t("accessControl.roles.createRole")}
       description={editing ? t("accessControl.roles.updateDescription") : t("accessControl.roles.createDescription")}
-      width="compact"
       dirty={name !== baseline.name || description !== baseline.description}
       saving={submitting}
       footer={<>

@@ -13,7 +13,6 @@ import ConnectionFailureOverlay from "@/features/connections/components/connecti
 import { retryOn5xx } from "@/shared/api/hooks";
 import { Skeleton } from "@/shared/ui-primitives/skeleton";
 import PageChrome from "@/shared/ui-shared/PageChrome";
-import PageLayout from "@/shared/ui-shared/PageLayout";
 
 const DeviceDashboardSkeleton = () => (
   <div className="flex h-full min-h-0 flex-col gap-4" aria-busy="true">
@@ -48,12 +47,12 @@ const DeviceDashboardPage = () => {
   });
 
   if (targetQuery.isPending) {
-    return <PageLayout width="full" fill><DeviceDashboardSkeleton /></PageLayout>;
+    return <DeviceDashboardSkeleton />;
   }
 
   if (targetQuery.isError || !targetQuery.data) {
     return (
-      <PageLayout width="full" fill className="flex flex-col gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         <PageChrome
           title={t("deviceDashboard.title", "Device dashboard")}
           icon={MonitorCog}
@@ -73,7 +72,7 @@ const DeviceDashboardPage = () => {
             }}
           />
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
@@ -86,7 +85,7 @@ const DeviceDashboardPage = () => {
   const targetFamily = target.family ?? "—";
 
   return (
-    <PageLayout width="full" fill className="flex flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <PageChrome
         title={target.name}
         icon={MonitorCog}
@@ -94,7 +93,7 @@ const DeviceDashboardPage = () => {
         badge={targetFamily}
       />
       <CctvConsole targetId={targetId ?? ""} className="min-h-0 flex-1" />
-    </PageLayout>
+    </div>
   );
 };
 

@@ -41,6 +41,134 @@ SYNTHETIC_CIPHER_KEY = base64.b64encode(bytes(range(32))).decode()
 PRODUCER = runpy.run_path(str(ROOT / "scripts/ci-compose-native.py"))
 
 
+class NativeEdgeRefreshTests(unittest.TestCase):
+    """Refresh the actual Compose-owned edge without replacing customer ingress."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="edge-refresh-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.project = "edge-refresh-" + uuid.uuid4().hex
+        self.config = self.root / "nginx.conf"
+        self.configure("before")
+        (self.root / ".env").write_text("")
+        self.compose_file = self.root / "docker-compose.yml"
+        self.compose_file.write_text(json.dumps({"services": {
+            "nginx": {
+                "image": "nginx:1.30-alpine",
+                "volumes": [str(self.config) + ":/etc/nginx/nginx.conf:ro"],
+            },
+            "frontend": {"image": "nginx:1.30-alpine"},
+        }}))
+        self.deployment = deploy.Deployment(argparse.Namespace(
+            root=self.root, stage=self.root / "backups/release-20261025T120000Z",
+            project_name=self.project))
+        self.deployment.plan = {"image_file": ".env"}
+        deploy.run(self.deployment.compose() + ["up", "-d", "--pull", "never"])
+        self.identifier = deploy.run(self.deployment.compose() + ["ps", "-q", "nginx"]).decode().strip()
+        self.network = self.project + "_default"
+        self.addCleanup(self.remove_network)
+        self.before = self.inspect()
+
+    def remove_network(self):
+        identifiers = deploy.run(["docker", "ps", "-aq", "--filter",
+                                  "label=com.docker.compose.project=" + self.project]).decode().splitlines()
+        if identifiers:
+            deploy.run(["docker", "rm", "-f", *identifiers])
+        deploy.run(["docker", "network", "rm", self.network])
+
+    def configure(self, body):
+        self.config.write_text('events {}\nhttp { server { listen 80; location / { return 200 "'
+                               + body + '"; } } }\n')
+
+    def inspect(self):
+        return json.loads(deploy.run(["docker", "inspect", self.identifier]))[0]
+
+    def test_refreshes_declared_and_retained_edge_in_place(self):
+        for declared in (True, False):
+            with self.subTest(declared=declared):
+                if not declared:
+                    self.compose_file.write_text(json.dumps({"services": {
+                        "frontend": {"image": "nginx:1.30-alpine"}}}))
+                self.configure("after-" + str(declared))
+                config_bytes = self.config.read_bytes()
+                with patch.object(deploy, "run", wraps=deploy.run) as commands:
+                    self.deployment.refresh_edge_upstreams()
+                executions = [call.args[0] for call in commands.call_args_list
+                              if call.args[0][:2] == ["docker", "exec"]]
+                self.assertEqual(executions, [
+                    ["docker", "exec", self.identifier, "nginx", "-t"],
+                    ["docker", "exec", self.identifier, "nginx", "-s", "reload"],
+                ])
+                services = self.deployment.running_declared_services()
+                self.assertEqual(services, ["frontend", "nginx"] if declared else ["frontend"])
+                state = self.inspect()
+                self.assertEqual(state["Id"], self.before["Id"])
+                self.assertEqual(state["State"]["StartedAt"], self.before["State"]["StartedAt"])
+                self.assertTrue(state["State"]["Running"])
+                self.assertEqual(self.config.read_bytes(), config_bytes)
+                self.assertEqual(deploy.run(["docker", "exec", self.identifier, "nginx", "-t"]), b"")
+
+    def test_refuses_ambiguous_edge(self):
+        deploy.run(["docker", "run", "-d", "--pull", "never",
+                    "--label", "com.docker.compose.project=" + self.project,
+                    "--label", "com.docker.compose.service=nginx",
+                    "nginx:1.30-alpine"])
+        with self.assertRaisesRegex(deploy.DeployError, "unique"):
+            self.deployment.refresh_edge_upstreams()
+
+    def test_refuses_stopped_edge(self):
+        deploy.run(["docker", "stop", self.identifier])
+        with self.assertRaises(deploy.DeployError):
+            self.deployment.refresh_edge_upstreams()
+
+    def test_edgeless_installation_needs_no_refresh(self):
+        deploy.run(["docker", "rm", "-f", self.identifier])
+        self.compose_file.write_text(json.dumps({"services": {
+            "frontend": {"image": "nginx:1.30-alpine"}}}))
+        with patch.object(deploy, "run", wraps=deploy.run) as commands:
+            self.deployment.refresh_edge_upstreams()
+        self.assertFalse(any(call.args[0][:2] == ["docker", "exec"]
+                             for call in commands.call_args_list))
+
+    def test_declared_missing_edge_cannot_skip_refresh(self):
+        deploy.run(["docker", "rm", "-f", self.identifier])
+        with self.assertRaisesRegex(deploy.DeployError, "declared nginx container is missing"):
+            self.deployment.refresh_edge_upstreams()
+
+    def test_invalid_config_cannot_reload(self):
+        self.config.write_text("invalid customer configuration;\n")
+        with patch.object(deploy, "run", wraps=deploy.run) as commands:
+            with self.assertRaises(deploy.DeployError):
+                self.deployment.refresh_edge_upstreams()
+        self.assertFalse(any(call.args[0][-3:] == ["nginx", "-s", "reload"]
+                             for call in commands.call_args_list))
+        self.assertEqual(self.inspect()["State"]["StartedAt"], self.before["State"]["StartedAt"])
+        self.assertEqual(self.config.read_text(), "invalid customer configuration;\n")
+
+    def test_refuses_inspection_identity_change_before_exec(self):
+        native_run = deploy.run
+        for change in ("id", "project", "service", "oneoff"):
+            with self.subTest(change=change):
+                def inspect_changed(command, **kwargs):
+                    result = native_run(command, **kwargs)
+                    if command[:2] == ["docker", "inspect"]:
+                        inspected = json.loads(result)
+                        if change == "id":
+                            inspected[0]["Id"] = "f" * 64
+                        else:
+                            key = "com.docker.compose." + change
+                            inspected[0]["Config"]["Labels"][key] = "True" if change == "oneoff" else "foreign"
+                        return json.dumps(inspected).encode()
+                    return result
+
+                with patch.object(deploy, "run", side_effect=inspect_changed) as commands:
+                    with self.assertRaisesRegex(deploy.DeployError, "identity"):
+                        self.deployment.refresh_edge_upstreams()
+                self.assertFalse(any(call.args[0][:2] == ["docker", "exec"]
+                                     for call in commands.call_args_list))
+
+
 class NativeMigrationContractTests(unittest.TestCase):
     """Real backend SQLx entrypoint; maintenance has a separate native proof."""
 

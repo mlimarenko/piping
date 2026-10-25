@@ -27,7 +27,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   ({ value, onValueChange, onClear, containerClassName, clearLabel, className, placeholder, "aria-label": ariaLabel, ...rest }, ref) => {
     const showClear = !!onClear && value.length > 0;
     return (
-      <div className={cn("relative min-w-0", containerClassName)}>
+      <div data-slot="search-input" className={cn("relative min-w-0 w-full max-w-full sm:w-72", containerClassName)}>
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={ref}

@@ -122,10 +122,18 @@ describe("ThresholdEditor component", () => {
         />
       </QueryClientProvider>,
     );
-    const tabs = screen.getAllByRole("tab");
-    const stateTab = tabs.find((tab) => tab.textContent?.toLowerCase().includes("state"));
-    expect(stateTab).toBeDefined();
-    fireEvent.click(stateTab!);
+    const stateChoice = screen.getByRole("button", { name: /state/i, pressed: false });
+    expect(screen.getByRole("button", { name: /numeric/i, pressed: true })).toBeInTheDocument();
+    fireEvent.click(stateChoice);
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ mode: "state" }));
+  });
+
+  it("keeps the rule mode fixed while the editor is disabled", () => {
+    const onChange = vi.fn();
+    render(<ThresholdEditor disabled value={{ ...THRESHOLD_EDITOR_DEFAULTS, mode: "numeric" }} onChange={onChange} />);
+    const stateChoice = screen.getByRole("button", { name: /state/i, pressed: false });
+    expect(stateChoice).toBeDisabled();
+    fireEvent.click(stateChoice);
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

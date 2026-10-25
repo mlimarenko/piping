@@ -4,8 +4,7 @@ import { useTranslation } from "react-i18next";
 import EntityPicker from "@/shared/forms/EntityPicker";
 import MultiSelect from "@/shared/ui-shared/MultiSelect";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui-primitives/select";
-import { listAllResources } from "./api";
-import { inventoryResourceOption } from "./resourceOptions";
+import { inventoryResourceOption, inventoryResourceOptionsQuery } from "./resourceOptions";
 import type { DataflowEndpoint, DataflowEndpointResolution } from "./dataflows-api";
 import { DATAFLOW_ENDPOINTS, DATAFLOW_ENDPOINT_TYPES } from "./dataflowEndpoints";
 import { DataflowMemberList } from "./DataflowEndpointMembers";
@@ -45,12 +44,8 @@ export default function DataflowEndpointPicker({ label, value, onChange, hostsOn
   const builtin = value.object_type === "all" || value.object_type === "internet";
   const addressable = !hostsOnly && ["host", "service", "group"].includes(metadata.kind);
   const options = useQuery({
-    queryKey: ["inventory", "resources", entity, "options"],
-    queryFn: () => {
-      if (!entity) throw new Error("Unsupported endpoint type");
-      return listAllResources(entity);
-    },
-    enabled: !!entity, staleTime: 30_000,
+    ...inventoryResourceOptionsQuery(entity),
+    enabled: !!entity,
   });
   const addresses = useDataflowEndpointResolution(value, !hostsOnly);
   // Eligible choices use the default selector; selected-mode preview uses the actual intent.
@@ -67,7 +62,7 @@ export default function DataflowEndpointPicker({ label, value, onChange, hostsOn
     {metadata.kind === "group" && <p className="text-xs text-muted-foreground">{t("dataflows.scopeHint")}</p>}
     {!builtin && entity && <EntityPicker entity={entity} label={label} value={value.object_id ?? ""}
       onChange={object_id => onChange({ ...value, object_id, address_mode: "default", ipaddresses: [] })}
-      options={(options.data ?? []).map(row => inventoryResourceOption(entity, row))} loading={options.isPending} disabled={disabled || options.isError} />}
+      options={(options.data?.items ?? []).map(row => inventoryResourceOption(entity, row))} loading={options.isPending} disabled={disabled || options.isError} />}
     {!builtin && options.isError && <p role="alert" className="text-sm text-destructive">{t("dataflows.optionsFailed")}</p>}
     {addressable && (builtin || value.object_id) && <>
       <Select value={value.address_mode ?? "default"} onValueChange={address_mode => onChange({ ...value, address_mode: address_mode as DataflowEndpoint["address_mode"], ipaddresses: [] })} disabled={disabled}>

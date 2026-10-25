@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { FileCode2 } from "lucide-react";
 import EntityDetail from "@/shared/ui-shared/EntityDetail";
 import PageState from "@/shared/ui-shared/PageState";
+import PageChrome from "@/shared/ui-shared/PageChrome";
 import SectionLinks from "@/shared/ui-shared/SectionLinks";
 import { Button } from "@/shared/ui-primitives/button";
 import { usePermissions } from "@/shared/auth/permissionsContext";
@@ -59,14 +60,17 @@ export default function PlaybookDetailPage() {
     (section === "targets" ? canReadTargets :
       section === "assignments" ? can("READ", "PLAYBOOK_ASSIGNMENT") :
       section === "schedules" ? can("READ", "PLAYBOOK_SCHEDULE") : can("READ", "PLAYBOOK_RUN_GROUP"));
-  const renderState = (content: ReactNode) => <PageState title={t("playbooks.page.title")} icon={FileCode2} backHref={playbookReturnHref(params.get("returnTo"))}>{content}</PageState>;
-  if (!readable) return renderState(<p role="alert">{t("accessDenied.title")}</p>);
-  if (!isUuid(id)) return renderState(<p role="alert">{t("notFound.title")}</p>);
-  if (query.isPending) return renderState(<p role="status">{t("loading")}</p>);
+  const renderState = (kind: "loading" | "error", title: string, action?: ReactNode) => <>
+    <PageChrome title={t("playbooks.page.title")} icon={FileCode2} actions={<Button asChild variant="outline"><Link to={playbookReturnHref(params.get("returnTo"))}>{t("back")}</Link></Button>} />
+    <PageState kind={kind} title={title} action={action} />
+  </>;
+  if (!readable) return renderState("error", t("accessDenied.title"));
+  if (!isUuid(id)) return renderState("error", t("notFound.title"));
+  if (query.isPending) return renderState("loading", t("loading"));
   if (query.isError || !item) {
     const status = query.error instanceof ApiError ? query.error.status : undefined;
     const message = status === 403 ? "accessDenied.title" : status === 404 || !query.isError ? "notFound.title" : "unknownError";
-    return renderState(<div role="alert" className="flex flex-col items-start gap-4"><p>{t(message)}</p>{query.isError && status !== 403 && <Button onClick={() => void query.refetch()}>{t("retry")}</Button>}</div>);
+    return renderState("error", t(message), query.isError && status !== 403 ? <Button onClick={() => void query.refetch()}>{t("retry")}</Button> : undefined);
   }
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -85,16 +89,16 @@ export default function PlaybookDetailPage() {
         actions={[{ key: "edit", label: t(item.playbook.source_kind === "in_app" ? "edit" : "playbooks.page.actions.viewScript"), allowed: item.playbook.source_kind !== "in_app" || can("UPDATE", "PLAYBOOK"), href: `${playbookEditorEditHref(id)}?${new URLSearchParams({ returnTo: playbookDetailHref(id, section, params.toString()) })}` }]}
       />
       <SectionLinks label={item.playbook.name} activeValue={section} items={PLAYBOOK_CHILD_SECTIONS.map((value) => ({ value, label: labels[value], to: playbookDetailHref(id, value, params.toString()) }))} />
-      {!canReadSection ? <p role="alert">{t("accessDenied.title")}</p> : section === "versions" ? (
+      {!canReadSection ? <PageState kind="error" title={t("accessDenied.title")} /> : section === "versions" ? (
         <VersionHistory key={id} playbookId={id} currentVersionId={item.current_version?.id} readOnly onRestore={() => { /* Restoring is owned by the gated editor. */ }} restoring={false} />
       ) : section === "targets" ? (
         <section className="flex flex-col gap-4" aria-label={labels.targets}>
           {/* Only this persisted relation is available without inventing a playbook filter on target sets. */}
           <h2 className="text-sm font-medium">{labels.targets}: {targetQuery.data?.name ?? "—"}</h2>
-          {!targetId ? <p>{t("playbooks.page.empty.targetSets")}</p> : targetQuery.isError || previewQuery.isError ? <p role="alert">{t("unknownError")}<Button onClick={() => { void targetQuery.refetch(); void previewQuery.refetch(); }}>{t("retry")}</Button></p> : previewQuery.data ? <TargetPreview preview={previewQuery.data} /> : <p role="status">{t("loading")}</p>}
+          {!targetId ? <PageState kind="empty" title={t("playbooks.page.empty.targetSets")} /> : targetQuery.isError || previewQuery.isError ? <PageState kind="error" title={t("unknownError")} action={<Button onClick={() => { void targetQuery.refetch(); void previewQuery.refetch(); }}>{t("retry")}</Button>} /> : previewQuery.data ? <TargetPreview preview={previewQuery.data} /> : <PageState kind="loading" title={t("loading")} />}
         </section>
-      ) : section === "runs" && groupId && (!isUuid(groupId) || groupQuery.isError || (groupQuery.data && groupQuery.data.run_group.playbook_id !== id)) ? <p role="alert">{t("notFound.title")}</p>
-        : section === "runs" && groupId && groupQuery.isPending ? <p role="status">{t("loading")}</p>
+      ) : section === "runs" && groupId && (!isUuid(groupId) || groupQuery.isError || (groupQuery.data && groupQuery.data.run_group.playbook_id !== id)) ? <PageState kind="error" title={t("notFound.title")} />
+        : section === "runs" && groupId && groupQuery.isPending ? <PageState kind="loading" title={t("loading")} />
         : <PlaybooksPage key={id} parent={item} initialTab={section} />}
     </div>
   );

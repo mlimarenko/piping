@@ -32,6 +32,28 @@ match. Gaps, failed rows, foreign tails, renamed descriptions and older prefixes
 are refused before mutation. No pinned-old-image upgrade for shorter histories is
 implemented. Do not drop data or rewrite checksums to make them look complete.
 
+
+The installed EU layout has one additional explicitly sealed representation in
+`maintenance-transition.json`: 61 named physical column positions, the exact
+CHECK cast representation, and the original pre-semantic SQLx archive. Its two
+archived checksums are bound to immutable source `ef45419da210ae83a34ececc8de2bf5738a68e79`.
+The transition validates every archive object and both archived history entries,
+then projects only those exact from/to positions and the exact CHECK definition.
+The complete projected catalog must equal the existing historical digest. This
+is not a general position/CHECK ignore or acceptance of an observed digest.
+Unknown objects, mixed positions, archive changes and every other catalog change
+remain refused. The archive relation and all its rows are preserved unchanged.
+
+Qualify this representation with a verified native physical backup and isolated
+restore; a logical dump can compact physical positions and is not evidence of
+this exact layout. Keep the completed native backup immutable, verify its
+manifest and WAL with `pg_verifybackup`, and retain the original ledger, archive,
+image and configuration for rollback. An isolated clone must have no production
+volume when started, no TCP listener, and realized network deny-all before
+startup. Prove all-table row multisets, archive rows, sequences and native schema
+conservation, adversarial refusal, atomic INSERT-failure rollback and repeat
+no-op before applying the existing offline transition to the installation.
+
 Maintenance checks PostgreSQL 18, current user-collation versions and the entire
 native schema against its source-derived digest. It binds physical column positions,
 constraints, indexes, functions, user/internal triggers, extensions, collations and

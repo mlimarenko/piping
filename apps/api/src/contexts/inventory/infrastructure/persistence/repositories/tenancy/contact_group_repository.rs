@@ -211,7 +211,7 @@ impl ContactGroupRepository for SqlxContactGroupRepository {
         .bind(&new_group.name)
         .bind(&new_group.slug)
         .bind(new_group.parent_id)
-        .bind(new_group.description.as_deref())
+        .bind(new_group.description.as_deref().unwrap_or_default())
         .execute(&self.pool)
         .await
         .map_err(|e| AppError::Database(format!("Failed to create contact_group: {}", e)))?;
@@ -221,7 +221,7 @@ impl ContactGroupRepository for SqlxContactGroupRepository {
             name: new_group.name.clone(),
             slug: new_group.slug.clone(),
             parent_id: new_group.parent_id,
-            description: new_group.description.clone(),
+            description: Some(new_group.description.clone().unwrap_or_default()),
         })
     }
 
@@ -298,7 +298,7 @@ impl ContactGroupRepository for SqlxContactGroupRepository {
                 .bind(&item.name)
                 .bind(&item.slug)
                 .bind(item.parent_id)
-                .bind(item.description.as_deref()),
+                .bind(item.description.as_deref().unwrap_or_default()),
             )
             .await?;
 
@@ -308,7 +308,7 @@ impl ContactGroupRepository for SqlxContactGroupRepository {
                     name: item.name.clone(),
                     slug: item.slug.clone(),
                     parent_id: item.parent_id,
-                    description: item.description.clone(),
+                    description: Some(item.description.clone().unwrap_or_default()),
                 }),
                 Err(e) => errors.push(format!(
                     "Failed to insert contact_group '{}': {}",

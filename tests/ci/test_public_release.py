@@ -248,11 +248,11 @@ class PublicReleaseTests(unittest.TestCase):
         self.assertNotIn("Internal ancestor", notes)
         self.assertEqual(self.git(self.remote, "ls-tree", "main", "CHANGELOG.md").split()[0], "100644")
 
-    def test_changelog_preserves_published_history_and_only_selected_new_subjects(self):
+    def test_changelog_preserves_public_history_without_private_commit_prose(self):
         self.publish()
         previous = self.show("CHANGELOG.md")
         (self.source / "change").write_text("feature\n")
-        self.commit("feat(inventory)!: PIP-137: Add device groups")
+        self.commit("feat(inventory)!: PIP-137: Add device groups for Confidential Client")
         (self.source / "change").write_text("fix\n")
         self.commit("fix(PIP-138): Repair [session reconnect](https://gitlab.piping.space/private) "
                     + "a" * 40 + " pipeline #7096")
@@ -267,10 +267,11 @@ class PublicReleaseTests(unittest.TestCase):
         second = self.publish()
         notes = self.show("CHANGELOG.md")
         self.assertTrue(notes.endswith(previous.removeprefix("# Changelog\n\n")))
-        self.assertIn("## 1.0.1\n\n### Added\n\n- Add device groups\n", notes)
-        self.assertIn("### Fixed\n\n- Repair session reconnect\n", notes)
-        self.assertIn("### Changed\n\n- Explain saved groups\n", notes)
-        for private in ("PIP-", "gitlab", "https://", "7096", "a" * 40, "dirty", self.sha):
+        self.assertEqual(notes, "# Changelog\n\n## 1.0.1\n\n### Changed\n\n"
+                         "- Updated public snapshot.\n\n" + previous.removeprefix("# Changelog\n\n"))
+        for private in ("Confidential Client", "Add device groups", "Repair session reconnect",
+                        "Explain saved groups", "PIP-", "gitlab", "https://", "7096",
+                        "a" * 40, "dirty", self.sha):
             self.assertNotIn(private, notes)
         self.assertEqual(self.show("change"), "docs\n")
         self.assertEqual(self.publish()["status"], "unchanged")
@@ -307,7 +308,7 @@ class PublicReleaseTests(unittest.TestCase):
                     self.publish()
                 self.assertEqual(self.refs(), self.initial_refs)
 
-    def test_changelog_includes_conventional_changes_merged_into_selected_source(self):
+    def test_changelog_excludes_merged_private_commit_prose(self):
         self.publish()
         self.git(self.source, "checkout", "--quiet", "-b", "feature")
         (self.source / "feature").write_text("merged feature\n")
@@ -319,7 +320,7 @@ class PublicReleaseTests(unittest.TestCase):
         self.save_selection()
         self.publish()
         notes = self.show("CHANGELOG.md")
-        self.assertIn("- Add merged device labels\n", notes)
+        self.assertNotIn("Add merged device labels", notes)
         self.assertNotIn("Merge feature branch", notes)
         self.assertEqual(self.show("feature"), "merged feature\n")
 
@@ -369,7 +370,8 @@ class PublicReleaseTests(unittest.TestCase):
         self.publish()
         notes = self.show("CHANGELOG.md")
         self.assertTrue(notes.endswith(previous.removeprefix("# Changelog\n\n")))
-        self.assertIn("- Add saved sessions\n", notes)
+        self.assertIn("- Updated public snapshot.\n", notes)
+        self.assertNotIn("Add saved sessions", notes)
         self.assertEqual(self.git(self.remote, "show", f"{prior}:CHANGELOG.md"), previous)
 
     def test_local_archive_attributes_cannot_change_selected_source(self):
@@ -402,7 +404,9 @@ class PublicReleaseTests(unittest.TestCase):
         self.assertEqual(self.git(self.remote, "show", "main:payload"), "SHA-256 source repository\n")
         self.select_next()
         self.publish()
-        self.assertIn("- Add saved sessions\n", self.show("CHANGELOG.md"))
+        notes = self.show("CHANGELOG.md")
+        self.assertIn("- Updated public snapshot.\n", notes)
+        self.assertNotIn("Add saved sessions", notes)
 
     def test_wrong_first_version_is_refused_without_remote_mutation(self):
         for version in ("0.9.0", "1.0.1", "2.0.0"):

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient } from "@tanstack/react-query";
+import { inventoryResourceOptionsQuery } from "./resourceOptions";
 
 const apiMocks = vi.hoisted(() => ({
   DELETE: vi.fn(),
@@ -421,7 +423,7 @@ describe("listResourcesForTable", () => {
 });
 
 describe("listAllResources", () => {
-  it("walks all pages so FK filter options are not truncated to the first page", async () => {
+  it.each(["list", "shared options"])("walks all pages so FK filter options are not truncated to the first page (%s)", async (consumer) => {
     apiMocks.GET
       .mockResolvedValueOnce({
         data: {
@@ -443,7 +445,7 @@ describe("listAllResources", () => {
         },
       });
 
-    const result = await listAllResources("Devices");
+    const result = consumer === "list" ? await listAllResources("Devices") : (await new QueryClient().fetchQuery(inventoryResourceOptionsQuery("Devices"))).items;
 
     expect(apiMocks.GET).toHaveBeenNthCalledWith(1, "/api/v1/inventory/devices", {
       params: { query: { limit: 1000, offset: 0, search: undefined } },

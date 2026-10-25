@@ -221,6 +221,7 @@ pub struct ResolvedStepRepeat {
     pub count: u32,
     pub start: i64,
     pub index_token: String,
+    collection: Option<(String, Vec<Value>)>,
 }
 
 // Snapshot of a template used by the service when creating a run.
@@ -1327,18 +1328,13 @@ impl TemplateRepository for SqlxTemplateRepository {
 
                 for iteration in 0..repeat.count {
                     let started = Utc::now();
-                    let position = repeat.start + i64::from(iteration);
+                    let (position, iteration_tokens) =
+                        repeat.iteration_tokens(&token_map, iteration)?;
                     let effective_step_key = if repeat.count == 1 {
                         step_key.clone()
                     } else {
                         format!("{step_key}[{position}]")
                     };
-                    let mut iteration_tokens = token_map.clone();
-                    iteration_tokens
-                        .insert(repeat.index_token.clone(), Value::Number(position.into()));
-                    iteration_tokens.insert("position".to_string(), Value::Number(position.into()));
-                    insert_current_iteration_step_tokens(&mut iteration_tokens, position);
-
                     let resolved_payload = resolve_step_payload(step, &iteration_tokens)?;
                     match resource_executor
                         .execute(&mut tx, step, &resolved_payload)
@@ -1674,6 +1670,59 @@ pub fn resolve_step_repeat(
         return Ok(default_step_repeat());
     }
 
+    if let Some(for_each) = object.get("for_each") {
+        if ["count", "start", "index_token"]
+            .iter()
+            .any(|key| object.contains_key(*key))
+        {
+            return Err(AppError::Validation(
+                "repeat.for_each cannot be combined with count, start or index_token".to_string(),
+            ));
+        }
+        let item_token = match object.get("item_token") {
+            None => "item",
+            Some(value) => value
+                .as_str()
+                .filter(|value| is_safe_iteration_identifier(value))
+                .ok_or_else(|| {
+                    AppError::Validation(
+                        "repeat.item_token must be a nonempty safe identifier".to_string(),
+                    )
+                })?,
+        };
+        let is_array_expression = for_each.as_str().is_some_and(|value| {
+            let value = value.trim();
+            value.starts_with("{{")
+                && value.ends_with("}}")
+                && !value[2..value.len() - 2].contains("{{")
+                && !value[2..value.len() - 2].trim().is_empty()
+        });
+        if !for_each.is_array() && !is_array_expression {
+            return Err(AppError::Validation(
+                "repeat.for_each must be an array or a whole template token".to_string(),
+            ));
+        }
+        let resolved = resolve_template_value(for_each, tokens);
+        let items = resolved.as_array().ok_or_else(|| {
+            AppError::Validation("repeat.for_each must resolve to an array".to_string())
+        })?;
+        if items.len() > 500 {
+            return Err(AppError::Validation(
+                "repeat.for_each must contain at most 500 items".to_string(),
+            ));
+        }
+        return Ok(ResolvedStepRepeat {
+            count: items.len() as u32,
+            collection: Some((item_token.to_string(), items.clone())),
+            ..default_step_repeat()
+        });
+    }
+    if object.contains_key("item_token") {
+        return Err(AppError::Validation(
+            "repeat.item_token requires for_each".to_string(),
+        ));
+    }
+
     let count = object
         .get("count")
         .map(|value| resolve_template_value(value, tokens))
@@ -1701,10 +1750,17 @@ pub fn resolve_step_repeat(
         .unwrap_or("position")
         .to_string();
 
+    if count > 0 && start.checked_add(count - 1).is_none() {
+        return Err(AppError::Validation(
+            "repeat positions exceed the integer range".to_string(),
+        ));
+    }
+
     Ok(ResolvedStepRepeat {
         count: count as u32,
         start,
         index_token,
+        collection: None,
     })
 }
 
@@ -1722,17 +1778,12 @@ pub fn resolve_step_previews(
     let mut previews = Vec::with_capacity(repeat.count as usize);
     let mut ids = Vec::with_capacity(repeat.count as usize);
     for iteration in 0..repeat.count {
-        let position = repeat.start + i64::from(iteration);
+        let (position, iteration_tokens) = repeat.iteration_tokens(tokens, iteration)?;
         let effective_step_key = if repeat.count == 1 {
             step_key.clone()
         } else {
             format!("{step_key}[{position}]")
         };
-        let mut iteration_tokens = tokens.clone();
-        iteration_tokens.insert(repeat.index_token.clone(), Value::Number(position.into()));
-        iteration_tokens.insert("position".to_string(), Value::Number(position.into()));
-        insert_current_iteration_step_tokens(&mut iteration_tokens, position);
-
         let mut preview = resolve_step_preview(step, &iteration_tokens)?;
         if let Some(object) = preview.as_object_mut() {
             object.insert(
@@ -1811,6 +1862,53 @@ fn default_step_repeat() -> ResolvedStepRepeat {
         count: 1,
         start: 1,
         index_token: "position".to_string(),
+        collection: None,
+    }
+}
+
+impl ResolvedStepRepeat {
+    fn iteration_tokens(
+        &self,
+        tokens: &HashMap<String, Value>,
+        iteration: u32,
+    ) -> Result<(i64, HashMap<String, Value>), AppError> {
+        let position = self
+            .start
+            .checked_add(i64::from(iteration))
+            .ok_or_else(|| {
+                AppError::Validation("repeat positions exceed the integer range".to_string())
+            })?;
+        let mut tokens = tokens.clone();
+        if let Some((item_token, items)) = &self.collection {
+            let prefix = format!("{item_token}.");
+            tokens.retain(|key, _| key != item_token && !key.starts_with(&prefix));
+            insert_iteration_item_tokens(&mut tokens, item_token, &items[iteration as usize]);
+        } else {
+            tokens.insert(self.index_token.clone(), Value::Number(position.into()));
+        }
+        tokens.insert("position".to_string(), Value::Number(position.into()));
+        insert_current_iteration_step_tokens(&mut tokens, position);
+        Ok((position, tokens))
+    }
+}
+
+pub(crate) fn is_safe_iteration_identifier(value: &str) -> bool {
+    let mut bytes = value.bytes();
+    !matches!(
+        value,
+        "position" | "steps" | "__proto__" | "constructor" | "prototype"
+    ) && bytes
+        .next()
+        .is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_')
+        && bytes.all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+}
+
+fn insert_iteration_item_tokens(tokens: &mut HashMap<String, Value>, token: &str, value: &Value) {
+    tokens.insert(token.to_string(), value.clone());
+    if let Value::Object(object) = value {
+        for (key, value) in object {
+            insert_iteration_item_tokens(tokens, &format!("{token}.{key}"), value);
+        }
     }
 }
 
@@ -1971,5 +2069,214 @@ mod template_reference_projection_tests {
         let payload = resolve_step_payload(&step, &tokens).expect("selected reference");
         assert_eq!(payload.get("device_type_id"), Some(&serde_json::json!(id)));
         assert!(payload.get("device_type").is_none());
+    }
+
+    #[test]
+    fn collection_repeat_resolves_distinct_rows_and_dotted_tokens() {
+        let first = Uuid::new_v4();
+        let second = Uuid::new_v4();
+        let step = json!({
+            "step_key": "assign", "resource_type": "contact_assignment",
+            "repeat": {"for_each": "{{contacts}}", "item_token": "contact"},
+            "payload_template": {
+                "contact_id": "{{contact.contact_id}}", "name": "{{contact.name}}",
+                "email": "{{contact.details.email}}", "position": "{{position}}"
+            }
+        });
+        let mut tokens = HashMap::from([(
+            "contacts".to_string(),
+            json!([
+                {"contact_id": first, "name": "Alice", "details": {"email": "alice@example.test"}},
+                {"contact_id": second, "name": "Bob", "details": {"email": "bob@example.test"}}
+            ]),
+        )]);
+        let repeat = resolve_step_repeat(&step, &tokens).expect("collection repeat");
+        let expected: Vec<Value> = (0..repeat.count)
+            .map(|iteration| {
+                let (_, row_tokens) = repeat
+                    .iteration_tokens(&tokens, iteration)
+                    .expect("row tokens");
+                resolve_step_payload(&step, &row_tokens).expect("execution payload")
+            })
+            .collect();
+        let previews = resolve_step_previews(&step, &mut tokens).expect("collection preview");
+        assert_eq!(previews.len(), 2);
+        assert_eq!(previews[0]["step_key"], "assign[1]");
+        assert_eq!(previews[1]["step_key"], "assign[2]");
+        assert_eq!(previews[0]["resolved_payload"], expected[0]);
+        assert_eq!(previews[1]["resolved_payload"], expected[1]);
+        assert_eq!(
+            expected[0],
+            json!({"contact_id": first, "name": "Alice", "email": "alice@example.test", "position": 1})
+        );
+        assert_eq!(
+            expected[1],
+            json!({"contact_id": second, "name": "Bob", "email": "bob@example.test", "position": 2})
+        );
+        assert!(!tokens.contains_key("contact.name"));
+    }
+
+    #[test]
+    fn literal_collection_defaults_to_item_and_projects_row_reference_ids() {
+        let first = Uuid::new_v4();
+        let second = Uuid::new_v4();
+        let step = json!({
+            "step_key": "assign", "resource_type": "contact_assignment",
+            "repeat": {"for_each": [{"contact_id": first}, {"contact_id": second}]},
+            "payload_template": {"contact_id": "{{item.contact_id}}"}
+        });
+        let previews =
+            resolve_step_previews(&step, &mut HashMap::new()).expect("literal collection");
+        assert_eq!(previews[0]["resolved_payload"]["contact_id"], json!(first));
+        assert_eq!(previews[1]["resolved_payload"]["contact_id"], json!(second));
+    }
+
+    #[test]
+    fn empty_collection_has_no_previews_or_result_ids() {
+        let step = json!({"step_key": "contacts", "repeat": {"for_each": "{{contacts}}", "item_token": "contact"}});
+        let mut tokens = HashMap::from([("contacts".to_string(), json!([]))]);
+        assert_eq!(
+            resolve_step_repeat(&step, &tokens)
+                .expect("empty repeat")
+                .count,
+            0
+        );
+        assert!(
+            resolve_step_previews(&step, &mut tokens)
+                .expect("empty previews")
+                .is_empty()
+        );
+        assert_eq!(tokens.get("steps.contacts.ids"), Some(&json!([])));
+        assert!(!tokens.contains_key("steps.contacts.id"));
+    }
+
+    #[test]
+    fn collection_repeat_rejects_invalid_array_and_mixed_forms() {
+        let tokens = HashMap::from([("contacts".to_string(), json!([]))]);
+        for repeat in [
+            json!({"for_each": "{{missing}}", "item_token": "contact"}),
+            json!({"for_each": null, "item_token": "contact"}),
+            json!({"for_each": 2, "item_token": "contact"}),
+            json!({"for_each": "prefix {{contacts}}", "item_token": "contact"}),
+            json!({"for_each": "{{}}", "item_token": "contact"}),
+            json!({"for_each": "{{contacts}}", "item_token": ""}),
+            json!({"for_each": "{{contacts}}", "item_token": "contact.name"}),
+            json!({"for_each": "{{contacts}}", "item_token": " contact"}),
+            json!({"for_each": "{{contacts}}", "item_token": "1contact"}),
+            json!({"for_each": "{{contacts}}", "item_token": "steps"}),
+            json!({"for_each": "{{contacts}}", "item_token": "position"}),
+            json!({"for_each": "{{contacts}}", "item_token": "contact", "count": 0}),
+            json!({"for_each": "{{contacts}}", "item_token": "contact", "start": 1}),
+            json!({"for_each": "{{contacts}}", "item_token": "contact", "index_token": "i"}),
+            json!({"item_token": "contact"}),
+        ] {
+            let step = json!({"repeat": repeat});
+            assert!(
+                resolve_step_previews(&step, &mut tokens.clone()).is_err(),
+                "accepted {step}"
+            );
+        }
+        for invalid in [
+            Value::Null,
+            json!({}),
+            json!("[]"),
+            json!(1),
+            json!(vec![Value::Null; 501]),
+        ] {
+            let step = json!({"repeat": {"for_each": "{{contacts}}", "item_token": "contact"}});
+            let mut tokens = HashMap::from([("contacts".to_string(), invalid)]);
+            assert!(resolve_step_previews(&step, &mut tokens).is_err());
+        }
+    }
+
+    #[test]
+    fn separate_collection_loop_uses_matching_current_step_ids() {
+        let mut tokens = HashMap::from([(
+            "contacts".to_string(),
+            json!([
+                {"name": "Alice"}, {"name": "Bob"}
+            ]),
+        )]);
+        let create = json!({
+            "step_key": "new_contact", "resource_type": "contact",
+            "repeat": {"for_each": "{{contacts}}", "item_token": "contact"},
+            "payload_template": {"name": "{{contact.name}}"}
+        });
+        resolve_step_previews(&create, &mut tokens).expect("create contacts");
+        let assign = json!({
+            "step_key": "assign", "resource_type": "contact_assignment",
+            "repeat": {"for_each": "{{contacts}}", "item_token": "contact"},
+            "payload_template": {"contact_id": "{{steps.new_contact.current.id}}", "name": "{{contact.name}}"}
+        });
+        let previews = resolve_step_previews(&assign, &mut tokens).expect("assign contacts");
+        assert_eq!(
+            previews[0]["resolved_payload"],
+            json!({"contact_id": "preview:new_contact:1", "name": "Alice"})
+        );
+        assert_eq!(
+            previews[1]["resolved_payload"],
+            json!({"contact_id": "preview:new_contact:2", "name": "Bob"})
+        );
+
+        let first = Uuid::new_v4();
+        let second = Uuid::new_v4();
+        tokens.insert("steps.new_contact.1.id".to_string(), json!(first));
+        tokens.insert("steps.new_contact.2.id".to_string(), json!(second));
+        let repeat = resolve_step_repeat(&assign, &tokens).expect("assignment repeat");
+        for (iteration, id) in [first, second].into_iter().enumerate() {
+            let (_, row_tokens) = repeat
+                .iteration_tokens(&tokens, iteration as u32)
+                .expect("execution tokens");
+            assert_eq!(
+                resolve_step_payload(&assign, &row_tokens).expect("assignment payload")["contact_id"],
+                json!(id)
+            );
+        }
+    }
+
+    #[test]
+    fn count_repeat_keeps_start_index_and_current_association() {
+        let step = json!({
+            "step_key": "device", "resource_type": "device",
+            "repeat": {"count": "{{count}}", "start": 3, "index_token": "device_index"},
+            "payload_template": {"name": "device-{{device_index}}", "position": "{{position}}", "parent_id": "{{steps.parent.current.id}}"}
+        });
+        let mut tokens = HashMap::from([
+            ("count".to_string(), json!(2)),
+            ("steps.parent.3.id".to_string(), json!("parent-3")),
+            ("steps.parent.4.id".to_string(), json!("parent-4")),
+        ]);
+        let previews = resolve_step_previews(&step, &mut tokens).expect("count previews");
+        assert_eq!(previews[0]["step_key"], "device[3]");
+        assert_eq!(previews[1]["step_key"], "device[4]");
+        assert_eq!(
+            previews[0]["resolved_payload"],
+            json!({"name": "device-3", "position": 3, "parent_id": "parent-3"})
+        );
+        assert_eq!(
+            previews[1]["resolved_payload"],
+            json!({"name": "device-4", "position": 4, "parent_id": "parent-4"})
+        );
+        for repeat in [Value::Null, json!({}), json!({"count": 1})] {
+            let step = json!({"step_key": "single", "repeat": repeat, "payload_template": {"position": "{{position}}"}});
+            let previews = resolve_step_previews(&step, &mut tokens).expect("single preview");
+            assert_eq!(previews.len(), 1);
+            assert_eq!(previews[0]["step_key"], "single");
+            assert_eq!(previews[0]["resolved_payload"]["position"], 1);
+        }
+    }
+
+    #[test]
+    fn count_repeat_rejects_position_overflow_before_expanding() {
+        let mut tokens = HashMap::new();
+        let step = json!({"step_key": "overflow", "repeat": {"count": 2, "start": i64::MAX}});
+        assert!(resolve_step_previews(&step, &mut tokens).is_err());
+        assert!(tokens.is_empty());
+        let step = json!({"repeat": {"count": 1, "start": i64::MAX}, "payload_template": {"position": "{{position}}"}});
+        assert_eq!(
+            resolve_step_previews(&step, &mut tokens).expect("maximum position")[0]["resolved_payload"]
+                ["position"],
+            json!(i64::MAX)
+        );
     }
 }

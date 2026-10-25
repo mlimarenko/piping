@@ -15,7 +15,7 @@ import type {
 } from "@/features/playbooks/api";
 
 import { jsonObjectSize } from "./playbookPageFormat";
-import { ListState } from "./PlaybookPanelUi";
+import PageState from "@/shared/ui-shared/PageState";
 
 export function JobTemplatesPanel({
   jobTemplates,
@@ -189,7 +189,7 @@ export function JobTemplatesPanel({
       loading={loading}
       error={error}
       onRetry={onRetry}
-      emptyState={<ListState label={t("playbooks.page.empty.jobTemplates")} />}
+      emptyState={<PageState kind="empty" title={t("playbooks.page.empty.jobTemplates")} />}
     />
   );
 }

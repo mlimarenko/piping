@@ -5,7 +5,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::contexts::inventory::domain::native::template_reference::validate_run_selections;
+use crate::contexts::inventory::domain::native::template_reference::{
+    TemplateSelection, selection, validate_run_selections,
+};
 use serde_json::{Map, Value, json};
 use uuid::Uuid;
 
@@ -16,6 +18,7 @@ use crate::contexts::inventory::infrastructure::persistence::repositories::{
     is_supported_resource_type, parse_step_dependencies, resolve_step_previews,
     supported_resource_types_csv,
 };
+use crate::contexts::inventory::infrastructure::persistence::repositories::native::template_repository::is_safe_iteration_identifier;
 use crate::contexts::shared::list_query::SortSpec;
 use crate::contexts::shared::pagination::PageResult;
 use crate::errors::AppError;
@@ -285,8 +288,14 @@ impl TemplateService {
         input_variables: Option<Value>,
         enforce_required: bool,
     ) -> Result<Value, AppError> {
-        let merged = merge_run_variables(&template.variables, input_variables, enforce_required)?;
-        let selections = validate_run_selections(&template.variables, &template.steps, &merged)?;
+        let merged = merge_run_variables(&template.variables, input_variables)?;
+        let mut selections =
+            validate_run_selections(&template.variables, &template.steps, &merged)?;
+        selections.extend(validate_run_variable_values(
+            &template.variables,
+            &merged,
+            enforce_required,
+        )?);
         self.repo.validate_selections(&selections).await?;
         let mut tokens = HashMap::new();
         tokens_from_variable_map(&mut tokens, &merged);
@@ -608,6 +617,62 @@ fn validate_template_variables(raw: &[Value]) -> Result<Vec<PreparedTemplateVari
                 "variables[{index}].validation_rules must be an object"
             )));
         }
+        if let Some(options) = validation_rules
+            .get("options")
+            .or_else(|| validation_rules.get("enum"))
+        {
+            let options = options.as_array().ok_or_else(|| {
+                AppError::Validation(format!(
+                    "variables[{index}].validation_rules.options must be an array of strings"
+                ))
+            })?;
+            if options
+                .iter()
+                .any(|option| parse_template_option(value_type, option).is_none())
+                || (!options.is_empty() && validation_rules.get("fields").is_some())
+            {
+                return Err(AppError::Validation(format!(
+                    "variables[{index}].validation_rules.options must contain values of the declared type and cannot constrain object lists"
+                )));
+            }
+        }
+        if let Some(fields) = validation_rules.get("fields") {
+            let fields = fields
+                .as_array()
+                .filter(|fields| !fields.is_empty())
+                .ok_or_else(|| {
+                    AppError::Validation(format!(
+                        "variables[{index}].validation_rules.fields must be a nonempty array"
+                    ))
+                })?;
+            if value_type != "json" {
+                return Err(AppError::Validation(format!(
+                    "variables[{index}] must use json for repeated object fields"
+                )));
+            }
+            if fields.iter().any(|field| {
+                !field
+                    .get("key")
+                    .and_then(Value::as_str)
+                    .is_some_and(is_safe_iteration_identifier)
+                    || !field.get("label").is_some_and(Value::is_string)
+                    || !field.get("value_type").and_then(Value::as_str).is_some_and(|kind| ensure_allowed_variable_type(kind).is_ok())
+                    || (field.get("value_type").and_then(Value::as_str) == Some("resource_ref")
+                        && selection(&json!({"resource":field.pointer("/validation_rules/resource"),"id":Uuid::nil()})).is_err())
+                    || field
+                        .get("required")
+                        .is_some_and(|value| !value.is_boolean())
+                    || field
+                        .get("description")
+                        .is_some_and(|value| !value.is_string())
+                    || field.pointer("/validation_rules/fields").is_some()
+            }) {
+                return Err(AppError::Validation(format!(
+                    "variables[{index}].validation_rules.fields require labelled scalar fields with safe unique keys"
+                )));
+            }
+            validate_template_variables(fields)?;
+        }
         let sort_order = variable
             .get("sort_order")
             .and_then(Value::as_i64)
@@ -778,6 +843,41 @@ fn validate_step_repeat(repeat: &Value, index: usize) -> Result<(), AppError> {
     if object.is_empty() {
         return Ok(());
     }
+    if let Some(items) = object.get("for_each") {
+        if object.contains_key("count")
+            || object.contains_key("start")
+            || object.contains_key("index_token")
+        {
+            return Err(AppError::Validation(format!(
+                "steps[{index}].repeat.for_each cannot be combined with count, start or index_token"
+            )));
+        }
+        if !items.is_array()
+            && !items.as_str().is_some_and(|value| {
+                let value = value.trim();
+                value.starts_with("{{") && value.ends_with("}}")
+            })
+        {
+            return Err(AppError::Validation(format!(
+                "steps[{index}].repeat.for_each must be an array or template variable"
+            )));
+        }
+        let item_token = object
+            .get("item_token")
+            .and_then(Value::as_str)
+            .unwrap_or("item");
+        if !is_safe_iteration_identifier(item_token) {
+            return Err(AppError::Validation(format!(
+                "steps[{index}].repeat.item_token must be an identifier other than position or steps"
+            )));
+        }
+        return Ok(());
+    }
+    if object.contains_key("item_token") {
+        return Err(AppError::Validation(format!(
+            "steps[{index}].repeat.item_token requires for_each"
+        )));
+    }
     let count = object.get("count").ok_or_else(|| {
         AppError::Validation(format!(
             "steps[{index}].repeat.count is required when repeat is configured"
@@ -833,7 +933,6 @@ fn validate_step_repeat(repeat: &Value, index: usize) -> Result<(), AppError> {
 fn merge_run_variables(
     variable_definitions: &[Value],
     input_variables: Option<Value>,
-    enforce_required: bool,
 ) -> Result<Value, AppError> {
     let mut merged = Map::new();
 
@@ -870,28 +969,27 @@ fn merge_run_variables(
         }
     }
 
-    if enforce_required {
-        for variable in variable_definitions {
-            let key = variable
-                .get("key")
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .trim();
-            if key.is_empty() {
-                continue;
-            }
-            let required = variable
-                .get("required")
-                .and_then(Value::as_bool)
-                .unwrap_or(false);
-            if required {
-                match merged.get(key) {
-                    Some(Value::Null) | None => {
-                        return Err(AppError::Validation(format!(
-                            "Missing required variable: {key}"
-                        )));
+    for definition in variable_definitions {
+        let Some(key) = definition.get("key").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(fields) = definition
+            .pointer("/validation_rules/fields")
+            .and_then(Value::as_array)
+        else {
+            continue;
+        };
+        if let Some(rows) = merged.get_mut(key).and_then(Value::as_array_mut) {
+            for row in rows {
+                let Some(row) = row.as_object_mut() else {
+                    continue;
+                };
+                for field in fields {
+                    if let Some(key) = field.get("key").and_then(Value::as_str) {
+                        row.entry(key.to_string()).or_insert_with(|| {
+                            field.get("default_value").cloned().unwrap_or(Value::Null)
+                        });
                     }
-                    _ => {}
                 }
             }
         }
@@ -906,6 +1004,191 @@ fn tokens_from_variable_map(tokens: &mut HashMap<String, Value>, variables: &Val
     };
     for (k, v) in variables {
         tokens.insert(k.clone(), v.clone());
+    }
+}
+
+fn validate_run_variable_values(
+    definitions: &[Value],
+    values: &Value,
+    enforce_required: bool,
+) -> Result<Vec<TemplateSelection>, AppError> {
+    let mut selections = Vec::new();
+    for definition in definitions {
+        let key = definition.get("key").and_then(Value::as_str).unwrap_or("");
+        validate_run_variable_value(
+            definition,
+            values.get(key),
+            key,
+            enforce_required,
+            false,
+            &mut selections,
+        )?;
+    }
+    Ok(selections)
+}
+
+fn validate_run_variable_value(
+    definition: &Value,
+    value: Option<&Value>,
+    path: &str,
+    enforce_required: bool,
+    collection_field: bool,
+    selections: &mut Vec<TemplateSelection>,
+) -> Result<(), AppError> {
+    let invalid = |code: &str| {
+        AppError::ValidationFields([(path.to_string(), code.to_string())].into_iter().collect())
+    };
+    let missing = value.is_none_or(|value| {
+        value.is_null()
+            || value.as_str().is_some_and(|value| value.trim().is_empty())
+            || (definition.pointer("/validation_rules/fields").is_some()
+                && value.as_array().is_some_and(Vec::is_empty))
+    });
+    if missing {
+        if enforce_required && definition.get("required").and_then(Value::as_bool) == Some(true) {
+            return Err(invalid("required"));
+        }
+        return Ok(());
+    }
+    let Some(value) = value else {
+        return Ok(());
+    };
+    let value_type = definition
+        .get("value_type")
+        .and_then(Value::as_str)
+        .unwrap_or("string");
+    let rules = definition
+        .get("validation_rules")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+    let valid_type = match value_type {
+        "string" => value.is_string() || (!collection_field && value.is_object()),
+        "resource_ref" => value.is_string() || (!collection_field && value.is_object()),
+        "integer" => value.as_i64().is_some(),
+        "number" => value.as_f64().is_some_and(f64::is_finite),
+        "boolean" => value.is_boolean(),
+        "json" => true,
+        _ => false,
+    };
+    if !valid_type {
+        return Err(invalid(match value_type {
+            "integer" => "invalid_integer",
+            "number" => "invalid_number",
+            "boolean" => "invalid_boolean",
+            "json" => "invalid_json",
+            _ => "invalid_reference",
+        }));
+    }
+    if let Some(options) = rules
+        .get("options")
+        .or_else(|| rules.get("enum"))
+        .and_then(Value::as_array)
+        && !options.is_empty()
+        && !options
+            .iter()
+            .filter_map(|option| parse_template_option(value_type, option))
+            .any(|option| {
+                if value_type == "number" {
+                    option.as_f64() == value.as_f64()
+                } else {
+                    option == *value
+                }
+            })
+    {
+        return Err(invalid("invalid_option"));
+    }
+    if let Some(number) = value.as_f64()
+        && (rules
+            .get("min")
+            .and_then(Value::as_f64)
+            .is_some_and(|min| number < min)
+            || rules
+                .get("max")
+                .and_then(Value::as_f64)
+                .is_some_and(|max| number > max))
+    {
+        return Err(invalid("invalid_range"));
+    }
+    if rules.get("format").and_then(Value::as_str) == Some("email") {
+        let valid_email = value.as_str().is_some_and(|email| {
+            !email.chars().any(char::is_whitespace)
+                && email.split_once('@').is_some_and(|(name, domain)| {
+                    !name.is_empty()
+                        && !domain.contains('@')
+                        && domain
+                            .rsplit_once('.')
+                            .is_some_and(|(host, suffix)| !host.is_empty() && !suffix.is_empty())
+                })
+        });
+        if !valid_email {
+            return Err(invalid("invalid_email"));
+        }
+    }
+    if collection_field && value_type == "resource_ref" {
+        let resource = rules
+            .get("resource")
+            .and_then(Value::as_str)
+            .ok_or_else(|| invalid("invalid_fields"))?;
+        selections.push(
+            selection(&json!({"resource":resource,"id":value}))
+                .map_err(|_| invalid("invalid_reference"))?,
+        );
+    }
+    if let Some(fields) = rules.get("fields") {
+        let fields = fields.as_array().ok_or_else(|| invalid("invalid_fields"))?;
+        let rows = value
+            .as_array()
+            .ok_or_else(|| invalid("invalid_collection"))?;
+        if rows.len() > 500 {
+            return Err(invalid("invalid_collection"));
+        }
+        for (index, row) in rows.iter().enumerate() {
+            if !row.is_object()
+                || row.as_object().is_some_and(|row| {
+                    row.keys().any(|key| {
+                        !fields
+                            .iter()
+                            .any(|field| field.get("key").and_then(Value::as_str) == Some(key))
+                    })
+                })
+            {
+                return Err(invalid("invalid_collection"));
+            }
+            for field in fields {
+                let key = field.get("key").and_then(Value::as_str).unwrap_or("");
+                validate_run_variable_value(
+                    field,
+                    row.get(key),
+                    &format!("{path}.{index}.{key}"),
+                    true,
+                    true,
+                    selections,
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn parse_template_option(value_type: &str, option: &Value) -> Option<Value> {
+    let text = option.as_str()?;
+    if text.is_empty() || text != text.trim() {
+        return None;
+    }
+    match value_type {
+        "string" => Some(Value::String(text.to_string())),
+        "integer" => {
+            let digits = text.strip_prefix('-').unwrap_or(text);
+            if digits.is_empty() || !digits.bytes().all(|c| c.is_ascii_digit()) {
+                return None;
+            }
+            let number = text.parse::<i64>().ok()?;
+            (number.unsigned_abs() <= 9_007_199_254_740_991).then(|| json!(number))
+        }
+        "number" => serde_json::Number::from_f64(text.parse::<f64>().ok()?).map(Value::Number),
+        "boolean" => text.parse::<bool>().ok().map(Value::Bool),
+        "json" => serde_json::from_str(text).ok(),
+        _ => None,
     }
 }
 
@@ -1015,12 +1298,237 @@ mod template_reference_input_tests {
     #[test]
     fn template_reference_run_input_requires_an_object() {
         for input in [json!([]), json!("bad"), json!(123)] {
-            assert!(merge_run_variables(&[], Some(input), false).is_err());
+            assert!(merge_run_variables(&[], Some(input)).is_err());
         }
         assert_eq!(
-            merge_run_variables(&[], Some(json!({"manual":"Core Switch"})), false)
+            merge_run_variables(&[], Some(json!({"manual":"Core Switch"})))
                 .expect("object variables"),
             json!({"manual":"Core Switch"})
         );
+    }
+
+    fn collection_definition() -> Vec<Value> {
+        vec![
+            json!({"key":"contacts","label":"Contacts","value_type":"json",
+            "default_value":[],"validation_rules":{"fields":[
+                {"key":"contact_id","label":"Contact","value_type":"resource_ref","required":true,
+                    "validation_rules":{"resource":"contact"}},
+                {"key":"role_id","label":"Role","value_type":"resource_ref","required":true,
+                    "validation_rules":{"resource":"contact_role"}},
+                {"key":"priority","label":"Priority","value_type":"string","required":true,
+                    "validation_rules":{"options":["primary","secondary"]}}
+            ]}}),
+        ]
+    }
+
+    #[test]
+    fn template_collection_validates_each_reference_and_preserves_distinct_rows() {
+        let definitions = collection_definition();
+        let first = Uuid::new_v4();
+        let second = Uuid::new_v4();
+        let role = Uuid::new_v4();
+        let input = json!({"contacts":[
+            {"contact_id":first,"role_id":role,"priority":"primary"},
+            {"contact_id":second,"role_id":role,"priority":"secondary"}
+        ]});
+        let merged = merge_run_variables(&definitions, Some(input.clone())).expect("merge");
+        assert_eq!(merged, input);
+        let selections =
+            validate_run_variable_values(&definitions, &merged, true).expect("valid rows");
+        assert_eq!(
+            selections
+                .iter()
+                .filter(|s| s.resource == "contact")
+                .map(|s| s.id)
+                .collect::<Vec<_>>(),
+            vec![first, second]
+        );
+        assert!(
+            validate_run_variable_values(&definitions, &json!({"contacts":[]}), true)
+                .expect("no contacts")
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn template_collection_rejects_malformed_rows_references_and_choices_before_execution() {
+        let definitions = collection_definition();
+        let contact = Uuid::new_v4();
+        let role = Uuid::new_v4();
+        for rows in [
+            json!({}),
+            json!("bad"),
+            json!([null]),
+            json!([{"contact_id":contact,"priority":"primary"}]),
+            json!([{"contact_id":"bad","role_id":role,"priority":"primary"}]),
+            json!([{"contact_id":contact,"role_id":role,"priority":"unknown"}]),
+            json!([{"contact_id":{"resource":"contact","id":contact},"role_id":role,"priority":"primary"}]),
+            Value::Array(vec![json!({}); 501]),
+        ] {
+            assert!(
+                validate_run_variable_values(&definitions, &json!({"contacts":rows}), true)
+                    .is_err()
+            );
+        }
+        let error = validate_run_variable_values(
+            &definitions,
+            &json!({"contacts":[
+                {"contact_id":contact,"role_id":role,"priority":"primary"},
+                {"contact_id":contact,"priority":"primary"}
+            ]}),
+            false,
+        )
+        .expect_err("row 2 missing role")
+        .to_string();
+        assert!(error.contains("contacts.1.role_id"), "{error}");
+    }
+
+    #[test]
+    fn template_run_validates_required_strings_options_and_numeric_bounds() {
+        let definitions = vec![
+            json!({"key":"name","value_type":"string","required":true}),
+            json!({"key":"count","value_type":"integer","validation_rules":{"min":0,"max":500}}),
+            json!({"key":"status","value_type":"string","validation_rules":{"options":["active","planned"]}}),
+        ];
+        for input in [
+            json!({"name":" "}),
+            json!({"name":"Site","count":-1}),
+            json!({"name":"Site","count":1.5}),
+            json!({"name":"Site","status":"bad"}),
+        ] {
+            assert!(validate_run_variable_values(&definitions, &input, true).is_err());
+        }
+        validate_run_variable_values(
+            &definitions,
+            &json!({"name":"Site","count":0,"status":"active"}),
+            true,
+        )
+        .expect("valid inputs");
+        validate_run_variable_values(&definitions, &json!({}), false)
+            .expect("authoring preview may omit required inputs");
+    }
+
+    #[test]
+    fn template_collection_authoring_rejects_ambiguous_repeat_modes_and_invalid_fields() {
+        validate_step_repeat(
+            &json!({"for_each":"{{contacts}}","item_token":"contact"}),
+            0,
+        )
+        .expect("collection repeat");
+        for repeat in [
+            json!({"for_each":3}),
+            json!({"for_each":[],"count":1}),
+            json!({"for_each":[],"item_token":"steps"}),
+            json!({"for_each":[],"item_token":"bad.name"}),
+        ] {
+            assert!(validate_step_repeat(&repeat, 0).is_err());
+        }
+        validate_template_variables(&collection_definition()).expect("object-list schema");
+        assert!(
+            validate_template_variables(&[json!({"key":"contacts","value_type":"string",
+            "validation_rules":{"fields":[{"key":"name"}]}})])
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn template_collection_fills_declared_defaults_and_absent_optional_values() {
+        let definitions = vec![
+            json!({"key":"people","value_type":"json","validation_rules":{"fields":[
+                {"key":"name","label":"Name","value_type":"string","required":true},
+                {"key":"email","label":"Email","value_type":"string"},
+                {"key":"priority","label":"Priority","value_type":"string","default_value":"primary"}
+            ]}}),
+        ];
+        let merged = merge_run_variables(&definitions, Some(json!({"people":[{"name":"Person"}]})))
+            .expect("merge defaults");
+        assert_eq!(
+            merged,
+            json!({"people":[{"name":"Person","email":null,"priority":"primary"}]})
+        );
+        validate_run_variable_values(&definitions, &merged, true).expect("valid optional fields");
+    }
+
+    #[test]
+    fn template_options_match_typed_form_values() {
+        let definitions = vec![
+            json!({"key":"count","value_type":"integer","validation_rules":{"options":["1","2"]}}),
+            json!({"key":"ratio","value_type":"number","validation_rules":{"options":["1","2.5"]}}),
+            json!({"key":"enabled","value_type":"boolean","validation_rules":{"options":["true","false"]}}),
+            json!({"key":"data","value_type":"json","required":true,"validation_rules":{"options":["[]","[1]"]}}),
+        ];
+        validate_template_variables(&definitions).expect("typed declarations consumed by the form");
+        validate_run_variable_values(
+            &definitions,
+            &json!({"count":2,"ratio":1,"enabled":false,"data":[]}),
+            true,
+        )
+        .expect("form selections");
+        for input in [
+            json!({"count":3,"data":[]}),
+            json!({"ratio":3,"data":[]}),
+            json!({"enabled":"false","data":[]}),
+            json!({"data":[2]}),
+        ] {
+            assert!(validate_run_variable_values(&definitions, &input, true).is_err());
+        }
+        for definition in [
+            json!({"key":"count","value_type":"integer","validation_rules":{"options":[1,2]}}),
+            json!({"key":"count","value_type":"integer","validation_rules":{"options":["1.5"]}}),
+            json!({"key":"count","value_type":"integer","validation_rules":{"options":["9007199254740992"]}}),
+            json!({"key":"enabled","value_type":"boolean","validation_rules":{"options":["yes"]}}),
+            json!({"key":"status","value_type":"string","validation_rules":{"options":[" active "]}}),
+        ] {
+            assert!(validate_template_variables(&[definition]).is_err());
+        }
+        validate_run_variable_values(
+            &[json!({"key":"data","value_type":"json","required":true})],
+            &json!({"data":[]}),
+            true,
+        )
+        .expect("required ordinary JSON can be an empty array");
+    }
+
+    #[test]
+    fn template_explicit_optional_clears_do_not_restore_defaults() {
+        let contact = Uuid::new_v4();
+        let definitions = vec![
+            json!({"key":"email","value_type":"string","default_value":"default@example.test"}),
+            json!({"key":"people","value_type":"json","validation_rules":{"fields":[
+                {"key":"email","label":"Email","value_type":"string","default_value":"default@example.test"},
+                {"key":"contact_id","label":"Contact","value_type":"resource_ref","default_value":contact,"validation_rules":{"resource":"contact"}},
+                {"key":"count","label":"Count","value_type":"integer","default_value":2},
+                {"key":"enabled","label":"Enabled","value_type":"boolean","default_value":true},
+                {"key":"data","label":"Data","value_type":"json","default_value":{"configured":true}}
+            ]}}),
+        ];
+        let input = json!({"email":"","people":[
+            {"email":"","contact_id":null,"count":null,"enabled":null,"data":null},
+            {"email":null,"contact_id":"","count":null,"enabled":false,"data":[]}
+        ]});
+        let merged =
+            merge_run_variables(&definitions, Some(input.clone())).expect("explicit values");
+        assert_eq!(merged, input);
+        validate_run_variable_values(&definitions, &merged, true)
+            .expect("optional values stay cleared");
+        let missing = merge_run_variables(&definitions, Some(json!({"people":[{}]})))
+            .expect("absent defaults");
+        assert_eq!(missing["email"], "default@example.test");
+        assert_eq!(missing["people"][0]["email"], "default@example.test");
+        assert_eq!(missing["people"][0]["contact_id"], json!(contact));
+    }
+
+    #[test]
+    fn template_collection_authoring_rejects_incomplete_field_types_and_reference_declarations() {
+        for field in [
+            json!({"key":"name","label":"Name","required":true}),
+            json!({"key":"contact","label":"Contact","value_type":"resource_ref"}),
+            json!({"key":"contact","label":"Contact","value_type":"resource_ref","validation_rules":{"resource":"unknown"}}),
+        ] {
+            assert!(validate_template_variables(&[json!({"key":"people","value_type":"json","validation_rules":{"fields":[field]}})]).is_err());
+        }
+        validate_template_variables(&[json!({"key":"people","value_type":"json","validation_rules":{"fields":[
+            {"key":"name","label":"Name","value_type":"string","required":true,"default_value":"Alex"}
+        ]}})]).expect("explicit field schema");
     }
 }

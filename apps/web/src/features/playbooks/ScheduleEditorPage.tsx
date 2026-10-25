@@ -209,7 +209,7 @@ export default function ScheduleEditorPage() {
   if (awaitingSchedule || awaitingParent) {
     const stateQuery = awaitingSchedule ? scheduleQuery : parentQuery;
     return (
-      <EntityEditorPage scope="routed" width="form"
+      <EntityEditorPage scope="routed"
         title={t(editing ? "playbooks.page.dialogs.schedule.editTitle" : "playbooks.page.dialogs.schedule.title")}
         description={t("playbooks.page.dialogs.schedule.description")}
         onBack={back} backLabel={t("back")} cancelLabel={t("cancel")}

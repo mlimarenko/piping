@@ -4,6 +4,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { ArrowRight, KeyRound } from "lucide-react";
 import { listResources } from "@/features/inventory/api";
 import FormSection from "@/shared/ui-shared/FormSection";
+import PageState from "@/shared/ui-shared/PageState";
 import FormField from "@/shared/ui-shared/FormField";
 import EntityRef from "@/shared/ui-shared/EntityRef";
 import DataTable, { type Column } from "@/shared/ui-shared/DataTable";
@@ -167,9 +168,10 @@ const EffectivePreview = () => {
   );
 
   return (
-    <FormSection title={t("connectionConfig.preview.title")} description={t("connectionConfig.preview.description")} contentClassName="flex flex-col gap-4">
+    <div className="grid min-w-0 gap-4">
+    <FormSection title={t("connectionConfig.preview.title")} description={t("connectionConfig.preview.description")}>
 
-      <div className="flex flex-wrap items-end gap-4 border-b border-border pb-4">
+      <div className="flex flex-wrap items-end gap-4">
         <FormField className="min-w-0 basis-48 flex-1" htmlFor={deviceFieldId} label={t("connectionConfig.preview.device")}>
           <SearchableSelect
             id={deviceFieldId}
@@ -198,31 +200,21 @@ const EffectivePreview = () => {
         </div>
       </div>
 
+    </FormSection>
       <div className="flex flex-col gap-4">
         {!deviceId && (
-          <p className="text-center text-xs text-muted-foreground py-6">
-            {t("connectionConfig.preview.selectDevice")}
-          </p>
+          <PageState kind="empty" title={t("connectionConfig.preview.selectDevice")} />
         )}
         {deviceId && effectiveQuery.isPending && (
-          <p className="text-center text-xs text-muted-foreground py-6">
-            {t("loading")}
-          </p>
+          <PageState kind="loading" title={t("loading")} />
         )}
         {deviceId && effectiveQuery.isError && (
-          <div className="flex flex-wrap items-center justify-center gap-2 py-6">
-          <p role="alert" className="text-sm text-destructive">
-            {t("connectionConfig.preview.failed")}
-          </p>
-            <Button variant="outline" size="sm" onClick={() => { void effectiveQuery.refetch(); }}>{t("retry")}</Button>
-          </div>
+          <PageState kind="error" title={t("connectionConfig.preview.failed")} action={<Button variant="outline" size="sm" onClick={() => { void effectiveQuery.refetch(); }}>{t("retry")}</Button>} />
         )}
         {deviceId && effective && (
           <>
             {leaves.length === 0 ? (
-              <p className="text-center text-xs text-muted-foreground py-6">
-                {t("connectionConfig.preview.noConfig")}
-              </p>
+              <PageState kind="empty" title={t("connectionConfig.preview.noConfig")} />
             ) : (
               <DataTable
                 tableId="connection-config.effective-preview"
@@ -257,7 +249,7 @@ const EffectivePreview = () => {
           </>
         )}
       </div>
-    </FormSection>
+    </div>
   );
 };
 

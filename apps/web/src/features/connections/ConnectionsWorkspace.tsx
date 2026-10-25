@@ -46,6 +46,8 @@ import {
 } from "@/shared/ui-shared/tableState";
 import EmptyState from "@/shared/ui-shared/EmptyState";
 import PageChrome from "@/shared/ui-shared/PageChrome";
+import PageLayout from "@/shared/ui-shared/PageLayout";
+import { TogglePill } from "@/shared/ui-shared/TogglePill";
 import { cn } from "@/shared/lib/utils";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { useSessionTouchLayout } from "@/features/connections/hooks/useSessionViewport";
@@ -2384,9 +2386,6 @@ const ConnectionsWorkspace = ({ visible = true }: { visible?: boolean }) => {
     <>
       <SearchInput
         ref={searchInputRef}
-        containerClassName={cn(
-          "min-w-0 flex-[1_1_0%]",
-        )}
         value={searchQuery}
         onValueChange={setSearchQuery}
         onClear={clearSearch}
@@ -2429,8 +2428,8 @@ const ConnectionsWorkspace = ({ visible = true }: { visible?: boolean }) => {
               </span>
             )}
           </Button>
-          <div role="group" aria-label={t("connections.viewSelection")} className="order-last flex basis-full gap-1 rounded-lg border border-border bg-muted/40 p-1 md:order-none md:basis-auto">
-            {(["tree", "cards", "table", "map"] as ViewMode[]).filter(mode => mode !== "map" || can("READ", "INVENTORY")).map(mode => <Button key={mode} variant={viewMode === mode ? "secondary" : "ghost"} size="sm" aria-pressed={viewMode === mode} onClick={() => setViewMode(mode)} className={cn("h-9 flex-1 gap-2 px-2 md:flex-none", viewMode === mode && "bg-background shadow-sm")}><ViewModeIcon mode={mode} /><span>{t(`connections.views.${mode}`)}</span></Button>)}
+          <div role="group" aria-label={t("connections.viewSelection")} className="order-last flex basis-full flex-wrap gap-2 md:order-none md:basis-auto">
+            {(["tree", "cards", "table", "map"] as ViewMode[]).filter(mode => mode !== "map" || can("READ", "INVENTORY")).map(mode => <TogglePill key={mode} active={viewMode === mode} onClick={() => setViewMode(mode)} shape="md" icon={<ViewModeIcon mode={mode} />}>{t(`connections.views.${mode}`)}</TogglePill>)}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -2588,9 +2587,7 @@ const ConnectionsWorkspace = ({ visible = true }: { visible?: boolean }) => {
   ]);
 
   const renderWorkspace = () => (
-    <div ref={workspaceRef} className={cn(workspaceRootClass(isMobile, isBottomDock),
-      !hasOpenTabs && "px-4 py-4 md:px-6 md:py-6",
-      !hasOpenTabs && viewMode !== "table" && "mx-auto max-w-[1280px]")}>
+    <div ref={workspaceRef} className={workspaceRootClass(isMobile, isBottomDock)}>
       <PageChrome title={t("routeTitles./connections")} visible={visible} />
       {/* Main content area. When tight on width, stack inspector ON TOP of the list with a draggable resizer. */}
       <div
@@ -2923,7 +2920,10 @@ const ConnectionsWorkspace = ({ visible = true }: { visible?: boolean }) => {
     </div>
   );
 
-  return renderWorkspace();
+  const workspace = renderWorkspace();
+  return !hasOpenTabs && viewMode !== "map"
+    ? <PageLayout fill className="h-full">{workspace}</PageLayout>
+    : workspace;
 };
 
 export default ConnectionsWorkspace;

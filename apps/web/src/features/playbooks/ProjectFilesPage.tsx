@@ -193,7 +193,6 @@ function ProjectFilesEditor({
 
   return (
     <EntityEditorPage scope="routed"
-      width="standard"
       title={project.name}
       description={t("playbooks.page.projects.files.description", {
         defaultValue: "Files stored with this manual project. Saving replaces the whole set.",
@@ -372,7 +371,7 @@ export default function ProjectFilesPage() {
     const missing = [projectQuery.error, filesQuery.error].some((error) => error instanceof ApiError && error.status === 404);
     const back = () => void navigate(PLAYBOOK_TAB_ROUTES.projects);
     return (
-      <EntityEditorPage scope="routed" width="standard"
+      <EntityEditorPage scope="routed"
         title={projectQuery.data?.name ?? t("playbooks.page.projects.files.title")}
         description={t("playbooks.page.projects.files.description")}
         breadcrumbs={[

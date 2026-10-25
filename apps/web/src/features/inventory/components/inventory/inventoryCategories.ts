@@ -60,11 +60,11 @@ export function isPseudoInventoryRailKey(
 /**
  * Category-grouped information architecture for the inventory page.
  *
- * Visible category links select the active group; a second row lists that
- * category's entities with counts. Neither level requires opening a picker.
+ * Visible category links select the active group; one searchable picker
+ * selects that category's entities and workspaces on every viewport.
  *
  * Every key here MUST exist in `tabConfig` / `ENTITY_API`; the ordering inside
- * each category drives the chip row order.
+ * each category drives the picker order.
  */
 export interface InventoryCategory {
   key: "dcim" | "ipam" | "virtualization" | "tenancy" | "circuits" | "vpn" | "provisioning";
@@ -73,7 +73,7 @@ export interface InventoryCategory {
   /** i18n key for the rail subtitle under inventory.resources.categories. */
   descriptionKey: string;
   icon: LucideIcon;
-  /** Entities surfaced in this category's chip row. May include the
+  /** Entities surfaced in this category's picker. May include the
    *  config-layers pseudo-entity, which renders a bespoke pane (not a table). */
   entities: RailEntity[];
 }

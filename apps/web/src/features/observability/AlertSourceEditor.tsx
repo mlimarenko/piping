@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, Loader2 } from "lucide-react";
+import { Button } from "@/shared/ui-primitives/button";
 import { useApiMutation } from "@/shared/api/hooks";
 import type { ApiError } from "@/shared/api/client";
 import { RequireCapability } from "@/shared/auth/permissions";
@@ -12,7 +12,7 @@ import FormField, { FormFieldControl } from "@/shared/ui-shared/FormField";
 import FormSelect from "@/shared/ui-shared/FormSelect";
 import { Switch } from "@/shared/ui-primitives/switch";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageState from "@/shared/ui-shared/PageState";
 import {
   createAlertSource,
   listAlertSources,
@@ -283,14 +283,13 @@ const AlertSourceEditor = () => {
   const query = useQuery({ queryKey: ALERT_SOURCES_KEY, queryFn: () => listAlertSources() });
   const item = query.data?.items.find(candidate => candidate.id === id) ?? null;
   if (query.isPending || query.isError || (id && !item)) {
-    return <EntityEditorPage scope="routed" width="form"
+    return <EntityEditorPage scope="routed"
       title={t(id ? "observability.alertSource.editTitle" : "observability.alertSource.createTitle")}
       onBack={() => { void navigate(observabilityListHref(ALERT_SOURCES_VIEW)); }}
       backLabel={t("back")} cancelLabel={t("cancel")}>
-      {query.isPending ? <output className="flex justify-center p-8"><Loader2 className="size-6 animate-spin" aria-label={t("loading")} /></output>
-        : <EmptyState icon={BellRing} title={t(query.isError ? "observability.entityLoadFailed" : "observability.entityNotFound")}
-          actionLabel={query.isError ? t("retry") : undefined}
-          onAction={query.isError ? () => { void query.refetch(); } : undefined} />}
+      <PageState kind={query.isPending ? "loading" : query.isError ? "error" : "empty"}
+        title={t(query.isPending ? "loading" : query.isError ? "observability.entityLoadFailed" : "observability.entityNotFound")}
+        action={query.isError ? <Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button> : undefined} />
     </EntityEditorPage>;
   }
 

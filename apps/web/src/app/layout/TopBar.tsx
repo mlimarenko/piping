@@ -15,7 +15,7 @@ const TopBar = ({ onToggleMobileSidebar, showMobileToggle }: TopBarProps) => {
   const { owner, actionsBlocked, setTitleHost, setActionsHost } = usePageChromeHosts();
 
   return (
-    <header data-slot="app-header" className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background px-4 py-2 sm:gap-4 sm:px-6">
+    <header data-slot="app-header" className="page-gutters flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background py-2 sm:gap-4">
       {/* Left: mobile toggle + title */}
       <div className="flex min-w-0 flex-1 basis-40 items-center gap-2">
         {showMobileToggle && (

@@ -8,7 +8,6 @@ import { RequireCapability } from "@/shared/auth/permissions";
 import type { ApiError } from "@/shared/api/client";
 import { notify } from "@/shared/lib/notifications";
 import PageChrome from "@/shared/ui-shared/PageChrome";
-import PageLayout from "@/shared/ui-shared/PageLayout";
 import RowActions from "@/shared/ui-shared/RowActions";
 import { useInventoryRowActionFocus } from "./useInventoryRowActionFocus";
 import { DropdownMenuItem } from "@/shared/ui-primitives/dropdown-menu";
@@ -477,11 +476,11 @@ const CustomFieldsBody = ({ tab, onTabChange }: { tab: CustomFieldsTab; onTabCha
 
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as CustomFieldsTab)}>
         <SectionTabs
+          aria-label={t("customFields.title")}
           items={[
             { value: "definitions", label: t("customFields.tabs.definitions"), icon: Lock },
             { value: "choice-sets", label: t("customFields.tabs.choiceSets"), icon: ListChecks },
           ] satisfies Array<{ value: typeof tab; label: string; icon: typeof Lock }>}
-          className="surface-chip h-9"
         />
 
         <TabsContent value="definitions" className="mt-4">
@@ -516,7 +515,6 @@ const CustomFieldsBody = ({ tab, onTabChange }: { tab: CustomFieldsTab; onTabCha
             }
             toolbar={
               <SearchInput
-                containerClassName="flex-1 max-w-xs"
                 value={defTable.search}
                 onValueChange={defTable.setSearch}
                 placeholder={t("customFields.def.searchPlaceholder")}
@@ -555,7 +553,6 @@ const CustomFieldsBody = ({ tab, onTabChange }: { tab: CustomFieldsTab; onTabCha
             }
             toolbar={
               <SearchInput
-                containerClassName="flex-1 max-w-xs"
                 value={choiceSetsTable.search}
                 onValueChange={choiceSetsTable.setSearch}
                 placeholder={t("customFields.choiceSet.searchPlaceholder")}
@@ -647,11 +644,9 @@ const CustomFields = () => {
   const { can } = usePermissions();
   const canRead = can("READ", "INVENTORY");
   const [tab, setTab] = useState<CustomFieldsTab>("definitions");
-  return <PageLayout width={canRead && tab === "definitions" ? "full" : "standard"} fill className="flex flex-col gap-4">
-    <RequireCapability check={() => canRead}>
+  return <RequireCapability check={() => canRead}>
       <CustomFieldsBody tab={tab} onTabChange={setTab} />
-    </RequireCapability>
-  </PageLayout>;
+    </RequireCapability>;
 };
 
 export default CustomFields;

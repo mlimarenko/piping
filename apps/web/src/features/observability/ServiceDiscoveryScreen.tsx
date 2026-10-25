@@ -14,7 +14,7 @@ import MultiSelect from "@/shared/ui-shared/MultiSelect";
 import FormSelect from "@/shared/ui-shared/FormSelect";
 import { DropdownMenuItem } from "@/shared/ui-primitives/dropdown-menu";
 import { Button } from "@/shared/ui-primitives/button";
-import { Input } from "@/shared/ui-primitives/input";
+import SearchInput from "@/shared/ui-shared/SearchInput";
 import { deleteExporterAssignment, listAllExporterAssignments, type ExporterAssignmentItem } from "./api";
 import { EXPORTER_ASSIGNMENTS_KEY } from "./keys";
 import { useScopeEntities } from "./useScopeEntities";
@@ -115,10 +115,6 @@ export default function ServiceDiscoveryScreen() {
     </RowActions> },
   ];
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <Input ref={searchInput} autoFocus={focusOnReturn} className="w-full sm:max-w-sm" aria-label={t("search")} placeholder={t("search")} value={params.get("search") ?? ""} onChange={event => update({ search: event.target.value }, true, true)} />
-      {can("CREATE", "MONITORING") && <Button asChild><Link to={observabilityNewHref(EXPORTER_ASSIGNMENTS_BASE) + context}><Plus className="size-4" />{t("observability.sd.add")}</Link></Button>}
-    </div>
     <details className="sm:hidden">
       <summary className="min-h-9 cursor-pointer rounded-md py-2 text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring">{t("observability.workflow.filtersSort", { defaultValue: "Filters and sorting" })}</summary>
       <div className="grid gap-4 py-2">
@@ -129,8 +125,11 @@ export default function ServiceDiscoveryScreen() {
         ]} />
       </div>
     </details>
-    {query.isPending && <output aria-live="polite">{t("loading")}</output>}
     <DataTable tableId="observability.exporters" columns={columns} data={rows.slice(page * pageSize.value, (page + 1) * pageSize.value)} getRowKey={row => row.id}
+      toolbar={<>
+        <SearchInput ref={searchInput} autoFocus={focusOnReturn} placeholder={t("search")} value={params.get("search") ?? ""} onValueChange={search => update({ search }, true, true)} />
+        {can("CREATE", "MONITORING") && <Button asChild><Link to={observabilityNewHref(EXPORTER_ASSIGNMENTS_BASE) + context}><Plus className="size-4" />{t("observability.sd.add")}</Link></Button>}
+      </>}
       loading={query.isPending} error={query.isError ? t("observability.entityLoadFailed") : undefined} onRetry={() => query.refetch()}
       className="min-h-0 flex-1 max-sm:[&_table]:table-fixed max-sm:[&_th]:px-1 max-sm:[&_td]:px-1 max-sm:[&_th>div]:flex-wrap max-sm:[&_th_[data-column-sort-trigger]>span]:whitespace-normal max-sm:[&_th:first-child]:w-[64%] max-sm:[&_th:nth-last-child(2)]:w-[23%] max-sm:[&_th:last-child]:w-[13%]" sortState={sort} onSortChange={next => update({ sort: next?.key ?? null, order: next?.dir ?? null })}
       columnFilters={filters} onColumnFilterChange={(key, values) => update({ [key]: values.join(",") })}

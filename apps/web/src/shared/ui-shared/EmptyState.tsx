@@ -6,8 +6,8 @@ import type { ReactNode } from "react";
 
 interface EmptyStateProps {
   icon: LucideIcon;
-  title: string;
-  description?: string;
+  title: ReactNode;
+  description?: ReactNode;
   actionLabel?: string;
   onAction?: () => void;
   actionIcon?: LucideIcon;

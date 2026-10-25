@@ -13,7 +13,7 @@ import DataTable, {
   type DataTableSortState,
 } from "@/shared/ui-shared/DataTable";
 import { boolFilterOptions } from "@/shared/ui-shared/dataTableLocal";
-import FormSection from "@/shared/ui-shared/FormSection";
+import PageState from "@/shared/ui-shared/PageState";
 import EmptyState from "@/shared/ui-shared/EmptyState";
 import EntityRef from "@/shared/ui-shared/EntityRef";
 import StatusChip from "@/shared/ui-shared/StatusChip";
@@ -349,7 +349,8 @@ const AssignmentsPanel = ({
   const showGuidedEmpty = isEmpty && !hasActiveFilters;
 
   return (
-    <FormSection title={t("connectionConfig.assignments.title")} description={t("connectionConfig.assignments.whatIsHint")}>
+    <section aria-label={t("connectionConfig.assignments.title")} className="grid min-w-0 gap-4">
+      <p className="text-sm text-muted-foreground">{t("connectionConfig.assignments.whatIsHint")}</p>
 
       <div className="flex flex-col gap-4">
         {/* EMPTY STATE — guided primary path. The record does nothing yet, so
@@ -411,7 +412,6 @@ const AssignmentsPanel = ({
           <>
             <DataTable
               tableId="connection-config.assignments"
-              className="border-0 shadow-none"
               data={assignments}
               columns={columns}
               getRowKey={(assignment) => assignment.id}
@@ -482,7 +482,7 @@ const AssignmentsPanel = ({
         )}
 
         {assignmentsQuery.isError ? (
-          <EmptyState icon={AlertCircle} title={t("connectionConfig.assignments.loadError")} />
+          <PageState kind="error" title={t("connectionConfig.assignments.loadError")} />
         ) : null}
       </div>
 
@@ -503,7 +503,7 @@ const AssignmentsPanel = ({
         onOpenChange={setBulkDialogOpen}
         recordId={recordId}
       />
-    </FormSection>
+    </section>
   );
 };
 

@@ -53,6 +53,48 @@ export async function expectRoutedPage(page: Page): Promise<void> {
   ).toHaveCount(0);
 }
 
+/** Measure the rendered canvas, not class names that can agree while layouts drift. */
+export async function expectManagementCanvas(page: Page): Promise<void> {
+  const canvas = page.locator('#main-content [data-slot="page-layout"]');
+  await expect(canvas).toHaveCount(1);
+  const geometry = await canvas.evaluate(element => {
+    const main = document.getElementById("main-content")!;
+    const style = getComputedStyle(element);
+    return {
+      width: element.getBoundingClientRect().width,
+      available: main.clientWidth,
+      left: Number.parseFloat(style.paddingLeft),
+      right: Number.parseFloat(style.paddingRight),
+      headerPadding: Number.parseFloat(getComputedStyle(document.querySelector('[data-slot="app-header"]')!).paddingLeft),
+      viewport: innerWidth,
+      document: [document.documentElement.clientWidth, document.documentElement.scrollWidth],
+    };
+  });
+  expect(Math.abs(geometry.width - geometry.available)).toBeLessThanOrEqual(1);
+  expect(geometry.left).toBe(geometry.viewport >= 768 ? 24 : 16);
+  expect(geometry.right).toBe(geometry.left);
+  expect(geometry.headerPadding).toBe(geometry.left);
+  expect(geometry.document[1]!).toBeLessThanOrEqual(geometry.document[0]! + 1);
+  const tabs = page.locator('.section-tab-list .section-tab:visible');
+  for (const tab of await tabs.all()) {
+    expect((await tab.boundingBox())?.height).toBe(40);
+  }
+  for (const search of await page.locator('[data-slot="table-toolbar"] [data-slot="search-input"]:visible').all()) {
+    const size = await search.evaluate(element => ({ width: element.getBoundingClientRect().width, available: element.parentElement!.clientWidth }));
+    expect(Math.abs(size.width - Math.min(geometry.viewport >= 640 ? 288 : size.available, size.available))).toBeLessThanOrEqual(1);
+  }
+  if (geometry.viewport < 640) {
+    for (const heading of await page.locator('[data-slot="surface-card-heading"]:visible').all()) {
+      const widths = await heading.evaluate(element => {
+        const parent = element.parentElement!;
+        const style = getComputedStyle(parent);
+        return [element.getBoundingClientRect().width, parent.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight)];
+      });
+      expect(Math.abs(widths[0]! - widths[1]!)).toBeLessThanOrEqual(1);
+    }
+  }
+}
+
 export async function waitForConnectionsPageReady(page: Page): Promise<void> {
   // The connections search textbox is the stable
   // role-level signal that the workspace has rendered.

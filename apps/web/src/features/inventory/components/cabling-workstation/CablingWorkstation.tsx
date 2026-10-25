@@ -234,7 +234,6 @@ const CablingWorkstation = () => {
               }
             }}
             placeholder={t("inventory.cablingWorkstation.filters.search")}
-            containerClassName="min-w-0 flex-1"
           />
         <FormSelect<CablingEndpointKind | "all">
           value={endpointKind} onValueChange={setEndpointKind}
@@ -278,7 +277,7 @@ const CablingWorkstation = () => {
           visible together, so the wrappers return to `contents`. */}
       <Tabs value={mobilePane} onValueChange={(value) => setMobilePane(value as MobilePane)} className="contents">
         <div className="flex items-center gap-2 @5xl:hidden">
-          <SectionTabs aria-label={t("inventory.cablingWorkstation.navLabel")} wrapperClassName="min-w-0 grow" className="w-full" triggerClassName="flex-1" items={(["find", "trace"] as const).map((pane) => ({
+          <SectionTabs aria-label={t("inventory.cablingWorkstation.navLabel")} wrapperClassName="min-w-0 grow" items={(["find", "trace"] as const).map((pane) => ({
             value: pane, label: t(`inventory.cablingWorkstation.mobile.${pane}`),
           }))} />
           <Button

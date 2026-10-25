@@ -1,6 +1,5 @@
 import { useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { Database } from "lucide-react";
 import { ChevronDown, Eye } from "lucide-react";
 import RowActions from "@/shared/ui-shared/RowActions";
 import { DropdownMenuItem } from "@/shared/ui-primitives/dropdown-menu";
@@ -11,7 +10,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/shared/ui-primitives/collapsible";
-import { cn } from "@/shared/lib/utils";
 import SelectorChips from "@/features/playbooks/SelectorChips";
 import type {
   PlaybookRisk,
@@ -51,48 +49,6 @@ export function PreviewActions({ name, onOpen, children }: Readonly<{
       <Eye className="size-4" />{t("playbooks.page.actions.details")}
     </DropdownMenuItem>
   </RowActions>;
-}
-
-export function ModeTab({
-  active,
-  icon: Icon,
-  label,
-  hint,
-  onClick,
-}: Readonly<{
-  active: boolean;
-  icon: typeof Database;
-  label: string;
-  hint: string;
-  onClick: () => void;
-}>) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "flex min-h-9 flex-col gap-1 rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        active
-          ? "border-primary bg-accent"
-          : "border-border bg-card hover:bg-accent",
-      )}
-    >
-      <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <Icon className={cn("h-3.5 w-3.5", active ? "text-primary" : "text-muted-foreground")} />
-        {label}
-      </span>
-      <span className="text-xs leading-snug text-muted-foreground">{hint}</span>
-    </button>
-  );
-}
-
-export function ListState({ label, compact = false }: Readonly<{ label: string; compact?: boolean }>) {
-  return (
-    <div className={cn("flex items-center justify-center text-sm text-muted-foreground", compact ? "py-8" : "py-14")}>
-      {label}
-    </div>
-  );
 }
 
 export function RiskBadge({ risk }: Readonly<{ risk: PlaybookRisk }>) {

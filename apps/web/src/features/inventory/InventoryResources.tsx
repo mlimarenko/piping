@@ -10,7 +10,6 @@ import IdentitySelection from "@/features/access-control/components/access/Ident
 import { CONNECTION_TARGETS_QUERY_KEY } from "@/features/connections/api";
 import { useTablePageSize } from "@/shared/hooks/useTablePageSize";
 import PageChrome from "@/shared/ui-shared/PageChrome";
-import PageLayout from "@/shared/ui-shared/PageLayout";
 import RowActions from "@/shared/ui-shared/RowActions";
 import { useInventoryRowActionFocus } from "./useInventoryRowActionFocus";
 import { DropdownMenuItem } from "@/shared/ui-primitives/dropdown-menu";
@@ -25,6 +24,7 @@ import EmptyState from "@/shared/ui-shared/EmptyState";
 import { Button } from "@/shared/ui-primitives/button";
 import SearchInput from "@/shared/ui-shared/SearchInput";
 import SectionLinks from "@/shared/ui-shared/SectionLinks";
+import SearchableSelect from "@/shared/ui-shared/SearchableSelect";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,7 +97,7 @@ import {
   listResources,
   listResourcesForTable,
 } from "@/features/inventory/api";
-import { inventoryResourceOption } from "@/features/inventory/resourceOptions";
+import { inventoryResourceOption, inventoryResourceOptionsQuery } from "@/features/inventory/resourceOptions";
 import {
   EMPTY_CONFIG,
   customFieldContentTypeTokenFor,
@@ -471,10 +471,7 @@ const InventoryResourcesBody = ({ activeTab, onFallbackTabChange }: {
   ]);
 
   const optionQueries = useQueries({
-    queries: optionEntities.map((entity) => ({
-      queryKey: ["inventory", "resources", entity, "options"],
-      queryFn: () => listResources(entity),
-    })),
+    queries: optionEntities.map(inventoryResourceOptionsQuery),
   });
   const byTab = useMemo(() => {
     const map: Partial<Record<InventoryEntityKey, Resource[]>> = {};
@@ -492,7 +489,7 @@ const InventoryResourcesBody = ({ activeTab, onFallbackTabChange }: {
     return map;
   }, [optionEntities, optionQueries]);
 
-  const countBadge = (entities: readonly RailEntity[]) => {
+  const countLabel = (entities: readonly RailEntity[]) => {
     const queries = entities.filter((entity) => !isPseudoInventoryRailKey(entity))
       .map((entity) => countByTab.get(entity));
     if (queries.length === 0) return undefined;
@@ -500,8 +497,12 @@ const InventoryResourcesBody = ({ activeTab, onFallbackTabChange }: {
       return queries.reduce((total, query) => total + (query?.data?.total ?? 0), 0);
     }
     const unavailable = queries.some((query) => query?.isError);
-    const label = t(unavailable ? "unknownError" : "loading");
-    return <span aria-label={label} title={label}>{unavailable ? "—" : "…"}</span>;
+    return t(unavailable ? "unknownError" : "loading");
+  };
+  const countBadge = (entities: readonly RailEntity[]) => {
+    const count = countLabel(entities);
+    if (typeof count !== "string") return count;
+    return <span aria-label={count} title={count}>{count === t("unknownError") ? "—" : "…"}</span>;
   };
 
   // Per-entity sort/filter capability (devices fully wired; others empty →
@@ -1302,7 +1303,6 @@ const InventoryResourcesBody = ({ activeTab, onFallbackTabChange }: {
           <SectionLinks
             label={t("inventory.resources.title")}
             activeValue={activeCategory}
-            wrap
             onNavigate={(category) => resetEntityQuery(firstEntityOf(category))}
             items={inventoryCategories.map(category => ({
               value: category.key,
@@ -1312,12 +1312,15 @@ const InventoryResourcesBody = ({ activeTab, onFallbackTabChange }: {
               badge: countBadge(category.entities),
             }))}
           />
-          <SectionLinks<RailEntity>
-            label={t(currentCategory.labelKey)}
-            activeValue={activeTab}
-            variant="secondary"
-            wrap
-            onNavigate={resetEntityQuery}
+          <SearchableSelect<RailEntity>
+            aria-label={currentCategoryLabel}
+            value={activeTab}
+            onValueChange={(entity) => {
+              resetEntityQuery(entity);
+              void navigate({ search: `?${inventoryEntityParams(entity)}` });
+            }}
+            searchPlaceholder={t("search")}
+            panelPlacement="overlay"
             items={currentCategory.entities.map((entity) => {
               const isConfigLayers = isConfigContextsRailKey(entity);
               const isIpamWorkspace = isIpamWorkspaceRailKey(entity);
@@ -1327,19 +1330,11 @@ const InventoryResourcesBody = ({ activeTab, onFallbackTabChange }: {
                 : isIpamWorkspace ? t("inventory.ipamWorkspace.navLabel")
                 : isCablingWorkstation ? t("inventory.cablingWorkstation.navLabel")
                 : t(`inventory.resources.entities.${entity}.other`, { defaultValue: entity });
-              return { value: entity, label,
-                to: { search: `?${inventoryEntityParams(entity)}` },
-                badge: isPseudo ? undefined : countBadge([entity]),
+              const count = isPseudo ? undefined : countLabel([entity]);
+              return { id: entity, label: count === undefined ? label : `${label} ${count}`,
                 icon: isConfigLayers ? Layers : isIpamWorkspace ? Network : isCablingWorkstation ? Cable : undefined };
             })}
           />
-          {activeEntity && <SearchInput
-            ref={searchInput}
-            containerClassName="min-w-0 w-full"
-            value={search}
-            onValueChange={(value) => { setSearch(value); setPage(0); }}
-            placeholder={t("inventory.resources.searchPlaceholder", { entity: t(`inventory.resources.entities.${activeTab}.other`, { defaultValue: activeTab }) })}
-          />}
           </div>
 
           <div className="m-0 flex min-h-0 flex-1 flex-col">
@@ -1352,6 +1347,12 @@ const InventoryResourcesBody = ({ activeTab, onFallbackTabChange }: {
           ) : (
           <DataTable
             className="min-h-0"
+            toolbar={<SearchInput
+              ref={searchInput}
+              value={search}
+              onValueChange={(value) => { setSearch(value); setPage(0); }}
+              placeholder={t("inventory.resources.searchPlaceholder", { entity: t(`inventory.resources.entities.${activeTab}.other`, { defaultValue: activeTab }) })}
+            />}
             columns={columns}
             data={filtered}
             getRowKey={(r) => r.id}
@@ -1595,11 +1596,9 @@ const InventoryResources = () => {
   const [searchParams] = useSearchParams();
   const [fallbackTab, setFallbackTab] = useState<RailEntity>("Sites");
   const activeTab = parseInventoryRailEntity(searchParams) ?? fallbackTab;
-  return <PageLayout width={canRead && isIpamWorkspaceRailKey(activeTab) ? "full" : "standard"} fill>
-    <RequireCapability check={() => canRead}>
+  return <RequireCapability check={() => canRead}>
       <InventoryResourcesBody activeTab={activeTab} onFallbackTabChange={setFallbackTab} />
-    </RequireCapability>
-  </PageLayout>;
+    </RequireCapability>;
 };
 
 export default InventoryResources;

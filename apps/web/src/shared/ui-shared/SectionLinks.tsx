@@ -15,18 +15,16 @@ interface SectionLinksProps<TValue extends string> {
   activeValue: TValue;
   label: string;
   className?: string;
-  variant?: "line" | "secondary";
-  wrap?: boolean;
   onNavigate?: (value: TValue) => void;
 }
 
 /** URL sections use links; in-page panels use SectionTabs with TabsContent. */
 export default function SectionLinks<TValue extends string>({
-  items, activeValue, label, className, variant = "line", wrap = false, onNavigate,
+  items, activeValue, label, className, onNavigate,
 }: SectionLinksProps<TValue>) {
   return (
-    <nav aria-label={label} data-slot="section-links" data-variant={variant}
-      className={cn("section-tab-list", wrap && "flex-wrap overflow-visible", className)}>
+    <nav aria-label={label} data-slot="section-links"
+      className={cn("section-tab-list", className)}>
       {items.map(({ value, label: title, to, icon: Icon, badge }) => (
         <Link
           key={value}
@@ -34,9 +32,7 @@ export default function SectionLinks<TValue extends string>({
           aria-current={value === activeValue ? "page" : undefined}
           data-slot="section-link"
           data-state={value === activeValue ? "active" : "inactive"}
-          className={cn("section-tab focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-            wrap && "h-auto max-w-full whitespace-normal py-2 text-left",
-            wrap && (variant === "secondary" ? "min-h-9" : "min-h-10"))}
+          className="section-tab focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           onClick={onNavigate ? (event) => {
             if (!event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
               onNavigate(value);
@@ -44,7 +40,7 @@ export default function SectionLinks<TValue extends string>({
           } : undefined}
         >
           {Icon ? <Icon className="size-4 shrink-0" aria-hidden /> : null}
-          <span className="min-w-0 break-words">{title}</span>
+          <span>{title}</span>
           {badge != null ? <>{" "}<span data-slot="section-link-badge" className="shrink-0 text-xs tabular-nums">{badge}</span></> : null}
         </Link>
       ))}

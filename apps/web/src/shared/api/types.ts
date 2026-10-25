@@ -805,7 +805,10 @@ export type TemplateStepResourceType =
   | "contact_assignment"
   | "cluster"
   | "cluster_type"
-  | "cluster_group";
+  | "cluster_group"
+  | "tunnel_group"
+  | "tunnel"
+  | "tunnel_termination";
 
 export type TemplateStepConflictPolicy = "fail" | "skip" | "update_selected_fields";
 

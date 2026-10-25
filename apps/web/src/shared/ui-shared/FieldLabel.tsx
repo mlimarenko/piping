@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Label } from "@/shared/ui-primitives/label";
+import { cn } from "@/shared/lib/utils";
 
 export interface FieldLabelProps extends ComponentPropsWithoutRef<typeof Label> {
   /** Marks the field as required: appends a red asterisk + an a11y hint. */
@@ -14,10 +15,8 @@ export interface FieldLabelProps extends ComponentPropsWithoutRef<typeof Label> 
  * styling) and, when `required`, appends a red asterisk (`*`) plus a
  * localized screen-reader-only required hint.
  *
- * The asterisk is the single shared signal for "this field must be filled".
- * `className` is passed through untouched so each form keeps its own
- * sizing/colour; the asterisk uses `ml-0.5` so it renders correctly whether
- * the label is `block`, `inline`, or `inline-flex`.
+ * The label row accommodates the shared 32px help action even when no action
+ * is present, so adjacent controls align. Longer labels wrap without clipping.
  */
 function FieldLabel({
   required,
@@ -28,7 +27,7 @@ function FieldLabel({
   const { t } = useTranslation();
 
   return (
-    <Label className={className} {...rest}>
+    <Label className={cn("inline-flex min-h-8 min-w-0 items-center gap-1 leading-5 [overflow-wrap:anywhere]", className)} {...rest}>
       {children}
       {required && (
         <>

@@ -2,11 +2,11 @@ import { useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Radio } from "lucide-react";
 import { useApiMutation } from "@/shared/api/hooks";
 import { RequireCapability } from "@/shared/auth/permissions";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
-import EmptyState from "@/shared/ui-shared/EmptyState";
+import PageState from "@/shared/ui-shared/PageState";
+import { Button } from "@/shared/ui-primitives/button";
 import FormField from "@/shared/ui-shared/FormField";
 import { Input } from "@/shared/ui-primitives/input";
 import { Label } from "@/shared/ui-primitives/label";
@@ -107,7 +107,6 @@ function NodeEditor({ node }: Readonly<{ node?: BackendProxyNode }>) {
   return (
     <>
       <EntityEditorPage scope="routed"
-        width="compact"
         title={t(node ? "proxyNodes.editNode" : "proxyNodes.addNodeTitle")}
         description={t(node ? "proxyNodes.updateDescription" : "proxyNodes.addDescription")}
         onBack={back}
@@ -153,16 +152,16 @@ export default function ProxyNodeEditor() {
   });
   const back = () => { void navigate(PROXY_NODES_ROUTE); };
   const renderState = (content: ReactNode) => <EntityEditorPage scope="routed"
-    width="compact" title={t(id ? "proxyNodes.editNode" : "proxyNodes.addNodeTitle")}
+    title={t(id ? "proxyNodes.editNode" : "proxyNodes.addNodeTitle")}
     description={t(id ? "proxyNodes.updateDescription" : "proxyNodes.addDescription")}
     onBack={back} backLabel={t(id ? "proxyNodes.backToNodes" : "proxyNodes.backToList")}
     onCancel={back} cancelLabel={t("cancel")}>
     {content}
   </EntityEditorPage>;
-  if (query.isPending) return renderState(<output className="flex justify-center p-8"><Loader2 className="size-6 animate-spin" aria-label={t("loading")} /></output>);
-  if (query.isError) return renderState(<EmptyState icon={Radio} title={t("proxyNodes.loadFailed")} actionLabel={t("retry")} onAction={() => { void query.refetch(); }} />);
+  if (query.isPending) return renderState(<PageState kind="loading" title={t("loading")} />);
+  if (query.isError) return renderState(<PageState kind="error" title={t("proxyNodes.loadFailed")} action={<Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button>} />);
   const node = query.data.items.find(candidate => candidate.id === id);
-  if (id && !node) return renderState(<EmptyState icon={Radio} title={t("proxyNodes.notFound")} />);
+  if (id && !node) return renderState(<PageState kind="empty" title={t("proxyNodes.notFound")} />);
   return <RequireCapability check={p => p.can(id ? "UPDATE" : "CREATE", "PROXY_NODE")}>
     <NodeEditor key={id ?? "create"} node={node} />
   </RequireCapability>;

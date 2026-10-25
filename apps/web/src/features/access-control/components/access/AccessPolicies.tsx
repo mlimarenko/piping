@@ -725,7 +725,6 @@ const AccessPolicies = () => {
         value={search}
         onValueChange={setSearch}
         placeholder={t("accessControl.rules.searchPlaceholder")}
-        containerClassName="flex-1 max-w-xs"
       />
     </>
   );

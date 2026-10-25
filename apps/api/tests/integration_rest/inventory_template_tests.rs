@@ -9,13 +9,178 @@ async fn template_test_post(
 ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
     let body = body.to_string();
     let (status, response) = request(app, "POST", path, Some(&body), Some(cookie)).await?;
+    assert_eq!(
+        status,
+        expected,
+        "{path}: {}",
+        String::from_utf8_lossy(&response)
+    );
     let response: serde_json::Value = serde_json::from_slice(&response)?;
-    assert_eq!(status, expected, "{path}: {response}");
     Ok(response)
 }
 
 // These native REST tests use the same dedicated PostgreSQL/Redis fixture as
 // the other ignored integration tests; they must not run against a shared DB.
+#[tokio::test]
+#[ignore = "requires dedicated PostgreSQL and Redis integration fixtures"]
+async fn inventory_templates_collection_contacts_and_tenant_vpn_persist_exact_bindings()
+-> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let state = build_test_app_state().await?;
+    let app = piping_backend::app::build_router(state);
+    let cookie = login_and_get_cookie(&app, TEST_ADMIN_USERNAME, TEST_ADMIN_PASSWORD)
+        .await
+        .expect("login");
+    let suffix = unique_suffix();
+    let tenant = template_test_post(&app, &cookie, "/api/v1/inventory/tenants",
+        serde_json::json!({"name":format!("collection-tenant-{suffix}"),"slug":format!("collection-tenant-{suffix}")}), StatusCode::CREATED).await?;
+    let role = template_test_post(&app, &cookie, "/api/v1/inventory/contact-roles",
+        serde_json::json!({"name":format!("collection-role-{suffix}"),"slug":format!("collection-role-{suffix}")}), StatusCode::CREATED).await?;
+    let mut contacts = Vec::new();
+    for index in 0..2 {
+        contacts.push(
+            template_test_post(
+                &app,
+                &cookie,
+                "/api/v1/inventory/contacts",
+                serde_json::json!({"name":format!("existing-{index}-{suffix}")}),
+                StatusCode::CREATED,
+            )
+            .await?,
+        );
+    }
+    let site_name = format!("collection-site-{suffix}");
+    let tunnel_name = format!("collection-tunnel-{suffix}");
+    let new_name = format!("new-contact-{suffix}");
+    let fields = serde_json::json!([
+        {"key":"contact_id","label":"Contact","value_type":"resource_ref","required":true,"validation_rules":{"resource":"contact"}},
+        {"key":"role_id","label":"Role","value_type":"resource_ref","required":true,"validation_rules":{"resource":"contact_role"}}
+    ]);
+    let template = template_test_post(&app, &cookie, "/api/v1/inventory/templates", serde_json::json!({
+        "name":format!("collection-template-{suffix}"),"status":"active",
+        "variables":[
+            {"key":"tenant","value_type":"resource_ref","required":true,"validation_rules":{"resource":"tenant"}},
+            {"key":"contacts","value_type":"json","default_value":[],"validation_rules":{"fields":fields}},
+            {"key":"new_contacts","value_type":"json","default_value":[],"validation_rules":{"fields":[
+                {"key":"name","label":"Name","value_type":"string","required":true},
+                {"key":"role_id","label":"Role","value_type":"resource_ref","required":true,"validation_rules":{"resource":"contact_role"}}
+            ]}}
+        ],
+        "steps":[
+            {"step_key":"site","resource_type":"site","operation":"create","payload_template":{"name":site_name,"tenant_id":"{{tenant}}"}},
+            {"step_key":"tunnel","resource_type":"tunnel","operation":"create","payload_template":{"name":tunnel_name,"tenant_id":"{{tenant}}"}},
+            {"step_key":"existing","resource_type":"contact_assignment","operation":"create","depends_on_step_keys":["site"],
+                "repeat":{"for_each":"{{contacts}}","item_token":"contact"},"payload_template":{
+                    "contact_id":"{{contact.contact_id}}","role_id":"{{contact.role_id}}","object_id":"{{steps.site.id}}","object_type":"dcim.site"}},
+            {"step_key":"new_contact","resource_type":"contact","operation":"create",
+                "repeat":{"for_each":"{{new_contacts}}","item_token":"contact"},"payload_template":{"name":"{{contact.name}}"}},
+            {"step_key":"new_assignment","resource_type":"contact_assignment","operation":"create","depends_on_step_keys":["site","new_contact"],
+                "repeat":{"for_each":"{{new_contacts}}","item_token":"contact"},"payload_template":{
+                    "contact_id":"{{steps.new_contact.current.id}}","role_id":"{{contact.role_id}}","object_id":"{{steps.site.id}}","object_type":"dcim.site"}}
+        ]
+    }), StatusCode::CREATED).await?;
+    let template_id = template["id"].as_str().expect("template ID");
+    let variables = serde_json::json!({
+        "tenant":{"resource":"tenant","id":tenant["id"]},
+        "contacts":[{"contact_id":contacts[0]["id"],"role_id":role["id"]},{"contact_id":contacts[1]["id"],"role_id":role["id"]}],
+        "new_contacts":[{"name":new_name,"role_id":role["id"]}]
+    });
+    for (invalid, expected_path) in [
+        (
+            serde_json::json!([{"contact_id":contacts[0]["id"]}]),
+            Some("contacts.0.role_id"),
+        ),
+        (
+            serde_json::json!([{"contact_id":Uuid::new_v4(),"role_id":role["id"]}]),
+            None,
+        ),
+    ] {
+        let mut input = variables.clone();
+        input["contacts"] = invalid;
+        for endpoint in ["preview-run", "runs"] {
+            let error = template_test_post(
+                &app,
+                &cookie,
+                &format!("/api/v1/inventory/templates/{template_id}/{endpoint}"),
+                serde_json::json!({"variables":input}),
+                StatusCode::BAD_REQUEST,
+            )
+            .await?;
+            if let Some(path) = expected_path {
+                assert_eq!(error["details"]["fields"][path], "required");
+            }
+        }
+    }
+    let pool = build_test_db_pool().await?;
+    let runs: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM inventory_template_run WHERE template_id=$1")
+            .bind(Uuid::parse_str(template_id)?)
+            .fetch_one(&pool)
+            .await?;
+    assert_eq!(
+        runs, 0,
+        "invalid rows must not create run records or resources"
+    );
+    let preview = template_test_post(
+        &app,
+        &cookie,
+        &format!("/api/v1/inventory/templates/{template_id}/preview-run"),
+        serde_json::json!({"variables":variables}),
+        StatusCode::OK,
+    )
+    .await?;
+    assert_eq!(preview["steps"].as_array().expect("steps").len(), 6);
+    assert_eq!(
+        preview["steps"][1]["resolved_payload"]["tenant_id"],
+        tenant["id"]
+    );
+    assert_eq!(
+        preview["steps"][2]["resolved_payload"]["contact_id"],
+        contacts[0]["id"]
+    );
+    assert_eq!(
+        preview["steps"][3]["resolved_payload"]["contact_id"],
+        contacts[1]["id"]
+    );
+    let run = template_test_post(
+        &app,
+        &cookie,
+        &format!("/api/v1/inventory/templates/{template_id}/runs"),
+        serde_json::json!({"variables":variables}),
+        StatusCode::ACCEPTED,
+    )
+    .await?;
+    assert_eq!(run["status"], "completed", "{run}");
+    assert_eq!(run["summary"]["succeeded_steps"], 6);
+    let assignments: Vec<(String, Uuid)> = sqlx::query_as(
+        "SELECT c.name,a.role_id FROM tenancy_contactassignment a JOIN tenancy_contact c ON c.id=a.contact_id JOIN dcim_site s ON s.id=a.object_id WHERE s.name=$1 ORDER BY c.name"
+    ).bind(&site_name).fetch_all(&pool).await?;
+    let mut expected = vec![
+        (
+            contacts[0]["name"].as_str().expect("name").to_string(),
+            Uuid::parse_str(role["id"].as_str().expect("role"))?,
+        ),
+        (
+            contacts[1]["name"].as_str().expect("name").to_string(),
+            Uuid::parse_str(role["id"].as_str().expect("role"))?,
+        ),
+        (
+            new_name,
+            Uuid::parse_str(role["id"].as_str().expect("role"))?,
+        ),
+    ];
+    expected.sort();
+    assert_eq!(assignments, expected);
+    let tunnel_tenant: Uuid = sqlx::query_scalar("SELECT tenant_id FROM vpn_tunnel WHERE name=$1")
+        .bind(&tunnel_name)
+        .fetch_one(&pool)
+        .await?;
+    assert_eq!(
+        tunnel_tenant.to_string(),
+        tenant["id"].as_str().expect("tenant")
+    );
+    Ok(())
+}
+
 #[tokio::test]
 #[ignore = "requires dedicated PostgreSQL and Redis integration fixtures"]
 async fn inventory_templates_structured_references_preserve_selected_device_foreign_keys()

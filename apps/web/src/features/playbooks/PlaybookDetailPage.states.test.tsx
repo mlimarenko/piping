@@ -21,7 +21,7 @@ function mount(entityId = id, allowed = true, destination = returnTo) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}><PermissionsContext.Provider value={{ ...permissions, can: () => allowed }}>
     <MemoryRouter initialEntries={[`/playbooks/${entityId}?${new URLSearchParams({ returnTo: destination })}`]}><Routes>
-      <Route path="/playbooks/:id" element={<PageLayout width="standard"><PlaybookDetailPage /></PageLayout>} />
+      <Route path="/playbooks/:id" element={<PageLayout><PlaybookDetailPage /></PageLayout>} />
       <Route path="/playbooks" element={<Destination />} />
     </Routes></MemoryRouter>
   </PermissionsContext.Provider></QueryClientProvider>);

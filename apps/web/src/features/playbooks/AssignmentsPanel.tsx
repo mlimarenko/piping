@@ -26,7 +26,7 @@ import type {
 import type { usePlaybookScopeEntities } from "@/features/playbooks/usePlaybookScopeEntities";
 
 import { targetSetLabel } from "./playbookPageFormat";
-import { ListState } from "./PlaybookPanelUi";
+import PageState from "@/shared/ui-shared/PageState";
 import { PLAYBOOK_ASSIGNMENTS_TABLE_CONFIG } from "./tableConfig";
 
 export function AssignmentsPanel({
@@ -246,7 +246,7 @@ export function AssignmentsPanel({
       columnFilters={sanitizedColumnFilters}
       onColumnFilterChange={onColumnFilterChange}
       pagination={pagination}
-      emptyState={<ListState label={t("playbooks.page.empty.assignments")} />}
+      emptyState={<PageState kind="empty" title={t("playbooks.page.empty.assignments")} />}
     />
   );
 }

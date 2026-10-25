@@ -1072,7 +1072,6 @@ const SyncProviderEditor = ({ open, onOpenChange, onAdd }: {
 
   return (
     <EntityEditorHost
-      width="compact"
       open={open}
       onOpenChange={v => { if (!v) { reset(); } onOpenChange(v); }}
       title={<span className="flex items-center gap-2">

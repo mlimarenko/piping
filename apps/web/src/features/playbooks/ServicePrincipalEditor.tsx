@@ -40,7 +40,6 @@ export function ServicePrincipalEditor({
       cancelLabel={t("cancel")}
       dirty={dirty}
       dirtyMessage={t("editor.unsavedChanges", { defaultValue: "You have unsaved changes" })}
-      width="compact"
     >
       <fieldset disabled={submitting} inert={submitting} className="flex min-w-0 flex-col gap-4">
         <FormField label={t("playbooks.page.fields.servicePrincipalName")}>

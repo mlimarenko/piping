@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Loader2, AlertTriangle } from "lucide-react";
-import FormSection from "@/shared/ui-shared/FormSection";
 import RowActions from "@/shared/ui-shared/RowActions";
 import { useInventoryRowActionFocus } from "@/features/inventory/useInventoryRowActionFocus";
 import { usePermissions } from "@/shared/auth/permissionsContext";
@@ -12,7 +11,7 @@ import type { ApiError } from "@/shared/api/client";
 import { notify } from "@/shared/lib/notifications";
 import { assertUuid } from "@/shared/lib/ids";
 import type { InventoryEntityKey } from "@/shared/api/types";
-import { listResources } from "@/features/inventory/api";
+import { inventoryResourceOptionsQuery } from "@/features/inventory/resourceOptions";
 import {
   listBindings,
   createBinding,
@@ -136,10 +135,7 @@ const ConfigContextScopeBindings = ({ contextId }: ConfigContextScopeBindingsPro
   }, [bindings, addScopeType]);
 
   const optionQueries = useQueries({
-    queries: neededEntities.map((entity) => ({
-      queryKey: ["inventory", "resources", entity, "options"],
-      queryFn: () => listResources(entity),
-    })),
+    queries: neededEntities.map(inventoryResourceOptionsQuery),
   });
 
   // entity → (id → name) for display + the add picker.
@@ -293,7 +289,11 @@ const ConfigContextScopeBindings = ({ contextId }: ConfigContextScopeBindingsPro
   );
 
   return (
-    <FormSection title={t("configContexts.scope.section")} description={t("configContexts.scope.sectionHint")} contentClassName="flex flex-col gap-4">
+    <section aria-label={t("configContexts.scope.section")} className="flex min-w-0 flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base font-semibold">{t("configContexts.scope.section")}</h2>
+        <p className="text-sm text-muted-foreground">{t("configContexts.scope.sectionHint")}</p>
+      </div>
 
       {/* Current bindings */}
       {bindingsQuery.isPending ? (
@@ -380,7 +380,7 @@ const ConfigContextScopeBindings = ({ contextId }: ConfigContextScopeBindingsPro
           {t("add")}
         </Button>
       </div>}
-    </FormSection>
+    </section>
   );
 };
 

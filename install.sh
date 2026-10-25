@@ -4,7 +4,7 @@ IFS=$'\n\t'
 umask 077
 
 # Rendered by the source publisher, never selected from the caller's environment.
-PUBLIC_VERSION='1.0.0'
+PUBLIC_VERSION='1.0.2'
 SOURCE_FILE="${BASH_SOURCE[0]:-}"
 SOURCE_DIR=""
 if [[ -n "$SOURCE_FILE" && -f "$SOURCE_FILE" ]]; then

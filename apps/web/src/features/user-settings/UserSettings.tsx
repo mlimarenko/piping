@@ -5,7 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTablePageSize } from "@/shared/hooks/useTablePageSize";
 import { useApiMutation } from "@/shared/api/hooks";
 import PageChrome, { PageActions } from "@/shared/ui-shared/PageChrome";
-import SurfaceCard, { SurfaceCardHeader } from "@/shared/ui-shared/SurfaceCard";
+import PageState from "@/shared/ui-shared/PageState";
+import SurfaceCard, { SurfaceCardHeader, SurfaceCardContent } from "@/shared/ui-shared/SurfaceCard";
 import RowActions from "@/shared/ui-shared/RowActions";
 import SectionLinks from "@/shared/ui-shared/SectionLinks";
 import { DropdownMenuItem } from "@/shared/ui-primitives/dropdown-menu";
@@ -44,7 +45,6 @@ import {
   Lock,
   Palette,
   Monitor as MonitorIcon,
-  Loader2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { notify } from "@/shared/lib/notifications";
@@ -104,7 +104,10 @@ function UserSettingsSectionHeader({
 }) {
   const Icon = section.Icon;
   return (
-    <SurfaceCardHeader title={<span className="flex items-center gap-2"><Icon className="size-4 text-primary" aria-hidden="true" />{section.title}</span>} description={section.description} />
+    <header className="flex min-w-0 flex-col gap-1">
+      <h2 className="flex items-center gap-2 text-base font-semibold"><Icon className="size-4 text-primary" aria-hidden="true" />{section.title}</h2>
+      <p className="text-sm text-muted-foreground">{section.description}</p>
+    </header>
   );
 }
 
@@ -603,12 +606,9 @@ const UserSettings = () => {
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <SurfaceCard className="overflow-hidden">
                   <SurfaceCardHeader headingLevel={3} title={<span className="flex items-center gap-2"><Shield className="size-4 text-primary" aria-hidden="true" />{t("userSettings.currentUser")}</span>} />
-                  <div className="space-y-3 p-4">
+                  <SurfaceCardContent className="flex flex-col gap-3">
                     {meQuery.isPending ? (
-                      <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
-                        {t("userSettings.loadingUser")}
-                      </div>
+                      <PageState kind="loading" title={t("userSettings.loadingUser")} />
                     ) : currentUser ? (
                       <>
                         <div className="flex items-center gap-3">
@@ -641,17 +641,14 @@ const UserSettings = () => {
                         </div>
                       </>
                     ) : null}
-                  </div>
+                  </SurfaceCardContent>
                 </SurfaceCard>
 
                 <SurfaceCard className="overflow-hidden lg:col-span-2">
                   <SurfaceCardHeader headingLevel={3} title={<span className="flex items-center gap-2"><KeyRound className="size-4 text-primary" aria-hidden="true" />{t("userSettings.loginPassword")}</span>} />
-                  <div className="space-y-3 p-4">
+                  <SurfaceCardContent className="flex flex-col gap-3">
                     {meQuery.isPending ? (
-                      <div className="flex items-center py-4 text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
-                        {t("userSettings.loadingUser")}
-                      </div>
+                      <PageState kind="loading" title={t("userSettings.loadingUser")} />
                     ) : currentUser?.authSource === "local" ? (
                       <form noValidate onSubmit={handlePasswordChange} className="flex flex-col gap-3" aria-busy={passwordChange.isPending}>
                         {PASSWORD_FIELDS.map(field => {
@@ -681,12 +678,12 @@ const UserSettings = () => {
                         {t("userSettings.externalPasswordHint")}
                       </p>
                     )}
-                  </div>
+                  </SurfaceCardContent>
                 </SurfaceCard>
 
                 <SurfaceCard className="overflow-hidden lg:col-span-3">
                   <SurfaceCardHeader headingLevel={3} title={<span className="flex items-center gap-2"><Lock className="size-4 text-primary" aria-hidden="true" />{t("userSettings.session")}</span>} />
-                  <div className="space-y-2 p-4">
+                  <SurfaceCardContent className="flex flex-col gap-2">
                     {currentUser?.expiresAt ? (
                       <p className="text-sm text-muted-foreground">
                         {t("userSettings.sessionExpires", {
@@ -698,7 +695,7 @@ const UserSettings = () => {
                         {t("userSettings.sessionActive")}
                       </p>
                     )}
-                  </div>
+                  </SurfaceCardContent>
                 </SurfaceCard>
               </div>
             </>
@@ -752,10 +749,7 @@ const UserSettings = () => {
                   onColumnFilterChange={handleCredentialsColumnFilterChange}
                   emptyState={
                     credsQuery.isPending ? (
-                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
-                        {t("userSettings.loadingCredentials")}
-                      </div>
+                      <PageState kind="loading" title={t("userSettings.loadingCredentials")} />
                     ) : (
                       <EmptyState
                         icon={Key}
@@ -805,15 +799,11 @@ const UserSettings = () => {
                       value={tokensSearch}
                       onValueChange={setTokensSearch}
                       placeholder={t("userSettings.tokenSearchPlaceholder", "Search tokens")}
-                      containerClassName="max-w-xs flex-1"
                     />
                   }
                   emptyState={
                     tokensQuery.isPending ? (
-                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
-                        {t("userSettings.loadingTokens")}
-                      </div>
+                      <PageState kind="loading" title={t("userSettings.loadingTokens")} />
                     ) : (
                       <EmptyState
                         icon={Key}

@@ -13,9 +13,9 @@ import {
 } from "@/features/webhooks/webhookEvents";
 
 import PageChrome from "@/shared/ui-shared/PageChrome";
+import PageState from "@/shared/ui-shared/PageState";
 import RowActions from "@/shared/ui-shared/RowActions";
 import { DropdownMenuItem } from "@/shared/ui-primitives/dropdown-menu";
-import PageLayout from "@/shared/ui-shared/PageLayout";
 import FormSection from "@/shared/ui-shared/FormSection";
 import DataTable, {
   type DataTableSortState,
@@ -459,7 +459,7 @@ const WebhooksPage = () => {
   ];
 
   return (
-    <PageLayout className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageChrome
         title={t("webhooks.title")}
         description={t("webhooks.description")}
@@ -496,9 +496,7 @@ const WebhooksPage = () => {
         }}
         emptyState={
           isPending ? (
-            <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" /> {t("webhooks.loading")}
-            </div>
+            <PageState kind="loading" title={t("webhooks.loading")} />
           ) : (
             <EmptyState
               icon={Webhook}
@@ -511,7 +509,6 @@ const WebhooksPage = () => {
         }
         toolbar={
           <SearchInput
-            containerClassName="flex-1 max-w-xs"
             value={search}
             onValueChange={(v) => { setSearch(v); setPage(0); }}
             placeholder={t("webhooks.searchPlaceholder")}
@@ -625,7 +622,7 @@ const WebhooksPage = () => {
           onClick: event => { event.preventDefault(); if (deleteTarget && canDelete && !deleteMutation.isPending) deleteMutation.mutate(deleteTarget.id); },
         }}
       />
-    </PageLayout>
+    </div>
   );
 };
 

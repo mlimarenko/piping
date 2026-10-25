@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiMutation } from "@/shared/api/hooks";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
+import PageState from "@/shared/ui-shared/PageState";
 import { Input } from "@/shared/ui-primitives/input";
 import { Textarea } from "@/shared/ui-primitives/textarea";
 import { Label } from "@/shared/ui-primitives/label";
@@ -157,8 +158,9 @@ export default function DataflowEditorPage() {
     <EntityEditorPage scope="routed" title={t("dataflows.editTitle", { name: "" })}
       description={t("dataflows.editorHint")} onBack={() => void navigate("/inventory/dataflows")}
       backLabel={t("dataflows.back")} cancelLabel={t("cancel")}>
-      {flow.isPending ? <output>{t("loading")}</output> : (
-        <div className="flex flex-col items-start gap-4"><p role="alert">{t("dataflows.loadFailed")}</p><Button variant="outline" onClick={() => void flow.refetch()}>{t("retry")}</Button></div>
+      {flow.isPending ? <PageState kind="loading" title={t("loading")} /> : (
+        <PageState kind="error" title={t("dataflows.loadFailed")}
+          action={<Button variant="outline" onClick={() => void flow.refetch()}>{t("retry")}</Button>} />
       )}
     </EntityEditorPage>
   );

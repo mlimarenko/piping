@@ -20,9 +20,8 @@ import {
 } from "@/shared/theme/palette";
 
 import PageChrome from "@/shared/ui-shared/PageChrome";
-import SurfaceCard from "@/shared/ui-shared/SurfaceCard";
-import PageLayout from "@/shared/ui-shared/PageLayout";
 import FormSection from "@/shared/ui-shared/FormSection";
+import PageState from "@/shared/ui-shared/PageState";
 import FormField, { FormFieldControl } from "@/shared/ui-shared/FormField";
 import EmptyState from "@/shared/ui-shared/EmptyState";
 import { useUnsavedChangesGuard } from "@/shared/ui-shared/useUnsavedChangesGuard";
@@ -137,14 +136,12 @@ const AppearancePage = () => {
 
   if (!draft) {
     return (
-      <PageLayout width="form" className="flex flex-col gap-6">
+      <div className="flex min-w-0 flex-col gap-6">
         <PageChrome icon={Palette} title={t("appearance.title")} description={t("appearance.description")} />
         {brandingQuery.isError ? <div role="alert">
           <EmptyState icon={Palette} title={t("error")} actionLabel={t("retry")} actionIcon={RotateCcw} onAction={() => { void brandingQuery.refetch(); }} />
-        </div> : <div role="status" className="flex items-center gap-2 py-6 text-muted-foreground">
-          <Loader2 className="size-5 animate-spin" />{t("loading")}
-        </div>}
-      </PageLayout>
+        </div> : <PageState kind="loading" title={t("loading")} />}
+      </div>
     );
   }
 
@@ -199,7 +196,7 @@ const AppearancePage = () => {
   const handleReset = () => patch({ mode: "default" });
 
   return (
-    <PageLayout width="form" className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageChrome
         icon={Palette}
         title={t("appearance.title")}
@@ -212,7 +209,6 @@ const AppearancePage = () => {
         </output>
       )}
 
-      <SurfaceCard className="p-4 md:p-6">
       <fieldset disabled={!canUpdate || saveMutation.isPending} className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">
         {/* App name */}
         <FormSection>
@@ -357,10 +353,9 @@ const AppearancePage = () => {
           </Button>
         </footer>
       )}
-      </SurfaceCard>
 
       {discardDialog}
-    </PageLayout>
+    </div>
   );
 };
 

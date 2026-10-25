@@ -1,8 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { Users, UserCheck, Key, Award } from "lucide-react";
-import { Tabs, TabsContent } from "@/shared/ui-primitives/tabs";
-import SectionTabs from "@/shared/ui-shared/SectionTabs";
+import SectionLinks from "@/shared/ui-shared/SectionLinks";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import AccessUsers from "./AccessUsers";
 import AccessGroups from "./AccessGroups";
@@ -29,7 +28,7 @@ interface AccessDirectoryProps {
 const AccessDirectory = ({ initialSection = "users" }: AccessDirectoryProps) => {
   const { t } = useTranslation();
   const { can } = usePermissions();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   const items = [
     { value: "users" as const, label: t("accessControl.tabs.users"), icon: Users, visible: can("READ", "USER") },
@@ -44,24 +43,18 @@ const AccessDirectory = ({ initialSection = "users" }: AccessDirectoryProps) => 
   const requested: Section = SECTIONS.includes(rawSection as Section) ? (rawSection as Section) : initialSection;
   const section: Section = items.some((x) => x.value === requested) ? requested : (items[0]?.value ?? "users");
 
-  const handleChange = (value: string) => {
-    const next: Section = SECTIONS.includes(value as Section) ? (value as Section) : "users";
-    setSearchParams({ tab: "directory", section: next });
-  };
-
   return (
-    <Tabs value={section} onValueChange={handleChange} className="flex min-w-0 flex-col gap-4">
-      {/* Lighter, secondary strip so the inner level reads as nested, not a peer
-          of the top Access Rules / Directory / SSO tabs. */}
-      <SectionTabs
-        items={items.map((x) => ({ value: x.value, label: x.label, icon: x.icon }))}
-        variant="secondary"
+    <div className="flex min-w-0 flex-col gap-4">
+      <SectionLinks
+        label={t("accessControl.tabs.directory")}
+        activeValue={section}
+        items={items.map((x) => ({ value: x.value, label: x.label, icon: x.icon, to: { search: `?${new URLSearchParams({ tab: "directory", section: x.value })}` } }))}
       />
-      <TabsContent value="users" className="mt-0"><AccessUsers /></TabsContent>
-      <TabsContent value="groups" className="mt-0"><AccessGroups /></TabsContent>
-      <TabsContent value="roles" className="mt-0"><AccessRoles /></TabsContent>
-      <TabsContent value="grants" className="mt-0"><AccessGrants /></TabsContent>
-    </Tabs>
+      {section === "users" && <AccessUsers />}
+      {section === "groups" && <AccessGroups />}
+      {section === "roles" && <AccessRoles />}
+      {section === "grants" && <AccessGrants />}
+    </div>
   );
 };
 

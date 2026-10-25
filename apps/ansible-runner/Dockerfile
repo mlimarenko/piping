@@ -10,8 +10,8 @@
 #
 # We build our own EE on python:slim because the upstream quay.io/ansible EE images
 # require registry auth. ansible-core 2.20+ supports running the controller on
-# Python 3.13/3.14; 2.18 was EOL. Galaxy collections are version-bounded in
-# requirements.yml (an unpinned install is a supply-chain RCE on every rebuild).
+# Python 3.13/3.14; 2.18 was EOL. Collections use immutable upstream release
+# commits declared in requirements.yml.
 FROM rust:1.98.1-bookworm AS builder
 # Incremental artifacts are written into a layer that is then discarded — pure
 # disk cost for a cold `--release` build that never reuses them. The shared
@@ -58,7 +58,7 @@ RUN --mount=type=bind,from=debian-archive,source=/archive,target=/tmp/debian-arc
     && cksum /tmp/debian-archive/*.Release \
     && apt-get update \
     && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends openssh-client sshpass ca-certificates tini \
+    && apt-get install -y --no-install-recommends git openssh-client sshpass ca-certificates tini \
     && rm -rf /var/lib/apt/lists/*
 
 # Named boundary: `docker build --target runtime-base` builds and scans just the

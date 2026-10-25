@@ -8,7 +8,8 @@ import { Badge } from "@/shared/ui-primitives/badge";
 import type { PlaybookExecutionEnvironment } from "@/features/playbooks/api";
 
 import { formatDateTime } from "./playbookPageFormat";
-import { ListState, PreviewActions } from "./PlaybookPanelUi";
+import { PreviewActions } from "./PlaybookPanelUi";
+import PageState from "@/shared/ui-shared/PageState";
 
 export function ExecutionEnvironmentsPanel({
   executionEnvironments,
@@ -117,7 +118,7 @@ export function ExecutionEnvironmentsPanel({
       loading={loading}
       error={error}
       onRetry={onRetry}
-      emptyState={<ListState label={t("playbooks.page.empty.executionEnvironments")} />}
+      emptyState={<PageState kind="empty" title={t("playbooks.page.empty.executionEnvironments")} />}
     />
     <ExecutionEnvironmentDetailsDialog environment={selected} onCloseAutoFocus={focus.onCloseAutoFocus}
       onOpenChange={value => { if (!value) setSelected(null); }}

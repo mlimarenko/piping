@@ -15,9 +15,12 @@ import EntityPicker, { type EntityPickerOption } from "@/shared/forms/EntityPick
 import EntityCreateEditor from "@/shared/forms/EntityCreateEditor";
 import { relatedEntitiesForEntity } from "@/shared/forms/entityRelatedEntities";
 import type { InventoryEntityKey, Resource } from "@/shared/api/types";
+import { ApiError } from "@/shared/api/client";
+import { usePermissions } from "@/shared/auth/permissionsContext";
 
 import FieldLabel from "@/shared/ui-shared/FieldLabel";
-import { templateVariablePresentation } from "./templateSchema";
+import { getTemplateVariableFields, isRequiredTemplateVariableWithoutDefault, parseTemplateObjectRows, TEMPLATE_REFERENCE_ENTITIES, type TemplateReferenceResource, templateVariablePresentation } from "./templateSchema";
+import TemplateRunDialogObjectFields from "./TemplateRunDialogObjectFields";
 import TemplatePreviewRows from "./TemplatePreviewRows";
 import {
   buildTemplateVariableValues,
@@ -31,8 +34,8 @@ import {
   isTemplateSelection as isSelection,
   isTemplateReferenceId,
 } from "./templateTypes";
-import { createResource, listAllResources, previewTemplateRun, type TemplatePreviewStep } from "@/features/inventory/api";
-import { inventoryResourceOption, type InventoryResourceOption } from "@/features/inventory/resourceOptions";
+import { createResource, previewTemplateRun, type TemplatePreviewStep } from "@/features/inventory/api";
+import { cacheCreatedInventoryResource, inventoryResourceOption, inventoryResourceOptionsQuery, type InventoryResourceOption } from "@/features/inventory/resourceOptions";
 
 interface Props {
   open: boolean;
@@ -99,34 +102,45 @@ const uniqueEntities = (entities: Array<InventoryEntityKey | null | undefined>):
 const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canCreate = can("CREATE", "INVENTORY");
   const [stage, setStage] = useState<Stage>("variables");
   const [rawValues, setRawValues] = useState<Record<string, unknown>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverPreview, setServerPreview] = useState<TemplatePreviewStep[] | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [previewValues, setPreviewValues] = useState<string | null>(null);
   const submittingRef = useRef(false);
   const [createTarget, setCreateTarget] = useState<{
     entity: InventoryEntityKey;
     variableKey: string;
+    session: number;
+    collection?: { rowIndex: number; fieldKey: string; snapshot: string };
   } | null>(null);
+  const createSessionRef = useRef(0);
+  const activeCreateRef = useRef<number | null>(null);
   const [createRelatedEntities, setCreateRelatedEntities] = useState<InventoryEntityKey[]>([]);
   // Incremented each time a new preview request is dispatched; stale
   // resolutions (superseded or from a previous template) are discarded.
   const previewReqIdRef = useRef(0);
   const appliedResourceDefaultsRef = useRef<Set<string>>(new Set());
   const createOriginRef = useRef<string | null>(null);
-  const referenceInputRefs = useRef(new Map<string, HTMLDivElement>());
+  const variableFieldsRef = useRef<HTMLDivElement>(null);
 
   // Seed the run-wizard inputs when the dialog opens (open-event sync; the
   // dialog stays mounted across open/close so Radix can animate the exit).
   useEffect(() => {
+    createSessionRef.current += 1;
+    activeCreateRef.current = null;
+    createOriginRef.current = null;
     if (!open || !template) return;
     const initialValues: Record<string, unknown> = {};
     for (const variable of template.variables) {
-      initialValues[variable.key] = variable.value_type !== "json" && isSelection(variable.default_value)
+      if (variable.default_value === undefined) continue;
+      initialValues[variable.key] = variable.default_value === null ? null : variable.value_type !== "json" && isSelection(variable.default_value)
         ? variable.default_value : formatTemplateValue(variable.default_value);
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- dialog stays mounted for the Radix exit animation, so each open re-seeds the wizard in an effect; a key remount would kill the close animation
@@ -134,19 +148,55 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
     setErrors({});
     setStage("variables");
     setServerPreview(null);
-    setPreviewError(false);
-    setSubmitError(false);
+    setPreviewError(null);
+    setSubmitError(null);
+    setPreviewLoading(false);
+    setPreviewValues(null);
     setCreateTarget(null);
     setCreateRelatedEntities([]);
     appliedResourceDefaultsRef.current = new Set();
     // Invalidate any in-flight preview for the previous template.
     previewReqIdRef.current += 1;
+    return () => {
+      previewReqIdRef.current += 1;
+      createSessionRef.current += 1;
+      activeCreateRef.current = null;
+    };
   }, [open, template]);
 
   const parsedVariables = useMemo(() => {
     if (!template) return { values: {}, errors: {} };
     return buildTemplateVariableValues(template.variables, rawValues);
   }, [template, rawValues]);
+
+  const variableSections = useMemo(() => {
+    if (!template) return [];
+    const groups = ["creates", "references", "parameters"] as const;
+    const presented = template.variables.map((variable) => ({
+      variable,
+      presentation: templateVariablePresentation(template, variable, t),
+    }));
+    const ordered = groups.flatMap((group) => presented.filter(({ presentation }) => presentation.group === group));
+    const required = ordered.filter(({ variable, presentation }) =>
+      isRequiredTemplateVariableWithoutDefault(variable)
+      && !(presentation.group === "references" && resourceRefDefaultFor(variable)),
+    );
+    const requiredKeys = new Set(required.map(({ variable }) => variable.key));
+    return [
+      { group: "requiredInputs" as const, variables: required },
+      ...groups.map((group) => ({
+        group,
+        variables: ordered.filter(({ variable, presentation }) => presentation.group === group && !requiredKeys.has(variable.key)),
+      })),
+    ];
+  }, [template, t]);
+
+  useEffect(() => {
+    if (stage !== "variables") return;
+    const first = Array.from(variableFieldsRef.current?.querySelectorAll<HTMLElement>('[id^="run-field-"]') ?? [])
+      .find((field) => Boolean(errors[field.id.slice("run-field-".length)]));
+    first?.querySelector<HTMLElement>('input, textarea, [role="combobox"], button')?.focus();
+  }, [errors, stage]);
 
   const referenceVariables = useMemo(
     () =>
@@ -169,18 +219,17 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
     () =>
       uniqueEntities([
         ...referenceVariables.map(({ reference }) => reference.entity),
+        ...(template?.variables ?? []).flatMap((variable) => (getTemplateVariableFields(variable) ?? []).filter((field) => field.value_type === "resource_ref").map((field) => TEMPLATE_REFERENCE_ENTITIES[field.validation_rules?.resource as TemplateReferenceResource])),
         createTarget?.entity,
         ...createRelatedEntities,
       ]),
-    [createRelatedEntities, createTarget?.entity, referenceVariables],
+    [createRelatedEntities, createTarget?.entity, referenceVariables, template],
   );
   const optionQueries = useQueries({
     queries: optionEntities.map((entity) => ({
-      queryKey: ["inventory", "template-run-options", entity],
-      queryFn: () => listAllResources(entity),
+      ...inventoryResourceOptionsQuery(entity),
       retry: false,
       enabled: open,
-      staleTime: 30_000,
     })),
   });
   const optionStateByEntity = useMemo(() => {
@@ -195,7 +244,7 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
     optionEntities.forEach((entity, index) => {
       const query = optionQueries[index];
       state.set(entity, {
-        options: (query?.data ?? []).map((resource) => inventoryResourceOption(entity, resource)),
+        options: (query?.data?.items ?? []).map((resource) => inventoryResourceOption(entity, resource)),
         loading: query?.isFetching ?? false,
         ready: query?.isSuccess ?? false,
         error: query?.isError ?? false,
@@ -224,6 +273,7 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
         const state = optionStateByEntity.get(reference.entity);
         if (!state?.ready) continue;
         const config = resourceRefDefaultFor(variable);
+        if ((currentValue === undefined || currentValue === null) && !config) continue;
         const value = textValue(currentValue);
         const id = isTemplateReferenceId(value) ? value : resolveResourceRefDefault(state.options, config ?? {
           id: null,
@@ -237,7 +287,7 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
 
   if (!template) return null;
 
-  const validationMessage = (errorCode: string) => {
+  const validationMessage = (errorCode: string, key?: string) => {
     switch (errorCode) {
       case "invalid_integer":
       case "invalid_number":
@@ -250,6 +300,24 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
         return t("required");
       case "invalid_reference":
         return t("inventory.templates.run.invalidReference");
+      case "invalid_option":
+        return t("inventory.templates.run.invalidOption");
+      case "invalid_collection":
+        return t("inventory.templates.run.invalidCollection");
+      case "invalid_fields":
+        return t("inventory.templates.run.invalidFields");
+      case "invalid_email":
+        return t("inventory.templates.run.invalidEmail");
+      case "invalid_range": {
+        const parent = template.variables.find((variable) => variable.key === key || key?.startsWith(`${variable.key}.`));
+        const field = parent?.key === key ? parent : parent && getTemplateVariableFields(parent)?.find((candidate) => candidate.key === key?.split(".").at(-1));
+        const min = field?.validation_rules?.min;
+        const max = field?.validation_rules?.max;
+        if (typeof min === "number" && Number.isFinite(min) && typeof max === "number" && Number.isFinite(max)) return t("inventory.templates.run.invalidRangeBounds", { min, max });
+        if (typeof min === "number" && Number.isFinite(min)) return t("inventory.templates.run.invalidRangeMin", { min });
+        if (typeof max === "number" && Number.isFinite(max)) return t("inventory.templates.run.invalidRangeMax", { max });
+        return t("inventory.templates.run.invalidRange");
+      }
       default:
         return t("unknownError");
     }
@@ -257,12 +325,42 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
 
   const validate = () => {
     const nextErrors = Object.fromEntries(
-      Object.entries(parsedVariables.errors).map(([key, code]) => [key, validationMessage(code)]),
+      Object.entries(parsedVariables.errors).map(([key, code]) => [key, validationMessage(code, key)]),
     );
     setErrors(nextErrors);
-    const first = Object.keys(nextErrors)[0];
-    if (first) document.getElementById(`run-field-${first}`)?.querySelector<HTMLElement>('input, textarea, [role="combobox"]')?.focus();
     return Object.keys(nextErrors).length === 0;
+  };
+
+  const requestError = (error: unknown, phase: "preview" | "run"): string => {
+    // Backend messages and field text may contain internals. Map only known
+    // fields and HTTP categories to local recovery instructions.
+    if (error instanceof ApiError) {
+      const details = error.details && typeof error.details === "object" && !Array.isArray(error.details)
+        ? error.details as Record<string, unknown> : null;
+      const serverFields = details?.fields && typeof details.fields === "object" && !Array.isArray(details.fields)
+        ? details.fields as Record<string, unknown> : null;
+      const fieldErrors: Record<string, string> = {};
+      for (const variable of template.variables) {
+        const fields = getTemplateVariableFields(variable);
+        const keys = [variable.key, ...(fields ? parseTemplateObjectRows(rawValues[variable.key]).rows.flatMap((_, index) => fields.map((field) => `${variable.key}.${index}.${field.key}`)) : [])];
+        for (const key of keys) {
+          const code = serverFields?.[key];
+          if (typeof code === "string") {
+            fieldErrors[key] = ["required", "invalid_integer", "invalid_number", "invalid_boolean", "invalid_json", "invalid_reference", "invalid_option", "invalid_email", "invalid_collection", "invalid_fields", "invalid_range"].includes(code)
+              ? validationMessage(code, key) : t("inventory.templates.run.checkField");
+          }
+        }
+      }
+      if (Object.keys(fieldErrors).length) {
+        setErrors(fieldErrors);
+        setStage("variables");
+        return t("inventory.templates.run.checkFields");
+      }
+      if (error.status === 401 || error.status === 403) return t("inventory.templates.run.accessError");
+      if (error.status === 409) return t("inventory.templates.run.conflictError");
+      if (error.status === 400 || error.status === 422) return t("inventory.templates.run.validationError");
+    }
+    return t(`inventory.templates.run.${phase === "preview" ? "previewError" : "submitError"}`);
   };
 
   const goPreview = () => {
@@ -272,17 +370,18 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
     const reqId = ++previewReqIdRef.current;
     setPreviewLoading(true);
     setServerPreview(null);
-    setPreviewError(false);
-    setSubmitError(false);
+    setPreviewError(null);
+    setSubmitError(null);
+    setPreviewValues(JSON.stringify(parsedVariables.values));
     previewTemplateRun(template.id, parsedVariables.values)
       .then((result) => {
         if (reqId !== previewReqIdRef.current) return;
         setServerPreview(result.steps);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (reqId !== previewReqIdRef.current) return;
         setServerPreview(null);
-        setPreviewError(true);
+        setPreviewError(requestError(error, "preview"));
       })
       .finally(() => {
         if (reqId !== previewReqIdRef.current) return;
@@ -290,20 +389,23 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
       });
   };
 
+  const previewIsCurrent = previewValues === JSON.stringify(parsedVariables.values);
+  const canRun = stage === "preview" && !previewLoading && !previewError && Boolean(serverPreview?.length) && previewIsCurrent;
   const handleRun = async () => {
-    if (submittingRef.current || stage !== "preview" || previewLoading || previewError || !serverPreview?.length) return;
+    if (submittingRef.current || !canRun) return;
     if (!validate()) {
       setStage("variables");
       return;
     }
     submittingRef.current = true;
     setSubmitting(true);
-    setSubmitError(false);
+    setSubmitError(null);
     try {
       await onRun(parsedVariables.values);
       onOpenChange(false);
-    } catch {
-      setSubmitError(true);
+    } catch (error: unknown) {
+      setServerPreview(null);
+      setSubmitError(requestError(error, "run"));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -317,35 +419,56 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
     optionStateByEntity.get(entity)?.options ?? [];
   const isEntityOptionsLoading = (entity: InventoryEntityKey): boolean =>
     optionStateByEntity.get(entity)?.loading ?? false;
-  const beginCreateResource = (entity: InventoryEntityKey, variableKey: string) => {
-    createOriginRef.current = variableKey;
-    setCreateTarget({ entity, variableKey });
+  const beginCreateResource = (entity: InventoryEntityKey, variableKey: string, collection?: { rowIndex: number; fieldKey: string }) => {
+    if (!open || !canCreate) return;
+    const session = ++createSessionRef.current;
+    activeCreateRef.current = session;
+    createOriginRef.current = collection ? `${variableKey}.${collection.rowIndex}.${collection.fieldKey}` : variableKey;
+    setCreateTarget({ entity, variableKey, session, collection: collection ? { ...collection, snapshot: JSON.stringify(rawValues[variableKey]) } : undefined });
     setCreateRelatedEntities(relatedEntitiesForEntity(entity));
   };
   const createEntity = async (
     entity: InventoryEntityKey,
     resource: Resource,
   ): Promise<Resource | null> => {
+    const session = createTarget?.session;
+    if (!canCreate || session === undefined || activeCreateRef.current !== session) return null;
     try {
       const { id: _omit, ...payload } = resource;
       const created = await createResource(entity, payload);
-      queryClient.setQueryData<Resource[]>(["inventory", "template-run-options", entity], (current = []) => [
-        ...current.filter((item) => item.id !== created.id), created,
-      ]);
-      void queryClient.invalidateQueries({ queryKey: ["inventory", "template-run-options", entity] });
-      return created;
+      if (!isTemplateReferenceId(created.id)) throw new Error("Invalid created resource identity");
+      await cacheCreatedInventoryResource(queryClient, entity, created);
+      return activeCreateRef.current === session ? created : null;
     } catch {
       notify("error", t("inventory.templates.run.createFailed"));
       return null;
     }
   };
   const handleRootCreated = (created: Resource) => {
-    if (!createTarget) return;
-    const reference = referenceByVariable.get(createTarget.variableKey);
-    if (!reference) return;
-    const value: TemplateSelection = { resource: reference.resource, id: created.id };
-    appliedResourceDefaultsRef.current.add(createTarget.variableKey);
-    setRawValues((current) => ({ ...current, [createTarget.variableKey]: value }));
+    if (!createTarget || activeCreateRef.current !== createTarget.session) return;
+    const { variableKey, collection } = createTarget;
+    if (collection) {
+      const variable = template.variables.find((candidate) => candidate.key === variableKey);
+      const fields = variable && getTemplateVariableFields(variable);
+      const field = fields?.find((candidate) => candidate.key === collection.fieldKey);
+      if (fields && field?.value_type === "resource_ref" && TEMPLATE_REFERENCE_ENTITIES[field.validation_rules?.resource as TemplateReferenceResource] === createTarget.entity) {
+        setRawValues((current) => {
+          // The suspended wizard cannot edit rows. Reject external changes rather
+          // than treating a shifted array index as the original destination.
+          if (JSON.stringify(current[variableKey]) !== collection.snapshot) return current;
+          const parsed = parseTemplateObjectRows(current[variableKey], fields);
+          if (parsed.error || !parsed.rows[collection.rowIndex]) return current;
+          return { ...current, [variableKey]: JSON.stringify(parsed.rows.map((row, index) => index === collection.rowIndex ? { ...row, [collection.fieldKey]: created.id } : row)) };
+        });
+      }
+    } else {
+      const reference = referenceByVariable.get(variableKey);
+      if (reference?.entity !== createTarget.entity) return;
+      const value: TemplateSelection = { resource: reference.resource, id: created.id };
+      appliedResourceDefaultsRef.current.add(variableKey);
+      setRawValues((current) => ({ ...current, [variableKey]: value }));
+    }
+    activeCreateRef.current = null;
     setCreateTarget(null);
     setCreateRelatedEntities([]);
   };
@@ -362,10 +485,7 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
     const retained = selectedId && !options.some((option) => option.id === selectedId)
       ? [{ id: selectedId, name: selectedId }] : [];
     return (
-      <div className="grid gap-2" role="group" aria-label={label} aria-describedby={errors[variable.key] ? `run-error-${variable.key}` : undefined} ref={(node) => {
-        if (node) referenceInputRefs.current.set(variable.key, node);
-        else referenceInputRefs.current.delete(variable.key);
-      }}>
+      <div className="grid gap-2" role="group" aria-label={label} aria-describedby={errors[variable.key] ? `run-error-${variable.key}` : undefined}>
         <EntityPicker
           id={`run-ref-${variable.key}`}
           aria-invalid={Boolean(errors[variable.key])}
@@ -380,7 +500,7 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
           loading={isEntityOptionsLoading(reference.entity)}
           placeholder={t("inventory.resources.form.relationPlaceholder", { label })}
           label={label}
-          onRequestCreate={(entity) => beginCreateResource(entity, variable.key)}
+          onRequestCreate={canCreate ? (entity) => beginCreateResource(entity, variable.key) : undefined}
         />
         {state?.loading && <p role="status" className="text-xs text-muted-foreground">{t("inventory.templates.run.optionsLoading")}</p>}
         {state?.error && <div className="flex flex-wrap items-center gap-2"><p role="alert" className="text-xs text-status-negative">{t("inventory.templates.run.optionsError")}</p><Button size="sm" variant="outline" onClick={state.retry}>{t("inventory.templates.run.retry")}</Button></div>}
@@ -404,6 +524,13 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
   };
 
   const renderInput = (variable: InventoryTemplate["variables"][number]) => {
+    const fields = getTemplateVariableFields(variable);
+    if (fields !== null) return <TemplateRunDialogObjectFields variable={variable} fields={fields} value={rawValues[variable.key]} errors={errors} optionsByEntity={optionStateByEntity} onRequestCreate={canCreate ? (entity, rowIndex, fieldKey) => beginCreateResource(entity, variable.key, { rowIndex, fieldKey }) : undefined} onChange={(next) => {
+      setRawValues((current) => ({ ...current, [variable.key]: next }));
+      // Collection mutations can reindex every row. Old paths must not annotate
+      // a different row, or remain attached to a corrected field.
+      setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== variable.key && !key.startsWith(`${variable.key}.`))));
+    }} />;
     const options = getTemplateVariableOptions(variable);
     const value = textValue(rawValues[variable.key]);
     const id = `run-var-${variable.key}`;
@@ -418,7 +545,7 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
       return renderReferenceInput(variable, reference);
     }
 
-    if (options.length > 0) {
+    if (options.length > 0 || variable.value_type === "boolean") {
       return (
         <FormSelect
           {...accessibility}
@@ -426,19 +553,7 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
           value={value}
           onValueChange={(next) => setRawValues((c) => ({ ...c, [variable.key]: next }))}
           placeholder={t("inventory.resources.form.noneOption")}
-          options={options.map((option) => ({ value: option, label: option }))}
-        />
-      );
-    }
-    if (variable.value_type === "boolean") {
-      return (
-        <FormSelect
-          {...accessibility}
-          id={id}
-          value={value}
-          onValueChange={(next) => setRawValues((c) => ({ ...c, [variable.key]: next }))}
-          placeholder={t("inventory.resources.form.noneOption")}
-          options={[
+          options={options.length ? options.map((option) => ({ value: option, label: option })) : [
             { value: "true", label: t("yes") },
             { value: "false", label: t("no") },
           ]}
@@ -473,7 +588,7 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
     <>
       {/* A page editor must not sit behind a modal's inert boundary/focus trap.
           Suspend only the Dialog subtree; wizard values and stage stay owned here. */}
-      {!createTarget && <Dialog open={open} onOpenChange={(next) => { if (!submittingRef.current) onOpenChange(next); }}>
+      {(!createTarget || !open) && <Dialog open={open} onOpenChange={(next) => { if (!submittingRef.current) onOpenChange(next); }}>
         <DialogContent className="surface sm:max-w-2xl max-h-[85dvh] overflow-hidden flex flex-col gap-0 p-0 sm:p-0"
           onCloseAutoFocus={(event) => {
             if (createOriginRef.current) event.preventDefault();
@@ -481,7 +596,7 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
           onOpenAutoFocus={(event) => {
             const origin = createOriginRef.current;
             if (!origin) return;
-            const picker = referenceInputRefs.current.get(origin)?.querySelector<HTMLElement>('[role="combobox"]');
+            const picker = document.getElementById(`run-field-${origin}`)?.querySelector<HTMLElement>('[role="combobox"]');
             if (picker) { event.preventDefault(); picker.focus(); }
             createOriginRef.current = null;
           }}>
@@ -506,7 +621,9 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
           {stage === "variables" && (
-            <div className="flex flex-col gap-4">
+            <div ref={variableFieldsRef} className="flex flex-col gap-4">
+              {previewError && <p role="alert" className="text-sm text-status-negative">{previewError}</p>}
+              {submitError && <p role="alert" className="text-sm text-status-negative">{submitError}</p>}
               <p className="text-xs leading-relaxed text-muted-foreground text-balance">
                 {t("inventory.templates.run.hint")}
               </p>
@@ -515,12 +632,10 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
                   {t("inventory.templates.run.noVariablesNeeded")}
                 </div>
               )}
-              {(["creates", "references", "parameters"] as const).map((group) => {
-                const variables = template.variables.filter((variable) => templateVariablePresentation(template, variable, t).group === group);
+              {variableSections.map(({ group, variables }) => {
                 return variables.length ? <section key={group} className="flex flex-col gap-3" aria-label={t(`inventory.templates.run.${group}`)}>
                   <h3 className="text-sm font-semibold">{t(`inventory.templates.run.${group}`)}</h3>
-                  {variables.map((variable) => {
-                    const presentation = templateVariablePresentation(template, variable, t);
+                  {variables.map(({ variable, presentation }) => {
                     return <div key={variable.key} id={`run-field-${variable.key}`} className="flex flex-col gap-1.5">
                       <FieldLabel htmlFor={`${referenceByVariable.has(variable.key) ? "run-ref" : "run-var"}-${variable.key}`} required={variable.required}>{presentation.label}</FieldLabel>
                       {renderInput(variable)}
@@ -550,14 +665,15 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
               {previewError && (
                 <div className="flex items-start gap-2 rounded-md border border-status-warning/30 bg-status-warning/5 p-2 text-xs text-status-warning">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <div className="flex flex-col gap-2"><p className="font-medium" role="alert">{t("inventory.templates.run.previewError")}</p><Button size="sm" variant="outline" onClick={goPreview}>{t("inventory.templates.run.retry")}</Button></div>
+                  <div className="flex flex-col gap-2"><p className="font-medium" role="alert">{previewError}</p><Button size="sm" variant="outline" onClick={goPreview}>{t("inventory.templates.run.retry")}</Button></div>
                 </div>
               )}
 
               {previewLoading && <p role="status" className="surface-inset rounded-md p-4 text-center text-xs text-muted-foreground">{t("loading")}</p>}
               {!previewLoading && !previewError && preview.length === 0 && <p role="status" className="surface-inset rounded-md p-4 text-center text-xs text-muted-foreground">{t("inventory.templates.run.previewEmpty")}</p>}
+              {!previewLoading && serverPreview && !previewIsCurrent && <p role="alert" className="text-sm text-status-warning">{t("inventory.templates.run.previewChanged")}</p>}
               <TemplatePreviewRows rows={preview} optionsByEntity={optionStateByEntity} />
-              {submitError && <p role="alert" className="text-sm text-status-negative">{t("inventory.templates.run.submitError")}</p>}
+              {submitError && <div className="flex flex-col gap-2"><p role="alert" className="text-sm text-status-negative">{submitError}</p><Button size="sm" variant="outline" onClick={goPreview}>{t("inventory.templates.run.retry")}</Button></div>}
               {submitting && <p role="status" className="text-sm text-muted-foreground">{t("inventory.templates.run.submitting")}</p>}
             </div>
           )}
@@ -575,18 +691,19 @@ const TemplateRunDialog = ({ open, onOpenChange, template, onRun }: Props) => {
               {t("inventory.templates.run.previewHeading")} <ChevronRight className="h-3 w-3" />
             </Button>
           ) : (
-            <Button size="sm" onClick={() => { void handleRun(); }} disabled={submitting || previewLoading || previewError || !serverPreview?.length} className="gap-1">
+            <Button size="sm" onClick={() => { void handleRun(); }} disabled={submitting || !canRun} className="gap-1">
               <Check className="h-3 w-3" /> {t("inventory.templates.run.runNow")} ({preview.length})
             </Button>
           )}
         </DialogFooter>
         </DialogContent>
       </Dialog>}
-      {createTarget && (
+      {open && createTarget && (
         <EntityCreateEditor
           open={Boolean(createTarget)}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
+              activeCreateRef.current = null;
               setCreateTarget(null);
               setCreateRelatedEntities([]);
             }

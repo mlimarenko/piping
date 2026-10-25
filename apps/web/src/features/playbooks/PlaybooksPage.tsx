@@ -23,6 +23,7 @@ import PageChrome, { PageActions } from "@/shared/ui-shared/PageChrome";
 import SurfaceCard, { SurfaceCardContent, SurfaceCardHeader } from "@/shared/ui-shared/SurfaceCard";
 import type { SectionTabItem } from "@/shared/ui-shared/SectionTabs";
 import SectionLinks from "@/shared/ui-shared/SectionLinks";
+import PageState from "@/shared/ui-shared/PageState";
 import PaneResizer from "@/shared/ui-shared/PaneResizer";
 import {
   PLAYBOOK_ASSIGNMENTS_TABLE_CONFIG,
@@ -133,7 +134,6 @@ import {
   targetSetEditorNewForAssignmentHref,
 } from "@/features/playbooks/playbookEditorRoutes";
 import {
-  ListState,
   PlaybookTabPanel,
   TargetPreview,
 } from "@/features/playbooks/PlaybookPanelUi";
@@ -1390,7 +1390,7 @@ const PlaybooksPage = ({ initialTab = "catalog", parent }: { initialTab?: Playbo
             onRun={runAssignment}
             runPending={runMutation.isPending}
           />
-          {parent && can("READ", "PLAYBOOK_TARGET_SET") && previewTargetSetId && (previewQuery.isError ? <p role="alert">{t("unknownError")}</p> : previewQuery.data ? <TargetPreview preview={previewQuery.data} /> : <ListState label={t("loading")} />)}
+          {parent && can("READ", "PLAYBOOK_TARGET_SET") && previewTargetSetId && (previewQuery.isError ? <PageState kind="error" title={t("unknownError")} /> : previewQuery.data ? <TargetPreview preview={previewQuery.data} /> : <PageState kind="loading" title={t("loading")} />)}
         </PlaybookTabPanel>
 
         <PlaybookTabPanel active={tab === "target-sets"}>
@@ -1424,13 +1424,13 @@ const PlaybooksPage = ({ initialTab = "catalog", parent }: { initialTab?: Playbo
               />
               <SurfaceCardContent className="flex flex-col gap-3">
                 {previewTargetSetId === null ? (
-                  <ListState label={t("playbooks.page.preview.empty")} compact />
+                  <PageState kind="empty" title={t("playbooks.page.preview.empty")} />
                 ) : previewQuery.isPending ? (
-                  <ListState label={t("loading")} compact />
+                  <PageState kind="loading" title={t("loading")} />
                 ) : previewQuery.data ? (
                   <TargetPreview preview={previewQuery.data} />
                 ) : (
-                  <ListState label={t("playbooks.page.preview.failed")} compact />
+                  <PageState kind="error" title={t("playbooks.page.preview.failed")} />
                 )}
               </SurfaceCardContent>
             </SurfaceCard>

@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import EntityEditorPage, { type EntityEditorPageProps } from "./EntityEditorPage";
+import EntityEditorPage from "./EntityEditorPage";
+import PageLayout from "./PageLayout";
 import { usePageActionsBlocker } from "./pageChromeContext";
 
 interface Props {
@@ -13,7 +14,6 @@ interface Props {
   children: ReactNode;
   dirty?: boolean;
   saving?: boolean;
-  width?: EntityEditorPageProps["width"];
   className?: string;
 }
 
@@ -21,7 +21,7 @@ interface Props {
  * Routed editors render EntityEditorPage directly; embedded editors use this
  * viewport as their scroll boundary while retaining the source workspace.
  */
-export default function EntityEditorHost({ open, onOpenChange, title, description, footer, children, dirty, saving, width, className }: Props) {
+export default function EntityEditorHost({ open, onOpenChange, title, description, footer, children, dirty, saving, className }: Props) {
   const { t } = useTranslation();
   const id = useId();
   const pageRef = useRef<HTMLDivElement>(null);
@@ -51,17 +51,17 @@ export default function EntityEditorHost({ open, onOpenChange, title, descriptio
   }, [open, target, invoker]);
   if (!open) return null;
   return createPortal(
-    <div ref={pageRef} data-entity-editor-host={id} className="absolute inset-0 z-30 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-background p-4 md:p-6"
+    <div ref={pageRef} data-entity-editor-host={id} className="absolute inset-0 z-30 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-background"
       onInputCapture={() => setChanged(true)} onChangeCapture={() => setChanged(true)}
       onClickCapture={event => {
         // Toggle-style controls that own their state via aria-pressed (e.g.
         // TogglePill) emit no input/change event, so recognise them too.
         if ((event.target as HTMLElement).closest('[role="switch"], [role="checkbox"], [role="option"], [aria-pressed]')) setChanged(true);
       }}>
-      <EntityEditorPage scope="embedded" title={title} description={description} onBack={() => onOpenChange(false)} backLabel={t("back")}
-        footer={footer} width={width} dirty={dirty ?? changed} saving={saving} dirtyMessage={t("editor.unsavedChanges")} className={className}>
+      <PageLayout fill><EntityEditorPage scope="embedded" title={title} description={description} onBack={() => onOpenChange(false)} backLabel={t("back")}
+        footer={footer} dirty={dirty ?? changed} saving={saving} dirtyMessage={t("editor.unsavedChanges")} className={className}>
         {children}
-      </EntityEditorPage>
+      </EntityEditorPage></PageLayout>
     </div>, target,
   );
 }

@@ -19,7 +19,7 @@ const SurfaceCard = ({ children, className, variant = "default", hover, selected
       data-slot="surface-card"
       className={cn(
         variantClass,
-        "rounded-lg",
+        "min-w-0 rounded-lg",
         hover && "transition-colors hover:border-primary/40",
         selected && "selection-ring",
         className,
@@ -52,24 +52,24 @@ export const SurfaceCardHeader = ({
   return (
     <div
       data-slot="surface-card-header"
-      className={cn("flex flex-wrap items-start justify-between gap-4 border-b border-border p-4 md:p-6", className)}
+      className={cn("flex flex-wrap items-start justify-between gap-4 border-b border-border p-4", className)}
       {...props}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div data-slot="surface-card-heading" className="flex min-w-0 flex-1 basis-full flex-col gap-1 sm:basis-64">
         {title != null && (
           <Heading data-slot="surface-card-title" className="text-base font-semibold tracking-tight text-foreground">
             {title}
           </Heading>
         )}
         {description != null && (
-          <p data-slot="surface-card-description" className="text-sm leading-relaxed text-muted-foreground">
+          <p data-slot="surface-card-description" className="max-w-prose text-sm leading-relaxed text-muted-foreground">
             {description}
           </p>
         )}
         {children}
       </div>
       {actions != null && (
-        <div data-slot="surface-card-actions" className="flex shrink-0 items-center gap-2">
+        <div data-slot="surface-card-actions" className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
           {actions}
         </div>
       )}
@@ -78,7 +78,7 @@ export const SurfaceCardHeader = ({
 };
 
 export const SurfaceCardContent = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
-  <div data-slot="surface-card-content" className={cn("min-w-0 p-4 md:p-6", className)} {...props} />
+  <div data-slot="surface-card-content" className={cn("min-w-0 p-4", className)} {...props} />
 );
 
 export default SurfaceCard;

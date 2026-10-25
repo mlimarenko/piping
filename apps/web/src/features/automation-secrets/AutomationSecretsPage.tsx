@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import PageChrome from "@/shared/ui-shared/PageChrome";
+import PageState from "@/shared/ui-shared/PageState";
 import RowActions from "@/shared/ui-shared/RowActions";
 import { DropdownMenuItem } from "@/shared/ui-primitives/dropdown-menu";
 import DataTable, { type DataTableSortState } from "@/shared/ui-shared/DataTable";
@@ -295,9 +296,7 @@ const AutomationSecretsPage = () => {
         onRetry={() => refetch()}
         emptyState={
           isPending ? (
-            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("loading")}
-            </div>
+            <PageState kind="loading" title={t("loading")} />
           ) : (
             <EmptyState
               icon={KeyRound}
@@ -310,7 +309,6 @@ const AutomationSecretsPage = () => {
         }
         toolbar={
           <SearchInput
-            containerClassName="flex-1 max-w-xs"
             value={search}
             onValueChange={setSearch}
             placeholder={t("automationSecrets.searchPlaceholder")}
@@ -318,7 +316,7 @@ const AutomationSecretsPage = () => {
         }
       />
 
-      <EntityEditorHost open={createOpen} width="compact" onOpenChange={(open) => { if (!createMutation.isPending) setCreateOpen(open); }}
+      <EntityEditorHost open={createOpen} onOpenChange={(open) => { if (!createMutation.isPending) setCreateOpen(open); }}
         title={t("automationSecrets.create.title")} description={t("automationSecrets.create.description")}
         dirty={keyInput !== "" || descInput !== ""}
         footer={<>
@@ -364,7 +362,7 @@ const AutomationSecretsPage = () => {
           </fieldset>
       </EntityEditorHost>
 
-      <EntityEditorHost open={editing !== null} width="compact" onOpenChange={(open) => { if (!open && !updateMutation.isPending) setEditing(null); }}
+      <EntityEditorHost open={editing !== null} onOpenChange={(open) => { if (!open && !updateMutation.isPending) setEditing(null); }}
         title={t("automationSecrets.edit.title", { key: editing?.key ?? "" })} description={t("automationSecrets.edit.description")}
         dirty={descInput !== (editing?.description ?? "")}
         footer={<>

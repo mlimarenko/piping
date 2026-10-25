@@ -82,7 +82,6 @@ const SimpleAssignmentDialog = ({
       open={open}
       onOpenChange={(next) => { if (!pending) onOpenChange(next); }}
       dirty={JSON.stringify(draft) !== JSON.stringify(initial)}
-      width="compact"
       title={title}
       description={description}
       footer={

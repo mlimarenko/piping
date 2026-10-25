@@ -37,6 +37,74 @@ def catalog_digest_sql() -> str:
         'UTF8')),'hex') FROM jsonb_array_elements(({catalog})) obj"""
 
 
+def installed_catalog_digest_sql(contract: dict) -> str:
+    """Recognize one complete installed layout without changing its native objects.
+
+    The projection is bounded to source-reviewed column identities/positions,
+    one exact CHECK representation and the preserved pre-semantic ledger. The
+    resulting entire catalog must still match the sealed historical catalog.
+    """
+    layout = contract["installed_layout"]
+    columns = {r["name"]: {"from": r["from"], "to": r["to"]}
+               for r in layout["columns"]}
+    constraints = {r["name"]: {"from": r["from"], "to": r["to"]}
+                   for r in layout["constraints"]}
+    if len(columns) != len(layout["columns"]) or len(constraints) != len(layout["constraints"]):
+        raise ValueError("Duplicate installed-layout object identity")
+    if any(type(v[k]) is not int or v[k] < 1 for v in columns.values() for k in ("from", "to")):
+        raise ValueError("Invalid installed-layout column position")
+    if layout["provenance"]["reference_catalog_sha256"] != contract["historical_catalog_sha256"]:
+        raise ValueError("Installed layout must bind the historical source catalog")
+
+    def literal(value: object) -> str:
+        return "'" + json.dumps(value, separators=(",", ":")).replace("'", "''") + "'::jsonb"
+
+    catalog = CATALOG_SQL.strip().removesuffix(";")
+    return f"""WITH observed AS (SELECT ({catalog}) AS objects),
+    source_contract AS (SELECT {literal(columns)} AS columns,
+        {literal(constraints)} AS constraints,
+        {literal(layout['archive_objects'])} AS archive_objects,
+        {literal(layout['archive_history'])} AS archive_history),
+    qualified AS (
+        SELECT objects, columns, constraints, archive_objects FROM observed, source_contract
+        WHERE NOT EXISTS (
+            SELECT FROM jsonb_each(columns) m WHERE
+            (SELECT obj->'definition'->'position' FROM jsonb_array_elements(objects) obj
+             WHERE obj->>'kind'='column' AND obj->>'name'=m.key)
+                IS DISTINCT FROM m.value->'from')
+        AND NOT EXISTS (
+            SELECT FROM jsonb_each(constraints) m WHERE
+            (SELECT obj->'definition' FROM jsonb_array_elements(objects) obj
+             WHERE obj->>'kind'='constraint' AND obj->>'name'=m.key)
+                IS DISTINCT FROM m.value->'from')
+        AND (SELECT coalesce(jsonb_agg(obj ORDER BY obj->>'kind' COLLATE "C",
+                obj->>'name' COLLATE "C"),'[]'::jsonb)
+             FROM jsonb_array_elements(objects) obj
+             WHERE EXISTS (SELECT FROM jsonb_array_elements(archive_objects) a
+                WHERE a->>'kind'=obj->>'kind' AND a->>'name'=obj->>'name')) = archive_objects
+        AND (SELECT coalesce(jsonb_agg(jsonb_build_object(
+                'version',version,'description',description,'success',success,
+                'checksum',encode(checksum,'hex')) ORDER BY version),'[]'::jsonb)
+             FROM public._sqlx_migrations_pre_semantic_20260719) = archive_history
+        AND NOT EXISTS (SELECT FROM public._sqlx_migrations_pre_semantic_20260719
+            WHERE NOT success OR execution_time < 0 OR NOT isfinite(installed_on))
+    ), projected AS (
+        SELECT CASE
+          WHEN obj->>'kind'='column' AND columns ? (obj->>'name') THEN
+            jsonb_set(obj,'{{definition,position}}',columns->(obj->>'name')->'to')
+          WHEN obj->>'kind'='constraint' AND constraints ? (obj->>'name') THEN
+            jsonb_set(obj,'{{definition}}',constraints->(obj->>'name')->'to')
+          WHEN obj->>'kind'='collation' THEN
+            jsonb_set(obj,'{{definition}}',(obj->'definition') - 'version')
+          ELSE obj END AS obj
+        FROM qualified, jsonb_array_elements(objects) obj
+        WHERE NOT EXISTS (SELECT FROM jsonb_array_elements(archive_objects) a
+            WHERE a->>'kind'=obj->>'kind' AND a->>'name'=obj->>'name')
+    )
+    SELECT encode(sha256(convert_to(jsonb_agg(obj ORDER BY obj->>'kind' COLLATE "C",
+        obj->>'name' COLLATE "C")::text,'UTF8')),'hex') FROM projected"""
+
+
 def transition_sql() -> str:
     """Check recognized history and native schema before the sole persistent write."""
     contract = json.loads(CONTRACT.read_text())
@@ -55,6 +123,7 @@ def transition_sql() -> str:
     checksum = hashlib.sha384(BASELINE.read_bytes()).hexdigest()
     expected = json.dumps(history, separators=(",", ":")).replace("'", "''")
     catalog = catalog_digest_sql()
+    installed_catalog = installed_catalog_digest_sql(contract)
     return f"""\\set ON_ERROR_STOP on
 BEGIN;
 SET LOCAL lock_timeout = '10s';
@@ -103,10 +172,16 @@ BEGIN
         RAISE EXCEPTION 'Unrecognized SQLx history; only the exact complete 24 history is supported';
     END IF;
     SELECT ({catalog}) INTO native_digest;
-    IF native_digest <> expected_digest AND NOT (
+    IF native_digest <> expected_digest
+       AND to_regclass('public._sqlx_migrations_pre_semantic_20260719') IS NOT NULL THEN
+        -- Locks above cover both ledgers and every application table. Only the
+        -- recognized projection may differ; no catalog or archive row is edited.
+        SELECT ({installed_catalog}) INTO native_digest;
+    END IF;
+    IF native_digest IS NULL OR (native_digest <> expected_digest AND NOT (
         jsonb_array_length(observed) = 1
         AND native_digest = '{contract['historical_catalog_sha256']}'
-    ) THEN
+    )) THEN
         RAISE EXCEPTION 'Native schema differs from the recognized history; maintenance refused';
     END IF;
     IF jsonb_array_length(observed) = 1 THEN

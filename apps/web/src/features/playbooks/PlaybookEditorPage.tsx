@@ -368,7 +368,6 @@ function PlaybookEditorShell({
       footer={footer}
       dirty={!readOnly && JSON.stringify(form) !== JSON.stringify(formForTarget(target))}
       dirtyMessage={t("editor.unsavedChanges", { defaultValue: "You have unsaved changes" })}
-      width="standard"
     >
       <fieldset disabled={locked} inert={locked} className="min-w-0">
       <TooltipProvider delayDuration={200}>
@@ -704,7 +703,7 @@ export default function PlaybookEditorPage() {
 
   if (target === null) {
     return (
-      <EntityEditorPage scope="routed" width="standard"
+      <EntityEditorPage scope="routed"
         title={t(isCopy ? "playbooks.page.editor.copyDraftTitle" : "playbooks.page.editor.editTitle", { name: fetchId })}
         description={t("playbooks.page.editor.description")}
         onBack={() => void navigate(playbookReturnHref(searchParams.get("returnTo")))}

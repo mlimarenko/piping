@@ -287,11 +287,9 @@ const ConnectionConfig = () => {
           toolbar={
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <SearchInput
-                 containerClassName="min-w-0 flex-1 sm:max-w-sm"
                 value={searchQuery}
                 onValueChange={setSearchQuery}
                 placeholder={t("connectionConfig.searchRecords")}
-                className="pl-8"
               />
               <span className="shrink-0 surface-chip rounded-full px-2 py-0.5 text-xs text-muted-foreground tabular-nums">
                 {t("connectionConfig.records.count", {

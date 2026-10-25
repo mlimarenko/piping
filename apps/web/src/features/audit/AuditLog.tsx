@@ -2,7 +2,6 @@ import { useState, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import PageChrome from "@/shared/ui-shared/PageChrome";
-import PageLayout from "@/shared/ui-shared/PageLayout";
 import EntityRef from "@/shared/ui-shared/EntityRef";
 import DataTable, { type DataTableSortState, type DataTableFilterOption } from "@/shared/ui-shared/DataTable";
 import {
@@ -714,7 +713,7 @@ const AuditLog = () => {
   ];
 
   return (
-    <PageLayout className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageChrome
         title={t("auditLog.title")}
         icon={ScrollText}
@@ -747,7 +746,6 @@ const AuditLog = () => {
             <div className="flex w-full flex-wrap items-start gap-2">
               <SearchInput
                 ref={primarySearchInput}
-                containerClassName="min-w-[14rem] flex-1 basis-[18rem] lg:max-w-[26rem]"
                 value={search}
                 onValueChange={(v) => { setSearch(v); setPage(0); }}
                 placeholder={t("auditLog.searchPlaceholder")}
@@ -879,7 +877,6 @@ const AuditLog = () => {
                     {t("auditLog.mcpTool")}
                   </span>
                   <SearchInput
-                    containerClassName="min-w-0"
                     value={mcpTool}
                     onValueChange={(v) => { setMcpTool(v); setPage(0); }}
                     placeholder={t("auditLog.mcpToolPlaceholder")}
@@ -1037,7 +1034,7 @@ const AuditLog = () => {
           )}
         </DialogContent>
       </Dialog>
-    </PageLayout>
+    </div>
   );
 };
 

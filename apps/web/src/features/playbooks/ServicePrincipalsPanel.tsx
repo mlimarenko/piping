@@ -16,7 +16,7 @@ import { usePermissions } from "@/shared/auth/permissionsContext";
 import type { PlaybookServicePrincipal } from "@/features/playbooks/api";
 
 import { formatDateTime } from "./playbookPageFormat";
-import { ListState } from "./PlaybookPanelUi";
+import PageState from "@/shared/ui-shared/PageState";
 import { PLAYBOOK_SERVICE_PRINCIPALS_TABLE_CONFIG } from "./tableConfig";
 
 /** A system-seeded principal carries `metadata.system === true` — a structural
@@ -167,7 +167,7 @@ export function ServicePrincipalsPanel({
       columnFilters={sanitizedColumnFilters}
       onColumnFilterChange={onColumnFilterChange}
       pagination={pagination}
-      emptyState={<ListState label={t("playbooks.page.empty.servicePrincipals")} />}
+      emptyState={<PageState kind="empty" title={t("playbooks.page.empty.servicePrincipals")} />}
     />
   );
 }

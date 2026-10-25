@@ -1,14 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, AlertTriangle } from "lucide-react";
+import PageState from "@/shared/ui-shared/PageState";
 
 import { useApiMutation } from "@/shared/api/hooks";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import { notify } from "@/shared/lib/notifications";
 import { Button } from "@/shared/ui-primitives/button";
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
-import type { ApiError } from "@/shared/api/client";
 import type { InventoryTemplate } from "@/features/inventory/components/inventory/templateTypes";
 import {
   getTemplate as apiGetTemplate,
@@ -46,13 +45,14 @@ const TemplateEditorPage = () => {
   const goBack = () => { void navigate("/inventory/templates"); };
 
   const persist = (saved: InventoryTemplate) => {
+    qc.setQueryData(["inventory", "template", saved.id], saved);
     void qc.invalidateQueries({ queryKey: TEMPLATES_QUERY_KEY });
     void qc.invalidateQueries({ queryKey: ["inventory", "template", saved.id] });
     notify("success", t("inventory.templates.templateSaved", { name: saved.name }));
     goBack();
   };
 
-  const onError = (err: ApiError) => notify("error", err.message || t("unknownError"));
+  const onError = () => notify("error", t("inventory.templates.editor.saveFailed"));
 
   const createMutation = useApiMutation({
     mutationFn: (body: Omit<InventoryTemplate, "id" | "updatedAt">) => apiCreateTemplate(body),
@@ -88,16 +88,13 @@ const TemplateEditorPage = () => {
 
   if (isEdit && (templateQuery.isPending || templateQuery.isError || !templateQuery.data)) {
     return (
-      <EntityEditorPage scope="routed" width="standard" title={t("inventory.templates.builder.editTitle")}
+      <EntityEditorPage scope="routed" title={t("inventory.templates.builder.editTitle")}
         onBack={goBack} backLabel={t("inventory.templates.editor.backToList")} cancelLabel={t("cancel")}>
         {templateQuery.isPending ? (
-          <output className="flex items-center gap-2"><Loader2 aria-hidden className="size-6 animate-spin text-muted-foreground" />{t("loading")}</output>
+          <PageState kind="loading" title={t("loading")} />
         ) : (
-          <div className="flex flex-col items-start gap-4">
-            <AlertTriangle aria-hidden className="size-8 text-status-negative" />
-            <p role="alert" className="text-sm text-foreground">{t("inventory.templates.editor.loadFailed")}</p>
-            <Button variant="outline" onClick={() => void templateQuery.refetch()}>{t("retry")}</Button>
-          </div>
+          <PageState kind="error" title={t("inventory.templates.editor.loadFailed")}
+            action={<Button variant="outline" onClick={() => void templateQuery.refetch()}>{t("retry")}</Button>} />
         )}
       </EntityEditorPage>
     );
@@ -105,6 +102,7 @@ const TemplateEditorPage = () => {
 
   return (
     <TemplateEditor
+      key={id ?? "new"}
       initial={isEdit ? (templateQuery.data ?? null) : null}
       saving={saving}
       canSave={canSave}

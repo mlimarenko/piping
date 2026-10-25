@@ -19,7 +19,7 @@ import { usePermissions } from "@/shared/auth/permissionsContext";
 import type { PlaybookTargetSet } from "@/features/playbooks/api";
 
 import { formatDateTime } from "./playbookPageFormat";
-import { ListState } from "./PlaybookPanelUi";
+import PageState from "@/shared/ui-shared/PageState";
 import { PLAYBOOK_TARGET_SETS_TABLE_CONFIG } from "./tableConfig";
 
 export function TargetSetsPanel({
@@ -151,7 +151,7 @@ export function TargetSetsPanel({
       columnFilters={sanitizedColumnFilters}
       onColumnFilterChange={onColumnFilterChange}
       pagination={pagination}
-      emptyState={<ListState label={t("playbooks.page.empty.targetSets")} />}
+      emptyState={<PageState kind="empty" title={t("playbooks.page.empty.targetSets")} />}
     />
   );
 }

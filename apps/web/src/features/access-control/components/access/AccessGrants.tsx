@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation, Trans } from "react-i18next";
-import SurfaceCard from "@/shared/ui-shared/SurfaceCard";
+import SurfaceCard, { SurfaceCardHeader, SurfaceCardContent } from "@/shared/ui-shared/SurfaceCard";
 import { type DataTableFilterOption } from "@/shared/ui-shared/DataTable";
 import EmptyState from "@/shared/ui-shared/EmptyState";
 import EntityRef from "@/shared/ui-shared/EntityRef";
@@ -102,11 +102,9 @@ const AccessGrants = () => {
       canUpdate={false}
       canDelete={canDelete}
       prefix={canCreate && (
-        <SurfaceCard className="p-4 shrink-0">
-          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Award className="size-4 text-primary" /> {t("accessControl.grants.createGrant")}
-          </h2>
-          <div className="flex items-end gap-3 flex-wrap">
+        <SurfaceCard className="shrink-0">
+          <SurfaceCardHeader title={<span className="flex items-center gap-2"><Award className="size-4 text-primary" />{t("accessControl.grants.createGrant")}</span>} />
+          <SurfaceCardContent className="flex items-end gap-3 flex-wrap">
             <FormField
               htmlFor="access-grant-role"
               className="flex-1 min-w-[120px]"
@@ -160,7 +158,7 @@ const AccessGrants = () => {
             >
               <Plus /> {t("accessControl.grants.addGrant")}
             </Button>
-          </div>
+          </SurfaceCardContent>
         </SurfaceCard>
       )}
       deleteTitle={t("accessControl.grants.deleteTitle")}

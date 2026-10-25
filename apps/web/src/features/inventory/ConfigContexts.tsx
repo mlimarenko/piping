@@ -266,7 +266,6 @@ const ConfigContexts = () => {
         }
         toolbar={
           <SearchInput
-            containerClassName="flex-1 max-w-xs"
             value={searchQuery}
             onValueChange={setSearchQuery}
             placeholder={t("configContexts.searchContexts")}

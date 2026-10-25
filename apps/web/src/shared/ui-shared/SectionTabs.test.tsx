@@ -4,10 +4,10 @@ import { Tabs, TabsContent } from "@/shared/ui-primitives/tabs";
 import SectionTabs from "./SectionTabs";
 
 describe("SectionTabs", () => {
-  it.each(["line", "secondary"] as const)("preserves keyboard navigation and panel relationships in %s tabs", async (variant) => {
+  it("preserves keyboard navigation and panel relationships", async () => {
     render(
       <Tabs defaultValue="users">
-        <SectionTabs variant={variant} items={[
+        <SectionTabs items={[
           { value: "users", label: "Users" },
           { value: "groups", label: "Groups" },
         ]} />
@@ -16,7 +16,6 @@ describe("SectionTabs", () => {
       </Tabs>,
     );
 
-    expect(screen.getByRole("tablist")).toHaveAttribute("data-variant", variant);
     const users = screen.getByRole("tab", { name: "Users" });
     const groups = screen.getByRole("tab", { name: "Groups" });
     expect(users).toHaveAttribute("aria-selected", "true");
@@ -51,6 +50,5 @@ describe("SectionTabs", () => {
 
     const tablist = screen.getByRole("tablist", { name: "Directory sections" });
     expect(tablist).toHaveAttribute("data-testid", "section-tablist");
-    expect(tablist).toHaveAttribute("data-variant", "line");
   });
 });

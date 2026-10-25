@@ -15,38 +15,29 @@ export interface SectionTabItem<TValue extends string = string> {
  */
 type SectionTabsListProps = Omit<
   ComponentPropsWithoutRef<typeof TabsList>,
-  "children" | "className" | "variant"
+  "children" | "className"
 >;
 
 interface SectionTabsProps<TValue extends string = string> extends SectionTabsListProps {
   items: readonly SectionTabItem<TValue>[];
   wrapperClassName?: string;
-  className?: string;
-  triggerClassName?: string;
-  iconClassName?: string;
-  variant?: "line" | "secondary";
 }
 
 const SectionTabs = <TValue extends string = string>({
   items,
   wrapperClassName,
-  className,
-  triggerClassName,
-  iconClassName,
-  variant = "line",
   ...listProps
 }: SectionTabsProps<TValue>) => (
-  <div className={cn("shrink-0 overflow-x-auto", wrapperClassName)}>
-    <TabsList variant={variant} className={className} {...listProps}>
+  <div className={cn("min-w-0 shrink-0", wrapperClassName)}>
+    <TabsList {...listProps}>
       {items.map((item) => {
         const Icon = item.icon;
         return (
           <TabsTrigger
             key={item.value}
             value={item.value}
-            className={triggerClassName}
           >
-            {Icon && <Icon className={cn("size-4", iconClassName)} />}
+            {Icon && <Icon className="size-4 shrink-0" aria-hidden />}
             {item.label}
           </TabsTrigger>
         );

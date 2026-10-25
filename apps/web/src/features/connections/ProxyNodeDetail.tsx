@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trans, useTranslation } from "react-i18next";
-import { ArrowLeft, Loader2, Pencil, Radio, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Radio, Trash2 } from "lucide-react";
 import { usePermissions } from "@/shared/auth/permissionsContext";
 import { useApiMutation } from "@/shared/api/hooks";
 import { Button } from "@/shared/ui-primitives/button";
@@ -12,7 +12,6 @@ import PageChrome from "@/shared/ui-shared/PageChrome";
 import RowActions from "@/shared/ui-shared/RowActions";
 import { DropdownMenuItem } from "@/shared/ui-primitives/dropdown-menu";
 import PageState from "@/shared/ui-shared/PageState";
-import EmptyState from "@/shared/ui-shared/EmptyState";
 import StatusChip from "@/shared/ui-shared/StatusChip";
 import { notify } from "@/shared/lib/notifications";
 import { deleteProxyNode, listProxyNodes } from "@/features/connections/proxies-api";
@@ -41,13 +40,11 @@ export default function ProxyNodeDetail() {
     onError: (err: Error) => setError(err.message || t("unknownError")),
   });
 
-  const renderState = (content: ReactNode) => <PageState title={t("proxyNodes.title")} icon={Radio} backHref={PROXY_NODES_ROUTE} backLabel={t("proxyNodes.backToList")}>
-    {content}
-  </PageState>;
-  if (query.isPending) return renderState(<output className="flex justify-center p-8"><Loader2 className="size-6 animate-spin" aria-label={t("loading")} /></output>);
-  if (query.isError) return renderState(<EmptyState icon={Radio} title={t("proxyNodes.loadFailed")} actionLabel={t("retry")} onAction={() => { void query.refetch(); }} />);
+  const renderState = (content: ReactNode) => <><PageChrome title={t("proxyNodes.title")} icon={Radio} actions={<Button asChild variant="ghost"><Link to={PROXY_NODES_ROUTE}><ArrowLeft className="size-4" />{t("proxyNodes.backToList")}</Link></Button>} />{content}</>;
+  if (query.isPending) return renderState(<PageState kind="loading" title={t("loading")} />);
+  if (query.isError) return renderState(<PageState kind="error" title={t("proxyNodes.loadFailed")} action={<Button variant="outline" onClick={() => { void query.refetch(); }}>{t("retry")}</Button>} />);
   const node = query.data.items.find(candidate => candidate.id === id);
-  if (!node) return renderState(<EmptyState icon={Radio} title={t("proxyNodes.notFound")} />);
+  if (!node) return renderState(<PageState kind="empty" title={t("proxyNodes.notFound")} />);
   const rotatedAt = node.secret_rotated_at
     ? new Date(node.secret_rotated_at).toLocaleString()
     : t("proxyNodes.neverRotated");

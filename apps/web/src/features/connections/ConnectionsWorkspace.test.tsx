@@ -177,6 +177,19 @@ describe("ConnectionsWorkspace filter toggle accessibility", () => {
     }));
   });
 
+  it.each(["tree", "cards", "table"])("owns one shared canvas for ordinary %s browsing and retains its search across view changes", async mode => {
+    mocks.viewMode = mode;
+    const { container } = renderWorkspace();
+    const search = screen.getByRole("textbox");
+    expect(search.closest('[data-slot="page-layout"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
+    fireEvent.change(search, { target: { value: "retained query" } });
+    fireEvent.click(screen.getByRole("button", { name: mode === "cards" ? "Table" : "Cards" }));
+    expect(screen.getByRole("textbox")).toHaveValue("retained query");
+    expect(container.querySelectorAll('[data-slot="page-layout"]')).toHaveLength(1);
+    await screen.findByText("No targets match your search or filters");
+  });
+
   it("reports whether the filter panel is collapsed or expanded", () => {
     renderWorkspace();
 
@@ -202,8 +215,10 @@ describe("ConnectionsWorkspace filter toggle accessibility", () => {
     expect(await screen.findByText(/Map requires read access to Inventory/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Map" })).toBeNull();
     expect(mocks.mapSites).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox").closest('[data-slot="page-layout"]')).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Cards" }));
     expect(screen.getByRole("button", { name: "Cards" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("textbox").closest('[data-slot="page-layout"]')).not.toBeNull();
   });
 
   it.each(["tree", "cards", "table"])("shows a safe target-query error and retries the failed catalogue source in %s", async mode => {
@@ -290,6 +305,7 @@ describe("ConnectionsWorkspace filter toggle accessibility", () => {
       protocol: "ssh", status: "connected", websocketUrl: "/api/v1/ws/ssh/session-fixture", token: "fixture" }];
     const { client } = renderWorkspace();
     const viewer = await screen.findByRole("textbox", { name: "Preserved SSH viewer" });
+    expect(viewer.closest('[data-slot="page-layout"]')).toBeNull();
     await screen.findByText("Cached target");
     mocks.listConnectionTargets.mockRejectedValue(new Error("private stale failure"));
     await act(async () => { await client.invalidateQueries({ queryKey: CONNECTION_TARGETS_QUERY_KEY }); });

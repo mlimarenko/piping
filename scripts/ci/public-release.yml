@@ -4,17 +4,13 @@ spec:
       type: array
       default:
         - {job: 'helper:scope', artifacts: false}
-        - {job: 'helper:unit', artifacts: false}
-        - {job: 'helper:native', artifacts: false}
         - {job: 'helper:export', artifacts: false}
-        - {job: 'install:source', artifacts: false, optional: true}
-        - {job: 'baseline:native', artifacts: false, optional: true}
 ---
 include:
 - project: $COMPONENTS_CATALOG_PROJECT
   file: /jobs/release/version.yml
   inputs:
-    job-name: public:version
+    job-name: version
     release-strategy: protected-default
     source-policy: protected-default
     stage: verify
@@ -29,18 +25,18 @@ include:
 - project: $COMPONENTS_CATALOG_PROJECT
   file: /jobs/release/tag.yml
   inputs:
-    job-name: public:release
+    job-name: release:reserve-tag
     enabled: true
     release-strategy: protected-default
     source-policy: protected-default
     release-bump: patch
     preview-lock: true
-    version-job: public:version
+    version-job: version
     token-variable: GIT_ACCESS_TOKEN
     tag-prefix: ''
     initial-version: 1.0.0
     rules-policy: protected-default-push-manual
-    manual-confirmation: Publish the selected public snapshot, tag and GitHub Release?
+    manual-confirmation: Reserve the selected version in private GitLab for delivery?
     runner-tags: [ci-small]
     extra-needs: $[[ inputs.source-needs ]]
 - project: $COMPONENTS_CATALOG_PROJECT
@@ -49,13 +45,20 @@ include:
     job-name: public:publish
     script-path: scripts/ci/github_public_release.py
     stage: release
-    rules-policy: protected-default-push
+    rules-policy: protected-default-push-manual
     runner-tags: [ci-small]
     needs:
-    - {job: 'public:release', artifacts: true}
+    - {job: 'release:reserve-tag', artifacts: true}
+
+version:
+  # Release identity must not depend on cached tags from another job.
+  variables:
+    GIT_STRATEGY: clone
 
 public:publish:
-  allow_failure: false
+  manual_confirmation: Publish the selected public snapshot, tag and GitHub Release?
+  # Optional public publication is never a prerequisite for private delivery.
+  allow_failure: true
   interruptible: false
   resource_group: public-github-release
   environment:

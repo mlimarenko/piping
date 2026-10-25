@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { Database, ServerCog } from "lucide-react";
 
 import EntityEditorPage from "@/shared/ui-shared/EntityEditorPage";
 import { Input } from "@/shared/ui-primitives/input";
@@ -8,7 +7,7 @@ import type { SelectorModel } from "./selectorModel";
 import type { SelectedHost } from "./hostSelection";
 import type { TargetSetMode } from "./playbookFormModels";
 import { FormField } from "./PlaybookFormFields";
-import { ModeTab } from "./PlaybookPanelUi";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui-primitives/radio-group";
 import TargetSetSelectorBuilder from "./TargetSetSelectorBuilder";
 import HostMultiSelectPicker from "./HostMultiSelectPicker";
 
@@ -68,22 +67,19 @@ export function TargetSetEditor({
         <FormField label={t("name")}>
            <Input value={name} onChange={(event) => { if (!submitting) onNameChange(event.target.value); }} />
         </FormField>
-        <div className="grid grid-cols-2 gap-1.5">
-          <ModeTab
-            active={mode === "dynamic"}
-            icon={Database}
-            label={t("playbooks.page.targetSetMode.dynamic")}
-            hint={t("playbooks.page.dialogs.targetSet.dynamicHint")}
-            onClick={() => { if (!submitting) onModeChange("dynamic"); }}
-          />
-          <ModeTab
-            active={mode === "static"}
-            icon={ServerCog}
-            label={t("playbooks.page.targetSetMode.static")}
-            hint={t("playbooks.page.dialogs.targetSet.staticHint")}
-            onClick={() => { if (!submitting) onModeChange("static"); }}
-          />
-        </div>
+        <RadioGroup value={mode} disabled={submitting} onValueChange={(value) => {
+          if (!submitting && (value === "dynamic" || value === "static")) onModeChange(value);
+        }} className="gap-4 sm:grid-cols-2">
+          {(["dynamic", "static"] as const).map((value) => (
+            <label key={value} className="flex items-start gap-2 text-sm">
+              <RadioGroupItem value={value} className="mt-0.5" aria-label={t(`playbooks.page.targetSetMode.${value}`)} />
+              <span className="flex flex-col gap-1">
+                <span className="font-medium">{t(`playbooks.page.targetSetMode.${value}`)}</span>
+                <span className="text-xs text-muted-foreground">{t(`playbooks.page.dialogs.targetSet.${value}Hint`)}</span>
+              </span>
+            </label>
+          ))}
+        </RadioGroup>
         {mode === "dynamic" ? (
           <TargetSetSelectorBuilder
             model={selectorModel}

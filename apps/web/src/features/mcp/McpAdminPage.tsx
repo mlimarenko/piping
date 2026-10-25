@@ -8,8 +8,7 @@ import {
   ScrollText,
 } from "lucide-react";
 import PageChrome from "@/shared/ui-shared/PageChrome";
-import PageLayout from "@/shared/ui-shared/PageLayout";
-import SurfaceCard from "@/shared/ui-shared/SurfaceCard";
+import SurfaceCard, { SurfaceCardContent } from "@/shared/ui-shared/SurfaceCard";
 import { Badge } from "@/shared/ui-primitives/badge";
 import { Button } from "@/shared/ui-primitives/button";
 import { notify } from "@/shared/lib/notifications";
@@ -47,7 +46,7 @@ const McpAdminPage = () => {
   };
 
   return (
-    <PageLayout className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageChrome
         title={t("mcpAdmin.title")}
         icon={Activity}
@@ -78,7 +77,8 @@ const McpAdminPage = () => {
       />
 
       {/* How to connect — primary onboarding panel */}
-      <SurfaceCard className="p-4">
+      <SurfaceCard>
+        <SurfaceCardContent>
         <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,22rem)]">
           <div className="min-w-0 space-y-3.5">
             <h2 className="text-sm font-semibold text-foreground">{t("mcpAdmin.start.title")}</h2>
@@ -145,8 +145,9 @@ const McpAdminPage = () => {
             </div>
           </div>
         </div>
+        </SurfaceCardContent>
       </SurfaceCard>
-    </PageLayout>
+    </div>
   );
 };
 

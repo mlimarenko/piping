@@ -32,14 +32,13 @@ function mount(path = "/inventory/dataflows/flow-1/edit", writable = true) {
 
 function expectShell() {
   expect(screen.getAllByTestId("entity-editor-page")).toHaveLength(1);
-  expect(screen.getByTestId("entity-editor-page")).toHaveClass("max-w-[960px]");
   expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
 }
 
 describe("DataflowEditorPage state ownership", () => {
   beforeEach(() => vi.resetAllMocks());
 
-  it("keeps one form-width shell from pending to loaded", async () => {
+  it("keeps one editor and heading from pending to loaded", async () => {
     let finish!: (value: unknown) => void;
     api.getDataflow.mockReturnValue(new Promise(resolve => { finish = resolve; }));
     mount();
