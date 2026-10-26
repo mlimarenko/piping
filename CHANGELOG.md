@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3
+
+### Changed
+
+- Updated public snapshot.
+
 ## 1.0.2
 
 ### Changed

@@ -4,9 +4,7 @@ Self-hosted infrastructure inventory, browser-based remote sessions and Ansible 
 
 [piping.space](https://piping.space) · [Install](#install) · [Contribute](CONTRIBUTING.md) · [License](LICENSE)
 
-[![Watch the Piping product film](https://piping.space/media/piping-poster.jpg)](https://piping.space/media/piping-overview.mp4)
-
-[Watch the MP4 product film](https://piping.space/media/piping-overview.mp4) · [Try the interactive demo](https://piping.space/demo)
+[Explore Piping](https://piping.space) — a scroll-driven product tour, followed by the [interactive demo](https://piping.space/demo).
 
 Russian-language film. The interface uses synthetic demo data; sessions are simulated.
 
@@ -33,7 +31,7 @@ GNU coreutils (`realpath`) and util-linux (`flock` and `findmnt`). Your user mus
 be able to run Docker.
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/mlimarenko/piping/1.0.2/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/mlimarenko/piping/1.0.3/install.sh | bash
 ```
 
 The installer downloads the release and its public container images, installs

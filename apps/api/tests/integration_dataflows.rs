@@ -42,7 +42,8 @@ async fn exercise_page_projections(url: &str) -> TestResult {
     assert_projection_page_and_get(&app, &cookie, &expected).await?;
     assert_projection_filters(&app, &cookie, refs.host, &expected).await?;
     assert_projection_permissions(&app, &denied, &expected).await?;
-    assert_projection_validation_caps(&app, &cookie, refs.host, &expected).await?;
+    assert_demand_scoped_validation(&app, &cookie, &refs, &expected).await?;
+    assert_demand_ownership_witnesses(pool, &app, &cookie, &refs).await?;
     assert_projection_missing_and_null_labels(&state, refs.host, &expected).await?;
     drop(app);
     pool.close().await;
@@ -94,6 +95,7 @@ struct ProjectionReferences {
     site: Uuid,
     role: Uuid,
     model: Uuid,
+    tenant: Uuid,
     cases: Vec<ProjectionCase>,
 }
 
@@ -126,6 +128,10 @@ async fn seed_projection_references(
     let location = Uuid::now_v7();
     sqlx::query("INSERT INTO dcim_rack (id,custom_field_data,name,status,serial,width,u_height,desc_units,comments,site_id,description,starting_unit) VALUES ($1,'{}','Rack label','active','',19,42,false,'',$2,'',1)").bind(rack).bind(site).execute(pool).await?;
     sqlx::query("INSERT INTO dcim_location (id,custom_field_data,name,slug,description,lft,rght,tree_id,level,site_id,status,facility,comments) VALUES ($1,'{}','Location label','projection-location','',0,0,0,0,$2,'active','','')").bind(location).bind(site).execute(pool).await?;
+    let tenant = Uuid::now_v7();
+    sqlx::query("INSERT INTO tenancy_tenant (id,custom_field_data,name,slug,description,comments) VALUES ($1,'{}','Projection tenant','projection-tenant','','')").bind(tenant).execute(pool).await?;
+    // Growth shares site/role/model, but never these small selected branches.
+    sqlx::query("UPDATE dcim_device SET rack_id=$2,location_id=$3,tenant_id=$4,primary_ip4_id=$5 WHERE id=$1").bind(host).bind(rack).bind(location).bind(tenant).bind(address).execute(pool).await?;
     let (status, service) = call(app, "POST", "/api/v1/inventory/services", Some(json!({"name":"Service label","protocol":"tcp","ports":[443],"parent_object":reference("dcim.device",host)})), Some(cookie)).await?;
     assert_eq!(status, StatusCode::CREATED, "{service}");
     let service = Uuid::parse_str(service["id"].as_str().ok_or("service id")?)?;
@@ -172,6 +178,7 @@ async fn seed_projection_references(
         site,
         role,
         model,
+        tenant,
         cases,
     })
 }
@@ -299,49 +306,296 @@ async fn assert_projection_permissions(
     Ok(())
 }
 
-async fn assert_projection_validation_caps(
+async fn assert_demand_scoped_validation(
     app: &axum::Router,
     cookie: &str,
-    host: Uuid,
+    refs: &ProjectionReferences,
     expected: &[Value],
 ) -> TestResult {
-    // Validation/preview must still fail closed, not use metadata as a policy catalog.
-    let (status, _) = call(
-        app,
-        "POST",
-        BASE,
-        Some(intent(
-            reference("dcim.device", host),
-            json!({"object_type":"internet"}),
-        )),
-        Some(cookie),
-    )
-    .await?;
-    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+    let address = refs.cases[1].1["object_id"].clone();
+    let selected = json!({"object_type":"dcim.device","object_id":refs.host,"address_mode":"selected","ipaddresses":[address]});
+    let endpoints = [
+        reference("dcim.device", refs.host),
+        refs.cases[1].0.clone(), // Service with assigned-parent fallback.
+        refs.cases[3].0.clone(), // Rack with one member.
+        refs.cases[3].1.clone(), // Location with one member.
+        reference("tenancy.tenant", refs.tenant),
+        selected.clone(),
+    ];
+    for endpoint in endpoints {
+        let (status, resolved) = call(
+            app,
+            "POST",
+            &format!("{BASE}/endpoint-resolution"),
+            Some(endpoint.clone()),
+            Some(cookie),
+        )
+        .await?;
+        assert_eq!(status, StatusCode::OK, "{endpoint}: {resolved}");
+        assert_eq!(
+            resolved["addresses"].as_array().ok_or("addresses")?.len(),
+            1,
+            "{resolved}"
+        );
+        let id = create_flow(
+            app,
+            intent(endpoint, json!({"object_type":"internet"})),
+            cookie,
+        )
+        .await?;
+        let path = format!("{BASE}/{id}");
+        let (status, updated) = call(
+            app,
+            "PUT",
+            &path,
+            Some(json!({"description":"small demand","status":"active"})),
+            Some(cookie),
+        )
+        .await?;
+        assert_eq!(status, StatusCode::OK, "{updated}");
+        assert_eq!(updated["description"], "small demand");
+        let (status, saved) = call(app, "GET", &path, None, Some(cookie)).await?;
+        assert_eq!(status, StatusCode::OK, "{saved}");
+        assert_eq!(saved, updated);
+        let exported = policy(app, "dcim.device", refs.host, cookie).await?;
+        assert_eq!(exported["apply_ready"], true, "{exported}");
+        let rules = exported["rules"].as_array().ok_or("rules")?;
+        assert_eq!(rules.len(), 1, "{exported}");
+        assert_eq!(rules[0]["source"], "192.0.2.17/32");
+        assert_eq!(rules[0]["destination"], "0.0.0.0/0");
+        assert_eq!(
+            call(app, "DELETE", &path, None, Some(cookie)).await?.0,
+            StatusCode::NO_CONTENT
+        );
+        assert_eq!(
+            call(app, "GET", &path, None, Some(cookie)).await?.0,
+            StatusCode::NOT_FOUND
+        );
+    }
+
+    // Selected scope policy needs only the selected owner's membership, even
+    // though the site also contains every unrelated growth host.
+    let selected_scope = json!({"object_type":"dcim.site","object_id":refs.site,"address_mode":"selected","ipaddresses":[refs.cases[1].1["object_id"]]});
+    let mut selected_flow = intent(selected_scope, json!({"object_type":"internet"}));
+    selected_flow["status"] = json!("active");
+    let selected_id = create_flow(app, selected_flow, cookie).await?;
+    let exported = policy(app, "dcim.device", refs.host, cookie).await?;
+    assert_eq!(exported["apply_ready"], true, "{exported}");
+    assert_eq!(
+        exported["rules"].as_array().ok_or("rules")?.len(),
+        1,
+        "{exported}"
+    );
     assert_eq!(
         call(
             app,
-            "PUT",
-            &format!("{BASE}/{}", expected[0]["id"].as_str().ok_or("flow id")?),
-            Some(json!({"description":"blocked"})),
+            "DELETE",
+            &format!("{BASE}/{selected_id}"),
+            None,
             Some(cookie)
         )
         .await?
         .0,
-        StatusCode::TOO_MANY_REQUESTS
+        StatusCode::NO_CONTENT
     );
+
+    // A real but unowned IP must not become selectable just because it was loaded.
+    let wrong_owner = refs.cases[1].1.clone();
+    let invalid_selected = json!({"object_type":"virtualization.virtualmachine","object_id":refs.host,"address_mode":"selected","ipaddresses":[wrong_owner["object_id"]]});
+    for invalid in [invalid_selected, reference("dcim.device", Uuid::now_v7())] {
+        let (status, body) = call(
+            app,
+            "POST",
+            BASE,
+            Some(intent(invalid.clone(), json!({"object_type":"internet"}))),
+            Some(cookie),
+        )
+        .await?;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        let path = format!("{BASE}/{}", expected[5]["id"].as_str().ok_or("flow id")?);
+        let (status, body) = call(
+            app,
+            "PUT",
+            &path,
+            Some(json!({"source":invalid,"description":"must not persist"})),
+            Some(cookie),
+        )
+        .await?;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        let (status, saved) = call(app, "GET", &path, None, Some(cookie)).await?;
+        assert_eq!(status, StatusCode::OK, "{saved}");
+        assert_eq!(saved, expected[5], "failed update must be atomic");
+    }
+
+    // All genuinely demands the grown inventory; demand scoping is not a cap bypass.
     assert_eq!(
         call(
             app,
             "POST",
             &format!("{BASE}/endpoint-resolution"),
-            Some(reference("dcim.device", host)),
+            Some(json!({"object_type":"all"})),
             Some(cookie)
         )
         .await?
         .0,
         StatusCode::TOO_MANY_REQUESTS
     );
+    let (status, body) = call(
+        app,
+        "POST",
+        BASE,
+        Some(intent(
+            json!({"object_type":"all"}),
+            json!({"object_type":"internet"}),
+        )),
+        Some(cookie),
+    )
+    .await?;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let path = format!("{BASE}/{}", body["id"].as_str().ok_or("flow id")?);
+    let (status, activated) = call(
+        app,
+        "PUT",
+        &path,
+        Some(json!({"status":"active"})),
+        Some(cookie),
+    )
+    .await?;
+    assert_eq!(status, StatusCode::OK, "{activated}");
+    let (status, exported) = call(
+        app,
+        "GET",
+        &format!(
+            "{BASE}/firewall-policy?host_type=dcim.device&host_id={}",
+            refs.host
+        ),
+        None,
+        Some(cookie),
+    )
+    .await?;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{exported}");
+    assert_eq!(
+        call(app, "DELETE", &path, None, Some(cookie)).await?.0,
+        StatusCode::NO_CONTENT
+    );
+    Ok(())
+}
+
+async fn assert_demand_ownership_witnesses(
+    pool: &sqlx::PgPool,
+    app: &axum::Router,
+    cookie: &str,
+    refs: &ProjectionReferences,
+) -> TestResult {
+    let address = Uuid::parse_str(refs.cases[1].1["object_id"].as_str().ok_or("IP id")?)?;
+    let selected = json!({"object_type":"dcim.device","object_id":refs.host,"address_mode":"selected","ipaddresses":[address]});
+    let witness: Uuid =
+        sqlx::query_scalar("SELECT id FROM dcim_device WHERE id <> $1 ORDER BY id LIMIT 1")
+            .bind(refs.host)
+            .fetch_one(pool)
+            .await?;
+    // The unrequested owner itself has more IPs than the catalog budget. Owner
+    // witnesses must not recursively import those unrelated addresses.
+    let interface = assign(pool, witness, &[]).await?;
+    sqlx::query("UPDATE ipam_ipaddress SET assigned_object_id=$1,assigned_object_type_id=(SELECT id FROM inventory_content_type WHERE app_label='dcim' AND model='interface') WHERE address <<= '198.18.0.0/15'::inet").bind(interface).execute(pool).await?;
+    let (status, service) = call(app, "POST", "/api/v1/inventory/services", Some(json!({"name":"Ownership witness","protocol":"tcp","ports":[443],"parent_object":reference("dcim.device",witness)})), Some(cookie)).await?;
+    assert_eq!(status, StatusCode::CREATED, "{service}");
+    let service = Uuid::parse_str(service["id"].as_str().ok_or("service id")?)?;
+    let duplicate = ip(pool, "192.0.2.17/24").await?;
+    sqlx::query("UPDATE ipam_ipaddress SET vrf_id=(SELECT vrf_id FROM ipam_ipaddress WHERE id=$2) WHERE id=$1").bind(duplicate).bind(address).execute(pool).await?;
+
+    for kind in ["primary", "service binding", "same-VRF duplicate"] {
+        // Corruption is deliberate: witnesses are outside the selected host demand.
+        match kind {
+            "primary" => {
+                // Each host table has a unique primary slot, but Device and VM
+                // may independently reference the same IP record.
+                sqlx::query(
+                    "UPDATE virtualization_virtualmachine SET primary_ip4_id=$2 WHERE id=$1",
+                )
+                .bind(refs.host)
+                .bind(address)
+                .execute(pool)
+                .await?;
+            }
+            "service binding" => {
+                sqlx::query(
+                    "INSERT INTO ipam_service_ipaddresses (service_id,ipaddress_id) VALUES ($1,$2)",
+                )
+                .bind(service)
+                .bind(address)
+                .execute(pool)
+                .await?;
+            }
+            _ => {
+                assign(pool, witness, &[duplicate]).await?;
+            }
+        }
+        let (status, body) = call(
+            app,
+            "POST",
+            BASE,
+            Some(intent(selected.clone(), json!({"object_type":"internet"}))),
+            Some(cookie),
+        )
+        .await?;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{kind}: {body}");
+        let (status, resolved) = call(
+            app,
+            "POST",
+            &format!("{BASE}/endpoint-resolution"),
+            Some(selected.clone()),
+            Some(cookie),
+        )
+        .await?;
+        assert_eq!(status, StatusCode::OK, "{kind}: {resolved}");
+        assert!(
+            resolved["diagnostics"]
+                .as_array()
+                .ok_or("diagnostics")?
+                .iter()
+                .any(|d| d["code"] == "endpoint_unresolved"),
+            "{kind}: {resolved}"
+        );
+        assert_eq!(resolved["ipaddresses"], json!([]), "{kind}: {resolved}");
+        match kind {
+            "primary" => {
+                sqlx::query(
+                    "UPDATE virtualization_virtualmachine SET primary_ip4_id=NULL WHERE id=$1",
+                )
+                .bind(refs.host)
+                .execute(pool)
+                .await?;
+            }
+            "service binding" => {
+                sqlx::query("DELETE FROM ipam_service_ipaddresses WHERE service_id=$1")
+                    .bind(service)
+                    .execute(pool)
+                    .await?;
+            }
+            _ => {
+                sqlx::query("UPDATE ipam_ipaddress SET assigned_object_id=NULL,assigned_object_type_id=NULL WHERE id=$1").bind(duplicate).execute(pool).await?;
+            }
+        }
+        let (status, resolved) = call(
+            app,
+            "POST",
+            &format!("{BASE}/endpoint-resolution"),
+            Some(selected.clone()),
+            Some(cookie),
+        )
+        .await?;
+        assert_eq!(status, StatusCode::OK, "{kind}: {resolved}");
+        assert_eq!(resolved["diagnostics"], json!([]), "{kind}: {resolved}");
+        assert_eq!(
+            resolved["ipaddresses"]
+                .as_array()
+                .ok_or("IP choices")?
+                .len(),
+            1,
+            "{kind}: {resolved}"
+        );
+    }
     Ok(())
 }
 
@@ -576,6 +830,21 @@ async fn regression_cross_vrf_third_host_collision() -> TestResult {
         "projected B must not permit red C"
     );
     assert_eq!(blocked["rules"], json!([]));
+    for mutation in [
+        "UPDATE ipam_ipaddress SET status='reserved' WHERE id=$1",
+        "UPDATE ipam_ipaddress SET status='active',assigned_object_type_id=NULL WHERE id=$1",
+    ] {
+        sqlx::query(mutation)
+            .bind(r.c_ip)
+            .execute(&r.state.db_pool)
+            .await?;
+        let blocked = policy(&r.app, "dcim.device", r.a, &r.cookie).await?;
+        assert_eq!(
+            blocked["apply_ready"], false,
+            "inactive/unresolved collision witness: {blocked}"
+        );
+        assert_eq!(blocked["rules"], json!([]));
+    }
     sqlx::query("UPDATE ipam_ipaddress SET address='192.0.2.3/24' WHERE id=$1")
         .bind(r.c_ip)
         .execute(&r.state.db_pool)

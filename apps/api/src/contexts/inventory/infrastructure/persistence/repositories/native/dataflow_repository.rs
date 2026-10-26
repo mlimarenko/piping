@@ -19,6 +19,9 @@ use sqlx::{FromRow, PgConnection, PgPool, Postgres, QueryBuilder};
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
+mod catalog_loader;
+use catalog_loader::CatalogPurpose;
+
 fn endpoint_label(kind: EndpointType, label: Option<String>) -> String {
     label.unwrap_or_else(|| match kind {
         EndpointType::All => "All inventory hosts".into(),
@@ -224,7 +227,12 @@ impl SqlxDataflowRepository {
             .execute(&mut *tx)
             .await
             .map_err(classify_sqlx_error_owned)?;
-        let catalog = Catalog::load(&mut tx).await?;
+        let catalog = Catalog::load(
+            &mut tx,
+            &[&flow.source, &flow.destination],
+            CatalogPurpose::Mutation,
+        )
+        .await?;
         if flow.name.is_empty() {
             flow.name = format!(
                 "{} → {}",
@@ -260,7 +268,12 @@ impl SqlxDataflowRepository {
         let mut flow = Dataflow::try_from(row)?;
         patch.apply(&mut flow);
         flow.normalize()?;
-        let catalog = Catalog::load(&mut tx).await?;
+        let catalog = Catalog::load(
+            &mut tx,
+            &[&flow.source, &flow.destination],
+            CatalogPurpose::Mutation,
+        )
+        .await?;
         validate_selected(&mut tx, &catalog, &flow).await?;
         sqlx::query("UPDATE inventory_dataflow SET name = $2, description = $3, status = $4, transport = $5, destination_ports = $6, allow_cross_vrf = $7 WHERE id = $1")
             .bind(id).bind(&flow.name).bind(&flow.description).bind(flow.status.as_str()).bind(flow.transport.as_str()).bind(&flow.destination_ports).bind(flow.allow_cross_vrf).execute(&mut *tx).await.map_err(classify_sqlx_error_owned)?;
@@ -357,11 +370,6 @@ impl SqlxDataflowRepository {
             .execute(&mut *tx)
             .await
             .map_err(classify_sqlx_error_owned)?;
-        let catalog = Catalog::load(&mut tx).await?;
-        let host_row = catalog
-            .hosts
-            .get(&host)
-            .ok_or_else(|| AppError::NotFound("Host not found".into()))?;
         let rows = sqlx::query_as::<_, DataflowRow>(&format!(
             "{} WHERE status = 'active' ORDER BY f.id LIMIT $1",
             select_flows()
@@ -374,6 +382,24 @@ impl SqlxDataflowRepository {
             .into_iter()
             .map(Dataflow::try_from)
             .collect::<Result<_, _>>()?;
+        let selectors: BTreeSet<_> = flows
+            .iter()
+            .flat_map(|flow| [&flow.source, &flow.destination])
+            .collect();
+        let selectors: Vec<_> = selectors.into_iter().collect();
+        let catalog = Catalog::load(
+            &mut tx,
+            &selectors,
+            CatalogPurpose::Policy {
+                host: host.clone(),
+                cross_vrf: flows.iter().any(|flow| flow.allow_cross_vrf),
+            },
+        )
+        .await?;
+        let host_row = catalog
+            .hosts
+            .get(&host)
+            .ok_or_else(|| AppError::NotFound("Host not found".into()))?;
         let mut host_projection = host.projection();
         host_projection.label = host_row.name.clone();
         let host_membership = catalog.eligible_host_ips(&host);
@@ -421,7 +447,7 @@ impl SqlxDataflowRepository {
             .execute(&mut *tx)
             .await
             .map_err(classify_sqlx_error_owned)?;
-        let catalog = Catalog::load(&mut tx).await?;
+        let catalog = Catalog::load(&mut tx, &[&selector], CatalogPurpose::Preview).await?;
         if !catalog.exists(&selector) {
             return Err(AppError::NotFound("Endpoint object not found".into()));
         }
@@ -602,6 +628,8 @@ impl ScopeRow {
     async fn load(
         kind: EndpointType,
         table: &str,
+        ids: &[Uuid],
+        descendants: bool,
         connection: &mut PgConnection,
     ) -> Result<BTreeMap<Uuid, Self>, AppError> {
         let label = if kind == EndpointType::DeviceType {
@@ -637,7 +665,19 @@ impl ScopeRow {
         } else {
             "NULL::uuid"
         };
-        let rows = sqlx::query_as::<_,Self>(&format!("SELECT id,{label} AS label,{parent} AS parent_id,{region} AS region_id,{group} AS group_id,{cluster_type} AS type_id,{manufacturer} AS manufacturer_id FROM {table} LIMIT 4097")).fetch_all(connection).await.map_err(classify_sqlx_error_owned)?;
+        // UNION (not UNION ALL) terminates corrupt cycles; scope_members reports
+        // them from retained parent links rather than accepting partial membership.
+        let (recursive, predicate) = if descendants && kind.is_hierarchical() {
+            (
+                format!(
+                    "WITH RECURSIVE wanted AS (SELECT id FROM {table} WHERE id = ANY($1) UNION SELECT child.id FROM {table} child JOIN wanted parent ON child.parent_id = parent.id) "
+                ),
+                "id IN (SELECT id FROM wanted)",
+            )
+        } else {
+            (String::new(), "id = ANY($1)")
+        };
+        let rows = sqlx::query_as::<_,Self>(&format!("{recursive}SELECT id,{label} AS label,{parent} AS parent_id,{region} AS region_id,{group} AS group_id,{cluster_type} AS type_id,{manufacturer} AS manufacturer_id FROM {table} WHERE {predicate} LIMIT 4097")).bind(ids).fetch_all(connection).await.map_err(classify_sqlx_error_owned)?;
         if rows.len() > 4096 {
             return Err(AppError::TooManyRequests(
                 "Scope catalog budget exceeded; no partial membership".into(),
@@ -990,72 +1030,6 @@ impl Catalog {
             default_ipaddresses,
             addresses: normalized(effective.addresses.iter().collect()),
             diagnostics,
-        })
-    }
-    async fn load(connection: &mut PgConnection) -> Result<Self, AppError> {
-        let host_rows = sqlx::query_as::<_, HostRow>("SELECT 'dcim.device' AS kind, id, name, primary_ip4_id, primary_ip6_id,site_id,role_id,tenant_id,platform_id,device_type_id,rack_id,location_id,cluster_id FROM dcim_device UNION ALL SELECT 'virtualization.virtualmachine', id, name, primary_ip4_id, primary_ip6_id,site_id,role_id,tenant_id,platform_id,NULL::uuid,NULL::uuid,NULL::uuid,cluster_id FROM virtualization_virtualmachine LIMIT 4097").fetch_all(&mut *connection).await.map_err(classify_sqlx_error_owned)?;
-        let mut scopes = BTreeMap::new();
-        for &(kind, _, _, table) in EndpointType::REFERENCES
-            .iter()
-            .filter(|entry| entry.0.is_scope())
-        {
-            scopes.insert(kind, ScopeRow::load(kind, table, connection).await?);
-        }
-        let service_rows = sqlx::query_as::<_, ServiceRow>("SELECT s.id, s.name, ct.app_label || '.' || ct.model AS parent_kind, s.parent_object_id AS parent_id, ARRAY(SELECT ipaddress_id FROM ipam_service_ipaddresses WHERE service_id = s.id ORDER BY ipaddress_id) AS bindings FROM ipam_service s JOIN inventory_content_type ct ON ct.id = s.parent_object_type_id LIMIT 4097").fetch_all(&mut *connection).await.map_err(classify_sqlx_error_owned)?;
-        let rows = sqlx::query_as::<_, IpRow>("SELECT ip.id, ip.address::text, ip.status, ip.vrf_id, ip.assigned_object_id, ct.app_label || '.' || ct.model AS assigned_kind, COALESCE(di.device_id, vi.virtual_machine_id) AS assigned_host_id FROM ipam_ipaddress ip LEFT JOIN inventory_content_type ct ON ct.id = ip.assigned_object_type_id LEFT JOIN dcim_interface di ON di.id = ip.assigned_object_id AND ct.app_label = 'dcim' AND ct.model = 'interface' LEFT JOIN virtualization_vminterface vi ON vi.id = ip.assigned_object_id AND ct.app_label = 'virtualization' AND ct.model = 'vminterface' LIMIT 8193").fetch_all(&mut *connection).await.map_err(classify_sqlx_error_owned)?;
-        let prefix_rows = sqlx::query_as::<_, PrefixRow>(
-            "SELECT id, prefix::text, status, vrf_id FROM ipam_prefix LIMIT 4097",
-        )
-        .fetch_all(&mut *connection)
-        .await
-        .map_err(classify_sqlx_error_owned)?;
-        if host_rows.len() > 4096
-            || service_rows.len() > 4096
-            || rows.len() > 8192
-            || prefix_rows.len() > 4096
-        {
-            return Err(AppError::TooManyRequests(
-                "Inventory snapshot budget exceeded; no partial policy can be exported".into(),
-            ));
-        }
-        let hosts = host_rows
-            .into_iter()
-            .map(|row| {
-                Ok((
-                    DataflowEndpoint {
-                        object_type: EndpointType::parse(&row.kind)?,
-                        object_id: row.id,
-                    },
-                    row,
-                ))
-            })
-            .collect::<Result<BTreeMap<_, _>, AppError>>()?;
-        let services: BTreeMap<_, _> = service_rows.into_iter().map(|row| (row.id, row)).collect();
-        let mut primary_owners: BTreeMap<Uuid, BTreeSet<DataflowEndpoint>> = BTreeMap::new();
-        for (host, row) in &hosts {
-            for id in [row.primary_ip4_id, row.primary_ip6_id]
-                .into_iter()
-                .flatten()
-            {
-                primary_owners.entry(id).or_default().insert(host.clone());
-            }
-        }
-        let mut ips = BTreeMap::new();
-        for row in rows {
-            let owners = primary_owners.remove(&row.id).unwrap_or_default();
-            let ip = catalog_ip(row, owners);
-            ips.insert(ip.row.id, ip);
-        }
-        for service in services.values() {
-            bind_service_ownership(service, &hosts, &mut ips);
-        }
-        mark_ambiguous_contexts(&mut ips);
-        Ok(Self {
-            scopes,
-            hosts,
-            services,
-            ips,
-            prefixes: prefix_rows.into_iter().map(|row| (row.id, row)).collect(),
         })
     }
     fn exists(&self, selector: &DataflowEndpointInput) -> bool {

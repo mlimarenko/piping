@@ -98,7 +98,8 @@ Default scope selection chooses eligible primary management IPs per member;
 all chooses eligible owned IPs; selected chooses 1..32 eligible member IP UUIDs.
 Discovered ineligible/unaddressed members are exclusions; explicit unresolved
 selection and relevant ambiguity fail closed. Scope/All address budgets are 4096,
-not the singleton 256-address budget; each scope catalog is capped at 4096 rows.
+not the singleton 256-address budget; each demanded scope catalog is capped at
+4096 rows. Unrelated branches do not consume a selected scope's budget.
 Overlapping collections retain both real ingress and egress pairs. Local scope
 visibility projects to the chosen requested-host addresses; remote visibility
 checks only compatible contributing owners. Prefix retains its separate network
@@ -190,6 +191,16 @@ implementation handles protocol/port omission:
 For transport any, omit a protocol filter; for destination_ports null, omit a port
 filter. This example does not configure a firewall. The read-only repeatable-read
 transaction covers flows, selections, objects, addresses, ownership and facets.
-Limits: 1000 active flows, 256 singleton object addresses/host memberships, 4096 scope/All addresses
-and 4096 rules; catalog caps 4096 hosts/services/prefixes and 8192 IP rows. Exceeding
-a catalog budget rejects the request, other unresolved budgets clear all rules.
+Limits: 1000 active flows, 256 singleton object addresses/host memberships, 4096
+scope/All addresses and 4096 rules; demanded catalogs cap hosts/services/prefixes
+at 4096 and IP rows at 8192. Mutation validates reference existence and explicit
+selected IP membership, including ownership and ambiguity witnesses; it does not
+expand default/all address sets. Endpoint preview and host policy load the
+inventory required by their endpoint selections and active policy flows.
+Unrelated inventory growth does not consume those budgets or block a small
+direct, service or scoped request. Creating or activating an `all` intent can
+succeed even when its preview or active host-policy expansion exceeds a catalog
+budget.
+Exceeding a demanded catalog budget rejects the request; other unresolved
+budgets clear all rules. Demand scoping does not relax ownership validation,
+peer visibility checks or ambiguity handling.

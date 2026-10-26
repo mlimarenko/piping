@@ -106,7 +106,7 @@ pub struct PolicySnapshot {
     pub host: DataflowEndpoint,
     pub host_projection: ObjectRef,
     pub host_membership: Vec<PolicyAddress>,
-    /// Full typed inventory, including unresolved addresses, for realm projection checks.
+    /// Demanded addresses and collision-complete witnesses, including unresolved records.
     pub inventory_addresses: Vec<PolicyAddress>,
     pub flows: Vec<Dataflow>,
     pub endpoints: BTreeMap<DataflowEndpointInput, ResolvedEndpoint>,
