@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "piping_service_health_probe": {
+      "type": "string",
+      "title": "Health probe",
+      "description": "Read-only host health probe selected from the supported allowlist.",
+      "default": "systemd",
+      "enum": [
+        "systemd",
+        "uptime"
+      ]
+    }
+  }
+}

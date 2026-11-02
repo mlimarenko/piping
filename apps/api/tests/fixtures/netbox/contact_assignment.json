@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1,
+    "content_type": "dcim.site",
+    "object_id": 1,
+    "contact": {"id": 1, "name": "Test Contact Alice"},
+    "role": {"id": 1, "slug": "test-role-support"},
+    "priority": {"value": "primary", "label": "Primary"},
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

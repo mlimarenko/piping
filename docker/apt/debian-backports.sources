@@ -1,0 +1,7 @@
+# Debian backports — opt-in newer packages (e.g. freerdp 3.26) without
+# switching the whole image off trixie. Pin priority lives in 90-backports.
+Types: deb
+URIs: http://deb.debian.org/debian
+Suites: trixie-backports
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp

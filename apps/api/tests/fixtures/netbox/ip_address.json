@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "address": "192.0.2.10/24",
+    "status": {"value": "active", "label": "Active"},
+    "role": null,
+    "tenant": {"id": 1, "slug": "test-tenant-acme"},
+    "assigned_object_type": "dcim.interface",
+    "assigned_object_id": 1,
+    "nat_inside": null,
+    "dns_name": "alpha-sw01.test.local",
+    "description": "Primary IPv4 for alpha-sw01",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "address": "192.0.2.11/24",
+    "status": {"value": "active", "label": "Active"},
+    "role": null,
+    "tenant": null,
+    "assigned_object_type": "dcim.interface",
+    "assigned_object_id": 3,
+    "nat_inside": null,
+    "dns_name": "beta-rt01.test.local",
+    "description": "Primary IPv4 for beta-rt01",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

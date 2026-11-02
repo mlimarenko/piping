@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE dcim_device AS device SET\n                console_port_count = (SELECT COUNT(*) FROM dcim_consoleport WHERE device_id = device.id),\n                console_server_port_count = (SELECT COUNT(*) FROM dcim_consoleserverport WHERE device_id = device.id),\n                power_port_count = (SELECT COUNT(*) FROM dcim_powerport WHERE device_id = device.id),\n                power_outlet_count = (SELECT COUNT(*) FROM dcim_poweroutlet WHERE device_id = device.id),\n                interface_count = (SELECT COUNT(*) FROM dcim_interface WHERE device_id = device.id),\n                front_port_count = (SELECT COUNT(*) FROM dcim_frontport WHERE device_id = device.id),\n                rear_port_count = (SELECT COUNT(*) FROM dcim_rearport WHERE device_id = device.id),\n                device_bay_count = (SELECT COUNT(*) FROM dcim_devicebay WHERE device_id = device.id),\n                module_bay_count = (SELECT COUNT(*) FROM dcim_modulebay WHERE device_id = device.id),\n                inventory_item_count = (SELECT COUNT(*) FROM dcim_inventoryitem WHERE device_id = device.id)\n               WHERE device.id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a9e4d265ebbde5b840b3c055d7473b12d27a4e0c90ecf7e157fb57092e2b96df"
+}

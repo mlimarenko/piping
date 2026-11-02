@@ -1,0 +1,40 @@
+name: ${PIPING_LICENSE_E2E_PROJECT:-piping-license-e2e}
+
+services:
+  postgres:
+    environment:
+      POSTGRES_DB: piping_license_e2e
+    ports: !reset []
+    labels:
+      io.piping.fixture: licensing-e2e
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U ${POSTGRES_USER:-piping} -d piping_license_e2e"]
+  redis:
+    ports: !reset []
+  backend:
+    environment:
+      PIPING_DATABASE__URL: postgresql://${POSTGRES_USER:-piping}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/piping_license_e2e
+      PIPING_LICENSE__BASE_URL: http://licensing-portal:8090
+      PIPING_LICENSE__REFRESH_INTERVAL_SECONDS: "30"
+      PIPING_LICENSE__GRACE_PERIOD_SECONDS: "180"
+      PIPING_LICENSE__GRACE_FAILURE_THRESHOLD: "2"
+    ports:
+    - "127.0.0.1:${PIPING_LICENSE_E2E_PORT:-17000}:7000"
+    labels:
+      io.piping.fixture: licensing-e2e
+    networks:
+      piping: {}
+      licensing-e2e: {}
+
+networks:
+  licensing-e2e:
+    external: true
+    name: ${PIPING_LICENSE_E2E_CLOUD_PROJECT:?Set the isolated Cloud project}_licensing-e2e
+
+volumes:
+  postgres_data:
+    labels:
+      io.piping.fixture: licensing-e2e
+  redis_data:
+    labels:
+      io.piping.fixture: licensing-e2e

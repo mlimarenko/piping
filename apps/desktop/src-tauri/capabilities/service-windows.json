@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "service-windows",
+  "description": "Allow configured remote Piping service windows to control the minimal desktop shell chrome.",
+  "local": false,
+  "remote": {
+    "urls": ["http://*:*/*", "https://*:*/*"]
+  },
+  "windows": ["main", "detached-*"],
+  "webviews": ["main", "detached-*"],
+  "permissions": [
+    "allow-minimize-window",
+    "allow-toggle-maximize-window",
+    "allow-close-window",
+    "allow-start-window-drag",
+    "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
+    "allow-show-app-menu",
+    "allow-open-detached-window",
+    "allow-open-external-url",
+    "allow-open-app-uri"
+  ]
+}

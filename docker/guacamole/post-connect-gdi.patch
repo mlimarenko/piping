@@ -1,0 +1,66 @@
+Backport of Apache Guacamole GUACAMOLE-2328 for guacamole-server 1.6.0.
+Upstream: https://github.com/apache/guacamole-server/commit/ab36756b596520ae2a94cd4d25e406e0b5aa820b
+
+FreeRDP 3.31+ creates its cache after PreConnect. Initialize GDI and then
+register Guacamole's rendering callbacks in PostConnect, retaining channel
+loading in PreConnect. Remove this patch when adopting Guacamole 1.6.1.
+
+--- a/src/protocols/rdp/rdp.c
++++ b/src/protocols/rdp/rdp.c
+@@ -166,7 +166,6 @@
+ static BOOL rdp_freerdp_pre_connect(freerdp* instance) {
+ 
+     rdpContext* context = GUAC_RDP_CONTEXT(instance);
+-    rdpGraphics* graphics = context->graphics;
+ 
+     guac_client* client = ((rdp_freerdp_context*) context)->client;
+     guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
+@@ -192,6 +191,29 @@
+ 
+     }
+ 
++    /* Load channels before capability negotiation. */
++    #ifndef RDP_INST_HAS_LOAD_CHANNELS
++        rdp_freerdp_load_channels(instance);
++    #endif
++
++    return TRUE;
++}
++
++/**
++ * Initializes GDI after FreeRDP has created the connection's cache.
++ * Guacamole's rendering callbacks must follow gdi_init(), which installs
++ * FreeRDP's own callbacks and would otherwise overwrite them.
++ *
++ * @param instance
++ *     The FreeRDP instance which has completed its connection sequence.
++ *
++ * @return
++ *     TRUE if initialization succeeds, FALSE otherwise.
++ */
++static BOOL rdp_freerdp_post_connect(freerdp* instance) {
++    rdpContext* context = GUAC_RDP_CONTEXT(instance);
++    rdpGraphics* graphics = context->graphics;
++
+     /* Init FreeRDP internal GDI implementation */
+     if (!gdi_init(instance, guac_rdp_get_native_pixel_format(FALSE)))
+         return FALSE;
+@@ -220,14 +242,6 @@
+     GUAC_RDP_CONTEXT(instance)->update->SurfaceFrameMarker = guac_rdp_gdi_surface_frame_marker;
+     GUAC_RDP_CONTEXT(instance)->update->altsec->FrameMarker = guac_rdp_gdi_frame_marker;
+ 
+-    /*
+-     * If the freerdp instance does not have a LoadChannels callback for
+-     * loading plugins we use the PreConnect callback to load plugins instead.
+-     */
+-    #ifndef RDP_INST_HAS_LOAD_CHANNELS
+-        rdp_freerdp_load_channels(instance);
+-    #endif
+-
+     return TRUE;
+ }
+ 
+@@ -551,1 +565,2 @@
+-    rdp_inst->PreConnect = rdp_freerdp_pre_connect;
++    rdp_inst->PreConnect = rdp_freerdp_pre_connect;
++    rdp_inst->PostConnect = rdp_freerdp_post_connect;

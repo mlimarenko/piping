@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE ipam_prefix AS prefix SET\n                _site_id = CASE WHEN scope.app_label = 'dcim' AND scope.model = 'site' THEN prefix.scope_id END,\n                _region_id = CASE WHEN scope.app_label = 'dcim' AND scope.model = 'region' THEN prefix.scope_id\n                                  WHEN scope.app_label = 'dcim' AND scope.model = 'site' THEN site.region_id END,\n                _site_group_id = CASE WHEN scope.app_label = 'dcim' AND scope.model = 'sitegroup' THEN prefix.scope_id\n                                      WHEN scope.app_label = 'dcim' AND scope.model = 'site' THEN site.group_id END,\n                _location_id = CASE WHEN scope.app_label = 'dcim' AND scope.model = 'location' THEN prefix.scope_id END\n               FROM ipam_prefix AS owner\n               LEFT JOIN inventory_content_type AS scope ON scope.id = owner.scope_type_id\n               LEFT JOIN dcim_site AS site ON scope.app_label = 'dcim' AND scope.model = 'site' AND site.id = owner.scope_id\n               WHERE owner.id = prefix.id AND prefix.id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c977b8c71bb6b0af890f46bdc873f7a8e0d41a5b5d7f11471a1dc923710a190"
+}

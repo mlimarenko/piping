@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO secrets_binding (id, secret_id, scope_type, scope_id, weight, managed_by_field_usage) VALUES ($1, $2, $3, $4, $5, false) RETURNING id, secret_id, scope_type, scope_id, weight, managed_by_field_usage",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "secret_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "scope_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "scope_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "weight",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "managed_by_field_usage",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b3de87459a8f595b6fefe606834c51fd990cbe8373ffb11b7e35a8ce8ffed452"
+}

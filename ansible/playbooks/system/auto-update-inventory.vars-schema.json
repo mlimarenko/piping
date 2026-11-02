@@ -1,0 +1,92 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "piping_inventory_write_platform": {
+      "type": "boolean",
+      "title": "Update OS platform",
+      "description": "Overwrite the inventory platform from gathered operating-system facts.",
+      "default": true
+    },
+    "piping_inventory_write_device_type": {
+      "type": "boolean",
+      "title": "Update hardware model",
+      "description": "Overwrite manufacturer and device type from gathered hardware facts for physical devices.",
+      "default": true
+    },
+    "piping_inventory_write_serial": {
+      "type": "boolean",
+      "title": "Update serial / UUID",
+      "description": "Overwrite device serial or VM product UUID from gathered identity facts.",
+      "default": true
+    },
+    "piping_inventory_write_resources": {
+      "type": "boolean",
+      "title": "Update CPU and memory",
+      "description": "Overwrite VM vCPU and memory values from gathered resource facts.",
+      "default": true
+    },
+    "piping_inventory_write_interfaces": {
+      "type": "boolean",
+      "title": "Update interfaces",
+      "description": "Create and update discovered network interfaces. Disabling this also skips IP and MAC writes.",
+      "default": true
+    },
+    "piping_inventory_write_ip_addresses": {
+      "type": "boolean",
+      "title": "Update IP addresses",
+      "description": "Create and attach discovered IP addresses and set primary IPv4 from gathered facts.",
+      "default": true
+    },
+    "piping_inventory_write_mac_addresses": {
+      "type": "boolean",
+      "title": "Update MAC addresses",
+      "description": "Create and attach discovered MAC addresses to inventory interfaces.",
+      "default": true
+    },
+    "piping_inventory_write_virtual_disks": {
+      "type": "boolean",
+      "title": "Update VM disks",
+      "description": "Create and update virtual disks discovered from block-device facts for VM targets.",
+      "default": true
+    },
+    "piping_inventory_write_ansible_custom_fields": {
+      "type": "boolean",
+      "title": "Update Ansible metadata",
+      "description": "Overwrite the ansible custom-field namespace with kernel, fqdn, BIOS, domain and related raw facts.",
+      "default": true
+    },
+    "piping_inventory_gather_timeout": {
+      "type": "integer",
+      "title": "Fact gather timeout",
+      "description": "Per-host Ansible setup timeout in seconds.",
+      "default": 8,
+      "minimum": 3,
+      "maximum": 60
+    },
+    "piping_inventory_rest_timeout": {
+      "type": "integer",
+      "title": "Piping REST timeout",
+      "description": "Timeout in seconds for the collected-facts ingest request made from the playbook.",
+      "default": 10,
+      "minimum": 2,
+      "maximum": 60
+    },
+    "piping_inventory_rest_retries": {
+      "type": "integer",
+      "title": "Piping REST attempts",
+      "description": "Number of attempts for the collected-facts ingest request. Keep this low for large target sets.",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "piping_inventory_rest_delay": {
+      "type": "integer",
+      "title": "Piping REST retry delay",
+      "description": "Delay in seconds between REST attempts.",
+      "default": 1,
+      "minimum": 0,
+      "maximum": 30
+    }
+  }
+}

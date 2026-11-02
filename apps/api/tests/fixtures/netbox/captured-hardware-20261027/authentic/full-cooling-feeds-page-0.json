@@ -1,0 +1,46 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/cooling-feeds/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/cooling-feeds/1/",
+      "display": "PWA78 capture cooling feed",
+      "cooling_source": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/cooling-sources/1/",
+        "display": "PWA78 capture cooling source",
+        "name": "PWA78 capture cooling source",
+        "description": ""
+      },
+      "rack": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/racks/1/",
+        "display": "Rack-Alpha-01 (DC1-R01)",
+        "name": "Rack-Alpha-01",
+        "description": ""
+      },
+      "name": "PWA78 capture cooling feed",
+      "status": {
+        "value": "active",
+        "label": "Active"
+      },
+      "cooling_capacity": 12.5,
+      "max_flow": 1.25,
+      "max_flow_unit": {
+        "value": "m3ph",
+        "label": "Cubic meters per hour (m³/h)"
+      },
+      "description": "",
+      "tenant": null,
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:44.251268Z",
+      "last_updated": "2026-10-27T15:04:44.251279Z"
+    }
+  ]
+}

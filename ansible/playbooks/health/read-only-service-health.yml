@@ -1,0 +1,37 @@
+---
+- name: Check read-only service health
+  hosts: all
+  gather_facts: false
+  vars:
+    piping_service_health_probe_effective: "{{ piping_service_health_probe | default('systemd', true) }}"
+
+  pre_tasks:
+    - name: Validate health probe allowlist
+      ansible.builtin.assert:
+        that:
+          - piping_service_health_probe_effective in ['systemd', 'uptime']
+        fail_msg: "Health probe must be one of the supported read-only probe types."
+        quiet: true
+
+  tasks:
+    - name: Gather service manager facts
+      ansible.builtin.service_facts:
+      when: piping_service_health_probe_effective == 'systemd'
+      no_log: true
+
+    - name: Gather uptime facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - min
+      when: piping_service_health_probe_effective == 'uptime'
+      no_log: true
+
+    - name: Report read-only service health summary
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          probe: "{{ piping_service_health_probe_effective }}"
+          service_manager: "{{ ansible_facts.service_mgr | default('') }}"
+          discovered_service_count: "{{ ansible_facts.services | default({}) | length if piping_service_health_probe_effective == 'systemd' else 0 }}"
+          uptime_seconds: "{{ ansible_facts.uptime_seconds | default(0) | int if piping_service_health_probe_effective == 'uptime' else 0 }}"

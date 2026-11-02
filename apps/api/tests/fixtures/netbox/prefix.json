@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "prefix": "192.0.2.0/24",
+    "status": {"value": "active", "label": "Active"},
+    "site": {"id": 1, "slug": "test-site-alpha"},
+    "vrf": null,
+    "tenant": null,
+    "vlan": {"id": 1, "vid": 100},
+    "role": null,
+    "is_pool": false,
+    "mark_utilized": false,
+    "description": "Test fixture prefix",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

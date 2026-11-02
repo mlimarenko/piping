@@ -1,0 +1,290 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/devices/1/",
+      "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+      "name": "test-device-alpha-sw01",
+      "device_type": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/device-types/1/",
+        "display": "Test Switch 9300",
+        "manufacturer": {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+          "display": "Test Manufacturer Cisco",
+          "name": "Test Manufacturer Cisco",
+          "slug": "test-manufacturer-cisco",
+          "description": "Stand-in for Cisco for fixtures"
+        },
+        "model": "Test Switch 9300",
+        "slug": "test-switch-9300",
+        "description": "",
+        "device_count": 1
+      },
+      "role": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/device-roles/1/",
+        "display": "Test Role Access Switch",
+        "name": "Test Role Access Switch",
+        "slug": "test-role-access-switch",
+        "description": "Access-layer switch role",
+        "device_count": 0,
+        "virtualmachine_count": 0,
+        "_depth": 0
+      },
+      "tenant": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/tenancy/tenants/1/",
+        "display": "Test Tenant Acme",
+        "name": "Test Tenant Acme",
+        "slug": "test-tenant-acme",
+        "description": "Acme test tenant"
+      },
+      "platform": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/platforms/1/",
+        "display": "Test Platform IOS",
+        "name": "Test Platform IOS",
+        "slug": "test-platform-ios",
+        "description": "Cisco IOS stand-in",
+        "device_count": 0,
+        "virtualmachine_count": 0,
+        "_depth": 0
+      },
+      "serial": "SN-DEV-0001",
+      "asset_tag": "ASSET-DEV-0001",
+      "site": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/sites/1/",
+        "display": "Test Site Alpha",
+        "name": "Test Site Alpha",
+        "slug": "test-site-alpha",
+        "description": "Primary alpha site"
+      },
+      "location": null,
+      "rack": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/racks/1/",
+        "display": "Rack-Alpha-01 (DC1-R01)",
+        "name": "Rack-Alpha-01",
+        "description": ""
+      },
+      "position": 1.0,
+      "face": {
+        "value": "front",
+        "label": "Front"
+      },
+      "latitude": null,
+      "longitude": null,
+      "parent_device": null,
+      "status": {
+        "value": "active",
+        "label": "Active"
+      },
+      "airflow": {
+        "value": "front-to-rear",
+        "label": "Front to rear"
+      },
+      "cooling_method": null,
+      "primary_ip": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/ipam/ip-addresses/1/",
+        "display": "192.0.2.10/24",
+        "family": {
+          "value": 4,
+          "label": "IPv4"
+        },
+        "address": "192.0.2.10/24",
+        "nat_inside": null,
+        "nat_outside": [],
+        "dns_name": "alpha-sw01.test.local",
+        "description": "Primary IPv4 for alpha-sw01"
+      },
+      "primary_ip4": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/ipam/ip-addresses/1/",
+        "display": "192.0.2.10/24",
+        "family": {
+          "value": 4,
+          "label": "IPv4"
+        },
+        "address": "192.0.2.10/24",
+        "nat_inside": null,
+        "nat_outside": [],
+        "dns_name": "alpha-sw01.test.local",
+        "description": "Primary IPv4 for alpha-sw01"
+      },
+      "primary_ip6": null,
+      "oob_ip": null,
+      "cluster": null,
+      "virtual_chassis": null,
+      "vc_position": null,
+      "vc_priority": null,
+      "description": "",
+      "owner": null,
+      "comments": "",
+      "config_template": null,
+      "config_context": {},
+      "local_context_data": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:22.926171Z",
+      "last_updated": "2026-10-27T14:58:24.272495Z",
+      "console_port_count": 0,
+      "console_server_port_count": 0,
+      "power_port_count": 0,
+      "power_outlet_count": 0,
+      "cooling_intake_count": 0,
+      "cooling_outflow_count": 0,
+      "interface_count": 2,
+      "front_port_count": 0,
+      "rear_port_count": 0,
+      "device_bay_count": 0,
+      "module_bay_count": 0,
+      "inventory_item_count": 0
+    },
+    {
+      "id": 2,
+      "url": "http://127.0.0.1:60499/api/dcim/devices/2/",
+      "display_url": "http://127.0.0.1:60499/dcim/devices/2/",
+      "display": "test-device-beta-rt01 (ASSET-DEV-0002)",
+      "name": "test-device-beta-rt01",
+      "device_type": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/device-types/2/",
+        "display": "Test Router MX204",
+        "manufacturer": {
+          "id": 2,
+          "url": "http://127.0.0.1:60499/api/dcim/manufacturers/2/",
+          "display": "Test Manufacturer Juniper",
+          "name": "Test Manufacturer Juniper",
+          "slug": "test-manufacturer-juniper",
+          "description": "Stand-in for Juniper for fixtures"
+        },
+        "model": "Test Router MX204",
+        "slug": "test-router-mx204",
+        "description": "",
+        "device_count": 1
+      },
+      "role": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/device-roles/2/",
+        "display": "Test Role Edge Router",
+        "name": "Test Role Edge Router",
+        "slug": "test-role-edge-router",
+        "description": "Edge router role",
+        "device_count": 0,
+        "virtualmachine_count": 0,
+        "_depth": 0
+      },
+      "tenant": null,
+      "platform": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/platforms/2/",
+        "display": "Test Platform JunOS",
+        "name": "Test Platform JunOS",
+        "slug": "test-platform-junos",
+        "description": "Juniper JunOS stand-in",
+        "device_count": 0,
+        "virtualmachine_count": 0,
+        "_depth": 0
+      },
+      "serial": "SN-DEV-0002",
+      "asset_tag": "ASSET-DEV-0002",
+      "site": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/sites/2/",
+        "display": "Test Site Beta",
+        "name": "Test Site Beta",
+        "slug": "test-site-beta",
+        "description": "Secondary beta site"
+      },
+      "location": null,
+      "rack": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/racks/2/",
+        "display": "Rack-Beta-01",
+        "name": "Rack-Beta-01",
+        "description": ""
+      },
+      "position": 2.0,
+      "face": {
+        "value": "front",
+        "label": "Front"
+      },
+      "latitude": null,
+      "longitude": null,
+      "parent_device": null,
+      "status": {
+        "value": "planned",
+        "label": "Planned"
+      },
+      "airflow": {
+        "value": "front-to-rear",
+        "label": "Front to rear"
+      },
+      "cooling_method": null,
+      "primary_ip": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/ipam/ip-addresses/2/",
+        "display": "192.0.2.11/24",
+        "family": {
+          "value": 4,
+          "label": "IPv4"
+        },
+        "address": "192.0.2.11/24",
+        "nat_inside": null,
+        "nat_outside": [],
+        "dns_name": "beta-rt01.test.local",
+        "description": "Primary IPv4 for beta-rt01"
+      },
+      "primary_ip4": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/ipam/ip-addresses/2/",
+        "display": "192.0.2.11/24",
+        "family": {
+          "value": 4,
+          "label": "IPv4"
+        },
+        "address": "192.0.2.11/24",
+        "nat_inside": null,
+        "nat_outside": [],
+        "dns_name": "beta-rt01.test.local",
+        "description": "Primary IPv4 for beta-rt01"
+      },
+      "primary_ip6": null,
+      "oob_ip": null,
+      "cluster": null,
+      "virtual_chassis": null,
+      "vc_position": null,
+      "vc_priority": null,
+      "description": "",
+      "owner": null,
+      "comments": "",
+      "config_template": null,
+      "config_context": {},
+      "local_context_data": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:23.025963Z",
+      "last_updated": "2026-10-27T14:58:24.355139Z",
+      "console_port_count": 0,
+      "console_server_port_count": 0,
+      "power_port_count": 0,
+      "power_outlet_count": 0,
+      "cooling_intake_count": 0,
+      "cooling_outflow_count": 0,
+      "interface_count": 2,
+      "front_port_count": 0,
+      "rear_port_count": 0,
+      "device_bay_count": 0,
+      "module_bay_count": 0,
+      "inventory_item_count": 0
+    }
+  ]
+}

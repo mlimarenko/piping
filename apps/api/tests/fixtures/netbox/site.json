@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "name": "Test Site Alpha",
+    "slug": "test-site-alpha",
+    "status": {"value": "active", "label": "Active"},
+    "region": {"id": 1, "slug": "test-region-north"},
+    "tenant": {"id": 1, "slug": "test-tenant-acme"},
+    "facility": "DC1",
+    "time_zone": "UTC",
+    "description": "Primary alpha site",
+    "physical_address": "100 Test Street",
+    "latitude": null,
+    "longitude": null,
+    "asns": [],
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Test Site Beta",
+    "slug": "test-site-beta",
+    "status": {"value": "planned", "label": "Planned"},
+    "region": {"id": 2, "slug": "test-region-south"},
+    "tenant": null,
+    "facility": null,
+    "time_zone": "UTC",
+    "description": "Secondary beta site",
+    "physical_address": "",
+    "latitude": null,
+    "longitude": null,
+    "asns": [],
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

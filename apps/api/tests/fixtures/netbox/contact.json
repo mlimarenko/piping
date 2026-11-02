@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "name": "Test Contact Alice",
+    "group": {"id": 1, "slug": "test-contact-group-noc"},
+    "title": "Senior NOC Engineer",
+    "phone": "+1-555-0100",
+    "email": "alice@test.local",
+    "address": "100 Test Street",
+    "link": "https://example.test/alice",
+    "description": "Primary NOC contact",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

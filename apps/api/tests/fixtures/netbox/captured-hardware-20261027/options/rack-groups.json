@@ -1,0 +1,364 @@
+{
+  "name": "Rack Group List",
+  "description": "",
+  "renders": [
+    "application/json",
+    "text/html"
+  ],
+  "parses": [
+    "application/json",
+    "multipart/form-data"
+  ],
+  "actions": {
+    "POST": {
+      "id": {
+        "type": "integer",
+        "required": false,
+        "read_only": true,
+        "label": "ID"
+      },
+      "url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Url"
+      },
+      "display_url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display url"
+      },
+      "display": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display"
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "read_only": false,
+        "label": "Name",
+        "max_length": 100
+      },
+      "slug": {
+        "type": "slug",
+        "required": true,
+        "read_only": false,
+        "label": "Slug",
+        "max_length": 100
+      },
+      "description": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Description",
+        "max_length": 200
+      },
+      "owner": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Owner",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "comments": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Comments"
+      },
+      "tags": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Tags",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "id": {
+              "type": "integer",
+              "required": false,
+              "read_only": true,
+              "label": "Id"
+            },
+            "url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Url"
+            },
+            "display_url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display url"
+            },
+            "display": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "read_only": false,
+              "label": "Name",
+              "max_length": 100
+            },
+            "slug": {
+              "type": "slug",
+              "required": true,
+              "read_only": false,
+              "label": "Slug",
+              "max_length": 100
+            },
+            "color": {
+              "type": "string",
+              "required": false,
+              "read_only": false,
+              "label": "Color",
+              "max_length": 6
+            }
+          }
+        }
+      },
+      "custom_fields": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Custom fields"
+      },
+      "created": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Created"
+      },
+      "last_updated": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Last updated"
+      },
+      "rack_count": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Rack count"
+      }
+    },
+    "PUT": {
+      "id": {
+        "type": "integer",
+        "required": false,
+        "read_only": true,
+        "label": "ID"
+      },
+      "url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Url"
+      },
+      "display_url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display url"
+      },
+      "display": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display"
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "read_only": false,
+        "label": "Name",
+        "max_length": 100
+      },
+      "slug": {
+        "type": "slug",
+        "required": true,
+        "read_only": false,
+        "label": "Slug",
+        "max_length": 100
+      },
+      "description": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Description",
+        "max_length": 200
+      },
+      "owner": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Owner",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "comments": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Comments"
+      },
+      "tags": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Tags",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "id": {
+              "type": "integer",
+              "required": false,
+              "read_only": true,
+              "label": "Id"
+            },
+            "url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Url"
+            },
+            "display_url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display url"
+            },
+            "display": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "read_only": false,
+              "label": "Name",
+              "max_length": 100
+            },
+            "slug": {
+              "type": "slug",
+              "required": true,
+              "read_only": false,
+              "label": "Slug",
+              "max_length": 100
+            },
+            "color": {
+              "type": "string",
+              "required": false,
+              "read_only": false,
+              "label": "Color",
+              "max_length": 6
+            }
+          }
+        }
+      },
+      "custom_fields": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Custom fields"
+      },
+      "created": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Created"
+      },
+      "last_updated": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Last updated"
+      },
+      "rack_count": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Rack count"
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-service-url"
+description = "Enables the set_service_url command without any pre-configured scope."
+commands.allow = ["set_service_url"]
+
+[[permission]]
+identifier = "deny-set-service-url"
+description = "Denies the set_service_url command without any pre-configured scope."
+commands.deny = ["set_service_url"]

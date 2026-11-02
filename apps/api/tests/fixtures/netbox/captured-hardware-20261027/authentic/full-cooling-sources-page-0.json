@@ -1,0 +1,53 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/cooling-sources/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/cooling-sources/1/",
+      "display": "PWA78 capture cooling source",
+      "site": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/sites/1/",
+        "display": "Test Site Alpha",
+        "name": "Test Site Alpha",
+        "slug": "test-site-alpha",
+        "description": "Primary alpha site"
+      },
+      "location": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/locations/1/",
+        "display": "PWA78 capture location",
+        "name": "PWA78 capture location",
+        "slug": "pwa78-capture-location",
+        "description": "",
+        "rack_count": 0,
+        "_depth": 0
+      },
+      "name": "PWA78 capture cooling source",
+      "type": {
+        "value": "chiller",
+        "label": "Chiller"
+      },
+      "status": {
+        "value": "active",
+        "label": "Active"
+      },
+      "fluid_type": {
+        "value": "water",
+        "label": "Water"
+      },
+      "cooling_capacity": 20.5,
+      "description": "",
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "coolingfeed_count": 1,
+      "created": "2026-10-27T15:04:44.227624Z",
+      "last_updated": "2026-10-27T15:04:44.227633Z"
+    }
+  ]
+}

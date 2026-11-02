@@ -1,0 +1,15 @@
+[
+  {
+    "id": 1,
+    "name": "Test Cluster Alpha",
+    "type": {"id": 1, "slug": "test-cluster-type-kvm"},
+    "group": {"id": 1, "slug": "test-cluster-group-primary"},
+    "site": {"id": 1, "slug": "test-site-alpha"},
+    "tenant": {"id": 1, "slug": "test-tenant-acme"},
+    "status": {"value": "active", "label": "Active"},
+    "description": "Alpha hypervisor cluster",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

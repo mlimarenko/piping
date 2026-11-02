@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "name": "Test Cluster Group Primary",
+    "slug": "test-cluster-group-primary",
+    "description": "Primary cluster grouping",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "piping_diagnostics_include_network": {
+      "type": "boolean",
+      "title": "Include interface names",
+      "description": "Include a bounded list of discovered interface names in the diagnostic summary.",
+      "default": false
+    },
+    "piping_diagnostics_max_interfaces": {
+      "type": "integer",
+      "title": "Maximum interface names",
+      "description": "Maximum number of interface names included when network details are enabled.",
+      "default": 8,
+      "minimum": 1,
+      "maximum": 32
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/manufacturers/1/",
+      "display": "Test Manufacturer Cisco",
+      "name": "Test Manufacturer Cisco",
+      "slug": "test-manufacturer-cisco",
+      "description": "Stand-in for Cisco for fixtures",
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:22.112378Z",
+      "last_updated": "2026-10-27T14:58:22.112387Z",
+      "devicetype_count": 1,
+      "moduletype_count": 0,
+      "inventoryitem_count": 0,
+      "platform_count": 1
+    },
+    {
+      "id": 2,
+      "url": "http://127.0.0.1:60499/api/dcim/manufacturers/2/",
+      "display_url": "http://127.0.0.1:60499/dcim/manufacturers/2/",
+      "display": "Test Manufacturer Juniper",
+      "name": "Test Manufacturer Juniper",
+      "slug": "test-manufacturer-juniper",
+      "description": "Stand-in for Juniper for fixtures",
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:22.174459Z",
+      "last_updated": "2026-10-27T14:58:22.174468Z",
+      "devicetype_count": 1,
+      "moduletype_count": 0,
+      "inventoryitem_count": 0,
+      "platform_count": 1
+    }
+  ]
+}

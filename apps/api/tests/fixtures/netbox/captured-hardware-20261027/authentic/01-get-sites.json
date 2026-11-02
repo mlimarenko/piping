@@ -1,0 +1,102 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/sites/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/sites/1/",
+      "display": "Test Site Alpha",
+      "name": "Test Site Alpha",
+      "slug": "test-site-alpha",
+      "status": {
+        "value": "active",
+        "label": "Active"
+      },
+      "region": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/regions/1/",
+        "display": "Test Region North",
+        "name": "Test Region North",
+        "slug": "test-region-north",
+        "description": "North region for round-trip fixtures",
+        "site_count": 0,
+        "_depth": 0
+      },
+      "group": null,
+      "tenant": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/tenancy/tenants/1/",
+        "display": "Test Tenant Acme",
+        "name": "Test Tenant Acme",
+        "slug": "test-tenant-acme",
+        "description": "Acme test tenant"
+      },
+      "facility": "DC1",
+      "time_zone": "UTC",
+      "description": "Primary alpha site",
+      "physical_address": "100 Test Street",
+      "shipping_address": "",
+      "latitude": null,
+      "longitude": null,
+      "owner": null,
+      "comments": "",
+      "asns": [],
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:22.021789Z",
+      "last_updated": "2026-10-27T14:58:22.021798Z",
+      "circuit_count": 0,
+      "device_count": 1,
+      "prefix_count": 0,
+      "rack_count": 1,
+      "virtualmachine_count": 1,
+      "vlan_count": 1
+    },
+    {
+      "id": 2,
+      "url": "http://127.0.0.1:60499/api/dcim/sites/2/",
+      "display_url": "http://127.0.0.1:60499/dcim/sites/2/",
+      "display": "Test Site Beta",
+      "name": "Test Site Beta",
+      "slug": "test-site-beta",
+      "status": {
+        "value": "planned",
+        "label": "Planned"
+      },
+      "region": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/regions/2/",
+        "display": "Test Region South",
+        "name": "Test Region South",
+        "slug": "test-region-south",
+        "description": "South region for round-trip fixtures",
+        "site_count": 0,
+        "_depth": 0
+      },
+      "group": null,
+      "tenant": null,
+      "facility": "",
+      "time_zone": "UTC",
+      "description": "Secondary beta site",
+      "physical_address": "",
+      "shipping_address": "",
+      "latitude": null,
+      "longitude": null,
+      "owner": null,
+      "comments": "",
+      "asns": [],
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:22.075521Z",
+      "last_updated": "2026-10-27T14:58:22.075530Z",
+      "circuit_count": 0,
+      "device_count": 1,
+      "prefix_count": 0,
+      "rack_count": 1,
+      "virtualmachine_count": 0,
+      "vlan_count": 0
+    }
+  ]
+}

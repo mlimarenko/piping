@@ -1,0 +1,22 @@
+{
+  "django-version": "6.1.1",
+  "hostname": "feb94e56f70f",
+  "installed_apps": {
+    "django_filters": "26.1",
+    "django_prometheus": "2.4.0",
+    "django_rq": "4.2.0",
+    "django_tables2": "3.0.1",
+    "drf_spectacular": "0.30.0",
+    "drf_spectacular_sidecar": "2026.9.1",
+    "mptt": "0.18.0",
+    "rest_framework": "3.18.0",
+    "social_django": "6.0.1",
+    "taggit": "6.1.0",
+    "timezone_field": "7.2.2"
+  },
+  "netbox-version": "4.7.1",
+  "netbox-full-version": "4.7.1-Docker-5.1.1",
+  "plugins": {},
+  "python-version": "3.14.4",
+  "rq-workers-running": 1
+}

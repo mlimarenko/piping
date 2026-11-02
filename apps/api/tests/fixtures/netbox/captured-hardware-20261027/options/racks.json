@@ -1,0 +1,1606 @@
+{
+  "name": "Rack List",
+  "description": "",
+  "renders": [
+    "application/json",
+    "text/html"
+  ],
+  "parses": [
+    "application/json",
+    "multipart/form-data"
+  ],
+  "actions": {
+    "PUT": {
+      "id": {
+        "type": "integer",
+        "required": false,
+        "read_only": true,
+        "label": "ID"
+      },
+      "url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Url"
+      },
+      "display_url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display url"
+      },
+      "display": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display"
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "read_only": false,
+        "label": "Name",
+        "max_length": 100
+      },
+      "facility_id": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Facility ID",
+        "max_length": 50
+      },
+      "site": {
+        "type": "nested object",
+        "required": true,
+        "read_only": false,
+        "label": "Site",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "help_text": "Full name of the site",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "location": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Location",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          },
+          "rack_count": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "Rack count"
+          },
+          "_depth": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": " depth"
+          }
+        }
+      },
+      "group": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Group",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "tenant": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Tenant",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "status": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Status",
+        "choices": [
+          {
+            "value": "reserved",
+            "display_name": "Reserved"
+          },
+          {
+            "value": "available",
+            "display_name": "Available"
+          },
+          {
+            "value": "planned",
+            "display_name": "Planned"
+          },
+          {
+            "value": "active",
+            "display_name": "Active"
+          },
+          {
+            "value": "deprecated",
+            "display_name": "Deprecated"
+          }
+        ]
+      },
+      "role": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Role",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "serial": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Serial number",
+        "max_length": 50
+      },
+      "asset_tag": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Asset tag",
+        "help_text": "A unique tag used to identify this rack",
+        "max_length": 50
+      },
+      "rack_type": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Rack type",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "manufacturer": {
+            "type": "nested object",
+            "required": true,
+            "read_only": false,
+            "label": "Manufacturer",
+            "children": {
+              "id": {
+                "type": "integer",
+                "required": false,
+                "read_only": true,
+                "label": "ID"
+              },
+              "url": {
+                "type": "field",
+                "required": false,
+                "read_only": true,
+                "label": "Url"
+              },
+              "display": {
+                "type": "field",
+                "required": false,
+                "read_only": true,
+                "label": "Display"
+              },
+              "name": {
+                "type": "string",
+                "required": true,
+                "read_only": false,
+                "label": "Name",
+                "max_length": 100
+              },
+              "slug": {
+                "type": "slug",
+                "required": true,
+                "read_only": false,
+                "label": "Slug",
+                "max_length": 100
+              },
+              "description": {
+                "type": "string",
+                "required": false,
+                "read_only": false,
+                "label": "Description",
+                "max_length": 200
+              }
+            }
+          },
+          "model": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Model",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          },
+          "rack_count": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "Rack count"
+          }
+        }
+      },
+      "form_factor": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Form factor",
+        "choices": [
+          {
+            "value": "2-post-frame",
+            "display_name": "2-post frame"
+          },
+          {
+            "value": "4-post-frame",
+            "display_name": "4-post frame"
+          },
+          {
+            "value": "4-post-cabinet",
+            "display_name": "4-post cabinet"
+          },
+          {
+            "value": "wall-frame",
+            "display_name": "Wall-mounted frame"
+          },
+          {
+            "value": "wall-frame-vertical",
+            "display_name": "Wall-mounted frame (vertical)"
+          },
+          {
+            "value": "wall-cabinet",
+            "display_name": "Wall-mounted cabinet"
+          },
+          {
+            "value": "wall-cabinet-vertical",
+            "display_name": "Wall-mounted cabinet (vertical)"
+          }
+        ]
+      },
+      "width": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Width",
+        "choices": [
+          {
+            "value": 10,
+            "display_name": "10 inches"
+          },
+          {
+            "value": 19,
+            "display_name": "19 inches"
+          },
+          {
+            "value": 21,
+            "display_name": "21 inches"
+          },
+          {
+            "value": 23,
+            "display_name": "23 inches"
+          }
+        ]
+      },
+      "u_height": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Height (U)",
+        "help_text": "Height in rack units",
+        "min_value": 1,
+        "max_value": 100
+      },
+      "starting_unit": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Starting unit",
+        "help_text": "Starting unit for rack",
+        "min_value": 1,
+        "max_value": 32767
+      },
+      "weight": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Weight",
+        "max_digits": 8,
+        "decimal_places": 2
+      },
+      "max_weight": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Max weight",
+        "help_text": "Maximum load capacity for the rack",
+        "min_value": 0,
+        "max_value": 2147483647
+      },
+      "weight_unit": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Weight unit",
+        "choices": [
+          {
+            "value": "kg",
+            "display_name": "Kilograms"
+          },
+          {
+            "value": "g",
+            "display_name": "Grams"
+          },
+          {
+            "value": "lb",
+            "display_name": "Pounds"
+          },
+          {
+            "value": "oz",
+            "display_name": "Ounces"
+          }
+        ]
+      },
+      "desc_units": {
+        "type": "boolean",
+        "required": false,
+        "read_only": false,
+        "label": "Descending units",
+        "help_text": "Units are numbered top-to-bottom"
+      },
+      "outer_width": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Outer width",
+        "help_text": "Outer dimension of rack (width)",
+        "min_value": 0,
+        "max_value": 32767
+      },
+      "outer_height": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Outer height",
+        "help_text": "Outer dimension of rack (height)",
+        "min_value": 0,
+        "max_value": 32767
+      },
+      "outer_depth": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Outer depth",
+        "help_text": "Outer dimension of rack (depth)",
+        "min_value": 0,
+        "max_value": 32767
+      },
+      "outer_unit": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Outer unit",
+        "choices": [
+          {
+            "value": "mm",
+            "display_name": "Millimeters"
+          },
+          {
+            "value": "in",
+            "display_name": "Inches"
+          }
+        ]
+      },
+      "mounting_depth": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Mounting depth",
+        "help_text": "Maximum depth of a mounted device, in millimeters. For four-post racks, this is the distance between the front and rear rails.",
+        "min_value": 0,
+        "max_value": 32767
+      },
+      "airflow": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Airflow",
+        "choices": [
+          {
+            "value": "front-to-rear",
+            "display_name": "Front to rear"
+          },
+          {
+            "value": "rear-to-front",
+            "display_name": "Rear to front"
+          }
+        ]
+      },
+      "cooling_capability": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Cooling capability",
+        "choices": [
+          {
+            "value": "air-only",
+            "display_name": "Air only"
+          },
+          {
+            "value": "hybrid",
+            "display_name": "Hybrid"
+          },
+          {
+            "value": "liquid-only",
+            "display_name": "Liquid only"
+          }
+        ]
+      },
+      "cooling_capacity": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Cooling capacity",
+        "help_text": "Cooling capacity (kW)",
+        "min_value": 0,
+        "max_digits": 10,
+        "decimal_places": 2
+      },
+      "description": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Description",
+        "max_length": 200
+      },
+      "owner": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Owner",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "comments": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Comments"
+      },
+      "tags": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Tags",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "id": {
+              "type": "integer",
+              "required": false,
+              "read_only": true,
+              "label": "Id"
+            },
+            "url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Url"
+            },
+            "display_url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display url"
+            },
+            "display": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "read_only": false,
+              "label": "Name",
+              "max_length": 100
+            },
+            "slug": {
+              "type": "slug",
+              "required": true,
+              "read_only": false,
+              "label": "Slug",
+              "max_length": 100
+            },
+            "color": {
+              "type": "string",
+              "required": false,
+              "read_only": false,
+              "label": "Color",
+              "max_length": 6
+            }
+          }
+        }
+      },
+      "custom_fields": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Custom fields"
+      },
+      "created": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Created"
+      },
+      "last_updated": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Last updated"
+      },
+      "device_count": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Device count"
+      },
+      "powerfeed_count": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Powerfeed count"
+      }
+    },
+    "POST": {
+      "id": {
+        "type": "integer",
+        "required": false,
+        "read_only": true,
+        "label": "ID"
+      },
+      "url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Url"
+      },
+      "display_url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display url"
+      },
+      "display": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display"
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "read_only": false,
+        "label": "Name",
+        "max_length": 100
+      },
+      "facility_id": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Facility ID",
+        "max_length": 50
+      },
+      "site": {
+        "type": "nested object",
+        "required": true,
+        "read_only": false,
+        "label": "Site",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "help_text": "Full name of the site",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "location": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Location",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          },
+          "rack_count": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "Rack count"
+          },
+          "_depth": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": " depth"
+          }
+        }
+      },
+      "group": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Group",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "tenant": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Tenant",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "status": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Status",
+        "choices": [
+          {
+            "value": "reserved",
+            "display_name": "Reserved"
+          },
+          {
+            "value": "available",
+            "display_name": "Available"
+          },
+          {
+            "value": "planned",
+            "display_name": "Planned"
+          },
+          {
+            "value": "active",
+            "display_name": "Active"
+          },
+          {
+            "value": "deprecated",
+            "display_name": "Deprecated"
+          }
+        ]
+      },
+      "role": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Role",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "serial": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Serial number",
+        "max_length": 50
+      },
+      "asset_tag": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Asset tag",
+        "help_text": "A unique tag used to identify this rack",
+        "max_length": 50
+      },
+      "rack_type": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Rack type",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "manufacturer": {
+            "type": "nested object",
+            "required": true,
+            "read_only": false,
+            "label": "Manufacturer",
+            "children": {
+              "id": {
+                "type": "integer",
+                "required": false,
+                "read_only": true,
+                "label": "ID"
+              },
+              "url": {
+                "type": "field",
+                "required": false,
+                "read_only": true,
+                "label": "Url"
+              },
+              "display": {
+                "type": "field",
+                "required": false,
+                "read_only": true,
+                "label": "Display"
+              },
+              "name": {
+                "type": "string",
+                "required": true,
+                "read_only": false,
+                "label": "Name",
+                "max_length": 100
+              },
+              "slug": {
+                "type": "slug",
+                "required": true,
+                "read_only": false,
+                "label": "Slug",
+                "max_length": 100
+              },
+              "description": {
+                "type": "string",
+                "required": false,
+                "read_only": false,
+                "label": "Description",
+                "max_length": 200
+              }
+            }
+          },
+          "model": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Model",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          },
+          "rack_count": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "Rack count"
+          }
+        }
+      },
+      "form_factor": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Form factor",
+        "choices": [
+          {
+            "value": "2-post-frame",
+            "display_name": "2-post frame"
+          },
+          {
+            "value": "4-post-frame",
+            "display_name": "4-post frame"
+          },
+          {
+            "value": "4-post-cabinet",
+            "display_name": "4-post cabinet"
+          },
+          {
+            "value": "wall-frame",
+            "display_name": "Wall-mounted frame"
+          },
+          {
+            "value": "wall-frame-vertical",
+            "display_name": "Wall-mounted frame (vertical)"
+          },
+          {
+            "value": "wall-cabinet",
+            "display_name": "Wall-mounted cabinet"
+          },
+          {
+            "value": "wall-cabinet-vertical",
+            "display_name": "Wall-mounted cabinet (vertical)"
+          }
+        ]
+      },
+      "width": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Width",
+        "choices": [
+          {
+            "value": 10,
+            "display_name": "10 inches"
+          },
+          {
+            "value": 19,
+            "display_name": "19 inches"
+          },
+          {
+            "value": 21,
+            "display_name": "21 inches"
+          },
+          {
+            "value": 23,
+            "display_name": "23 inches"
+          }
+        ]
+      },
+      "u_height": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Height (U)",
+        "help_text": "Height in rack units",
+        "min_value": 1,
+        "max_value": 100
+      },
+      "starting_unit": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Starting unit",
+        "help_text": "Starting unit for rack",
+        "min_value": 1,
+        "max_value": 32767
+      },
+      "weight": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Weight",
+        "max_digits": 8,
+        "decimal_places": 2
+      },
+      "max_weight": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Max weight",
+        "help_text": "Maximum load capacity for the rack",
+        "min_value": 0,
+        "max_value": 2147483647
+      },
+      "weight_unit": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Weight unit",
+        "choices": [
+          {
+            "value": "kg",
+            "display_name": "Kilograms"
+          },
+          {
+            "value": "g",
+            "display_name": "Grams"
+          },
+          {
+            "value": "lb",
+            "display_name": "Pounds"
+          },
+          {
+            "value": "oz",
+            "display_name": "Ounces"
+          }
+        ]
+      },
+      "desc_units": {
+        "type": "boolean",
+        "required": false,
+        "read_only": false,
+        "label": "Descending units",
+        "help_text": "Units are numbered top-to-bottom"
+      },
+      "outer_width": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Outer width",
+        "help_text": "Outer dimension of rack (width)",
+        "min_value": 0,
+        "max_value": 32767
+      },
+      "outer_height": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Outer height",
+        "help_text": "Outer dimension of rack (height)",
+        "min_value": 0,
+        "max_value": 32767
+      },
+      "outer_depth": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Outer depth",
+        "help_text": "Outer dimension of rack (depth)",
+        "min_value": 0,
+        "max_value": 32767
+      },
+      "outer_unit": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Outer unit",
+        "choices": [
+          {
+            "value": "mm",
+            "display_name": "Millimeters"
+          },
+          {
+            "value": "in",
+            "display_name": "Inches"
+          }
+        ]
+      },
+      "mounting_depth": {
+        "type": "integer",
+        "required": false,
+        "read_only": false,
+        "label": "Mounting depth",
+        "help_text": "Maximum depth of a mounted device, in millimeters. For four-post racks, this is the distance between the front and rear rails.",
+        "min_value": 0,
+        "max_value": 32767
+      },
+      "airflow": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Airflow",
+        "choices": [
+          {
+            "value": "front-to-rear",
+            "display_name": "Front to rear"
+          },
+          {
+            "value": "rear-to-front",
+            "display_name": "Rear to front"
+          }
+        ]
+      },
+      "cooling_capability": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Cooling capability",
+        "choices": [
+          {
+            "value": "air-only",
+            "display_name": "Air only"
+          },
+          {
+            "value": "hybrid",
+            "display_name": "Hybrid"
+          },
+          {
+            "value": "liquid-only",
+            "display_name": "Liquid only"
+          }
+        ]
+      },
+      "cooling_capacity": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Cooling capacity",
+        "help_text": "Cooling capacity (kW)",
+        "min_value": 0,
+        "max_digits": 10,
+        "decimal_places": 2
+      },
+      "description": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Description",
+        "max_length": 200
+      },
+      "owner": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Owner",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "comments": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Comments"
+      },
+      "tags": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Tags",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "id": {
+              "type": "integer",
+              "required": false,
+              "read_only": true,
+              "label": "Id"
+            },
+            "url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Url"
+            },
+            "display_url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display url"
+            },
+            "display": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "read_only": false,
+              "label": "Name",
+              "max_length": 100
+            },
+            "slug": {
+              "type": "slug",
+              "required": true,
+              "read_only": false,
+              "label": "Slug",
+              "max_length": 100
+            },
+            "color": {
+              "type": "string",
+              "required": false,
+              "read_only": false,
+              "label": "Color",
+              "max_length": 6
+            }
+          }
+        }
+      },
+      "custom_fields": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Custom fields"
+      },
+      "created": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Created"
+      },
+      "last_updated": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Last updated"
+      },
+      "device_count": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Device count"
+      },
+      "powerfeed_count": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Powerfeed count"
+      }
+    }
+  }
+}

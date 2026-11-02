@@ -1,0 +1,66 @@
+[graph]
+all-features = true
+no-default-features = false
+
+[advisories]
+version = 2
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked = "deny"
+ignore = [
+    { id = "RUSTSEC-2023-0071", reason = "sqlx pulls sqlx-mysql transitively; no fix available and MySQL codepaths are unused" },
+]
+# Under `version = 2` every advisory is an error unless it carries a reasoned
+# entry in `ignore` above. `informational_warnings` no longer exists in the
+# cargo-deny schema, so an unlisted advisory cannot be downgraded to a warning
+# from this file.
+
+[licenses]
+version = 2
+confidence-threshold = 0.93
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-DFS-2016",
+    # Unicode-DFS-2016's successor. The ICU and unicode-* crates relicensed to
+    # it, which is why 38 dependencies are rejected without this line while its
+    # predecessor is already allowed.
+    "Unicode-3.0",
+    # Boost Software License - permissive, no attribution requirement in
+    # binaries. Two crates.
+    "BSL-1.0",
+    # Community Data License Agreement, permissive variant. Carried by crates
+    # that ship data tables rather than code. Six crates.
+    "CDLA-Permissive-2.0",
+    "Zlib",
+    "CC0-1.0",
+]
+exceptions = []
+
+# This workspace's own crates carry no `license` field because they are not
+# published and the product is not open source. Without this they are reported
+# as unlicensed, which says nothing about a third-party obligation - the only
+# thing this check exists to find.
+private = { ignore = true }
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# The only wildcards here are path dependencies on this workspace's own
+# `piping-contracts`. A versionless path dep would be a wildcard if the crate
+# were published; it never is, so this is the shape the key exists for. Third
+# party wildcards stay denied.
+allow-wildcard-paths = true
+highlight = "all"
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

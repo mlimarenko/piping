@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "Test Role Support",
+    "slug": "test-role-support",
+    "description": "Tier-1 support contact role",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Test Role Billing",
+    "slug": "test-role-billing",
+    "description": "Billing contact role",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

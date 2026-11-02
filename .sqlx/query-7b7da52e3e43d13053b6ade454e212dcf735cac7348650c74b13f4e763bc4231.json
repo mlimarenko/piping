@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO secrets_binding (id, secret_id, scope_type, scope_id, weight, managed_by_field_usage) SELECT $1, $2, $3::varchar, $4, 0, true WHERE NOT EXISTS (SELECT 1 FROM secrets_binding WHERE secret_id = $2 AND scope_type = $3::varchar AND scope_id = $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7b7da52e3e43d13053b6ade454e212dcf735cac7348650c74b13f4e763bc4231"
+}

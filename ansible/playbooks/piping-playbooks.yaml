@@ -1,0 +1,217 @@
+# Official Piping playbook catalog.
+#
+# This directory is the git-managed source of truth for the playbooks Piping
+# ships. Every instance carries a baked copy of this tree inside the backend
+# image (always available offline); instances with network access may also
+# refresh it periodically from the public repository. Entries here are
+# read-only in the product UI — users author their own playbooks in-app or
+# attach their own git repositories as playbook projects.
+#
+# The manifest owns playbook content and capability flags only. Instance
+# configuration (target sets, assignments, schedules, service principals)
+# stays in the backend seed code.
+apiVersion: piping.space/playbook-catalog/v1
+catalog:
+  # Provenance for humans and audit tooling; not used as identity.
+  source_repo: https://github.com/mlimarenko/piping
+  base_path: ansible/playbooks
+
+playbooks:
+  - slug: bounded-diagnostics-collection
+    name: Bounded diagnostics collection
+    description: >-
+      Collects a bounded, read-only summary of operating-system and hardware
+      facts, with optional bounded interface names.
+    category: diagnostics
+    risk: low
+    runtime: ansible
+    connection_default: ssh
+    status: active
+    entrypoint_file: diagnostics/bounded-diagnostics-collection.yml
+    language: yaml
+    timeout_seconds: 60
+    input_schema: {}
+    output_schema:
+      type: object
+      additionalProperties: false
+    token_policy:
+      ttl_seconds: 3600
+      scopes:
+        - artifact:create
+        - event:append
+        - status:update
+    launch_options:
+      forks: 32
+      timeout_seconds: 60
+      compact_events: true
+      deprecation_warnings: false
+      display_ok_hosts: false
+      display_skipped_hosts: false
+      execution_backend: native
+      only_failed_event_data: true
+      pipelining: true
+      python_interpreter: auto_silent
+      remote_tmp: /tmp/.ansible-piping/tmp
+      shell_executable: /bin/sh
+      ssh_common_args: >-
+        -o ConnectTimeout=8 -o ServerAliveInterval=8 -o ServerAliveCountMax=1
+        -o GSSAPIAuthentication=no
+      strategy: free
+      stdout_callback: ansible.builtin.default
+      ansible_timeout: 12
+    vars_schema_file: diagnostics/bounded-diagnostics-collection.vars-schema.json
+    system: false
+    inventory_rest_enabled: false
+
+  - slug: x509-certificate-inspection
+    name: X.509 certificate inspection
+    description: >-
+      Inspects metadata from an X.509 certificate in an approved read-only
+      certificate bundle location.
+    category: security
+    risk: low
+    runtime: ansible
+    connection_default: ssh
+    status: active
+    entrypoint_file: security/x509-certificate-inspection.yml
+    language: yaml
+    timeout_seconds: 30
+    input_schema: {}
+    output_schema:
+      type: object
+      additionalProperties: false
+    token_policy:
+      ttl_seconds: 3600
+      scopes:
+        - artifact:create
+        - event:append
+        - status:update
+    launch_options:
+      forks: 32
+      timeout_seconds: 30
+      compact_events: true
+      deprecation_warnings: false
+      display_ok_hosts: false
+      display_skipped_hosts: false
+      execution_backend: native
+      only_failed_event_data: true
+      pipelining: true
+      python_interpreter: auto_silent
+      remote_tmp: /tmp/.ansible-piping/tmp
+      shell_executable: /bin/sh
+      ssh_common_args: >-
+        -o ConnectTimeout=8 -o ServerAliveInterval=8 -o ServerAliveCountMax=1
+        -o GSSAPIAuthentication=no
+      strategy: free
+      stdout_callback: ansible.builtin.default
+      ansible_timeout: 12
+    vars_schema_file: security/x509-certificate-inspection.vars-schema.json
+    system: false
+    inventory_rest_enabled: false
+
+  - slug: read-only-service-health
+    name: Read-only service health
+    description: >-
+      Reports a read-only host service-manager summary or uptime measurement
+      selected from a typed allowlist.
+    category: health
+    risk: low
+    runtime: ansible
+    connection_default: ssh
+    status: active
+    entrypoint_file: health/read-only-service-health.yml
+    language: yaml
+    timeout_seconds: 45
+    input_schema: {}
+    output_schema:
+      type: object
+      additionalProperties: false
+    token_policy:
+      ttl_seconds: 3600
+      scopes:
+        - artifact:create
+        - event:append
+        - status:update
+    launch_options:
+      forks: 32
+      timeout_seconds: 45
+      compact_events: true
+      deprecation_warnings: false
+      display_ok_hosts: false
+      display_skipped_hosts: false
+      execution_backend: native
+      only_failed_event_data: true
+      pipelining: true
+      python_interpreter: auto_silent
+      remote_tmp: /tmp/.ansible-piping/tmp
+      shell_executable: /bin/sh
+      ssh_common_args: >-
+        -o ConnectTimeout=8 -o ServerAliveInterval=8 -o ServerAliveCountMax=1
+        -o GSSAPIAuthentication=no
+      strategy: free
+      stdout_callback: ansible.builtin.default
+      ansible_timeout: 12
+    vars_schema_file: health/read-only-service-health.vars-schema.json
+    system: false
+    inventory_rest_enabled: false
+
+  - slug: system-auto-update-inventory
+    # No explicit id: the privileged system inventory playbook keeps its
+    # historical fixed UUID, pinned by the backend loader via this well-known
+    # slug. Non-system entries may set `id`, or omit it to derive a stable
+    # UUIDv5 from the slug.
+    name: Auto-update inventory
+    description: >-
+      Built-in system playbook: gathers Linux/Windows host facts and updates
+      inventory through the scoped collected-facts endpoint according to typed
+      overwrite flags.
+    category: inventory
+    risk: low
+    runtime: ansible
+    connection_default: ssh
+    status: active
+
+    entrypoint_file: system/auto-update-inventory.yml
+    language: yaml
+    timeout_seconds: 90
+    input_schema: {}
+    output_schema:
+      type: object
+      additionalProperties: false
+    token_policy:
+      ttl_seconds: 3600
+      scopes:
+        - artifact:create
+        - event:append
+        - status:update
+        - inventory:read
+        - inventory:create
+        - inventory:update
+    launch_options:
+      forks: 64
+      timeout_seconds: 90
+      compact_events: true
+      deprecation_warnings: false
+      display_ok_hosts: false
+      display_skipped_hosts: false
+      execution_backend: native
+      only_failed_event_data: true
+      pipelining: true
+      python_interpreter: auto_silent
+      remote_tmp: /tmp/.ansible-piping/tmp
+      shell_executable: /bin/sh
+      ssh_common_args: >-
+        -o ConnectTimeout=8 -o ServerAliveInterval=8 -o ServerAliveCountMax=1
+        -o GSSAPIAuthentication=no
+      strategy: free
+      stdout_callback: ansible.builtin.default
+      ansible_timeout: 12
+
+    vars_schema_file: system/auto-update-inventory.vars-schema.json
+
+    # Capability flags. `system: true` maps to source_kind='system' and makes
+    # the backend attach its instance configuration (target set, assignment,
+    # schedule, service principal). `inventory_rest_enabled` gates the scoped
+    # inventory REST privilege enforced by the run workers.
+    system: true
+    inventory_rest_enabled: true
