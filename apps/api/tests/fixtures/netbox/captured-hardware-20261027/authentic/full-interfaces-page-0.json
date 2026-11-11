@@ -1,0 +1,443 @@
+{
+  "count": 4,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/interfaces/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/interfaces/1/",
+      "display": "GigabitEthernet0/1",
+      "device": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+        "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+        "name": "test-device-alpha-sw01",
+        "description": ""
+      },
+      "vdcs": [],
+      "module": null,
+      "name": "GigabitEthernet0/1",
+      "label": "",
+      "type": {
+        "value": "1000base-t",
+        "label": "1000BASE-T (1GE)"
+      },
+      "channels": null,
+      "channel_id": null,
+      "enabled": true,
+      "parent": null,
+      "bridge": null,
+      "bridge_interfaces": [],
+      "lag": null,
+      "mtu": 1500,
+      "mac_address": "00:11:22:33:44:55",
+      "primary_mac_address": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/mac-addresses/1/",
+        "display": "00:11:22:33:44:55",
+        "mac_address": "00:11:22:33:44:55",
+        "description": ""
+      },
+      "mac_addresses": [
+        {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/mac-addresses/1/",
+          "display": "00:11:22:33:44:55",
+          "mac_address": "00:11:22:33:44:55",
+          "description": ""
+        }
+      ],
+      "speed": 1000000,
+      "duplex": null,
+      "wwn": null,
+      "mgmt_only": false,
+      "description": "Uplink to core",
+      "mode": null,
+      "rf_role": null,
+      "rf_channel": null,
+      "poe_mode": null,
+      "poe_type": null,
+      "rf_channel_frequency": null,
+      "rf_channel_width": null,
+      "tx_power": null,
+      "untagged_vlan": null,
+      "tagged_vlans": [],
+      "qinq_svlan": null,
+      "vlan_translation_policy": null,
+      "mark_connected": false,
+      "cable": null,
+      "cable_end": null,
+      "wireless_link": null,
+      "link_peers": [],
+      "link_peers_type": null,
+      "wireless_lans": [],
+      "vrf": null,
+      "l2vpn_termination": null,
+      "connected_endpoints": null,
+      "connected_endpoints_type": null,
+      "connected_endpoints_reachable": false,
+      "owner": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:23.123395Z",
+      "last_updated": "2026-10-27T14:58:23.142174Z",
+      "count_ipaddresses": 1,
+      "count_fhrp_groups": 0,
+      "_occupied": false
+    },
+    {
+      "id": 2,
+      "url": "http://127.0.0.1:60499/api/dcim/interfaces/2/",
+      "display_url": "http://127.0.0.1:60499/dcim/interfaces/2/",
+      "display": "GigabitEthernet0/2",
+      "device": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+        "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+        "name": "test-device-alpha-sw01",
+        "description": ""
+      },
+      "vdcs": [],
+      "module": null,
+      "name": "GigabitEthernet0/2",
+      "label": "",
+      "type": {
+        "value": "1000base-t",
+        "label": "1000BASE-T (1GE)"
+      },
+      "channels": null,
+      "channel_id": null,
+      "enabled": true,
+      "parent": null,
+      "bridge": null,
+      "bridge_interfaces": [],
+      "lag": null,
+      "mtu": 1500,
+      "mac_address": "00:11:22:33:44:56",
+      "primary_mac_address": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/mac-addresses/2/",
+        "display": "00:11:22:33:44:56",
+        "mac_address": "00:11:22:33:44:56",
+        "description": ""
+      },
+      "mac_addresses": [
+        {
+          "id": 2,
+          "url": "http://127.0.0.1:60499/api/dcim/mac-addresses/2/",
+          "display": "00:11:22:33:44:56",
+          "mac_address": "00:11:22:33:44:56",
+          "description": ""
+        }
+      ],
+      "speed": 1000000,
+      "duplex": null,
+      "wwn": null,
+      "mgmt_only": true,
+      "description": "Management",
+      "mode": null,
+      "rf_role": null,
+      "rf_channel": null,
+      "poe_mode": null,
+      "poe_type": null,
+      "rf_channel_frequency": null,
+      "rf_channel_width": null,
+      "tx_power": null,
+      "untagged_vlan": null,
+      "tagged_vlans": [],
+      "qinq_svlan": null,
+      "vlan_translation_policy": null,
+      "mark_connected": false,
+      "cable": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/cables/1/",
+        "display": "ALPHA-BETA-LINK-1",
+        "label": "ALPHA-BETA-LINK-1",
+        "description": ""
+      },
+      "cable_end": "A",
+      "wireless_link": null,
+      "link_peers": [
+        {
+          "id": 3,
+          "url": "http://127.0.0.1:60499/api/dcim/interfaces/3/",
+          "display": "ge-0/0/0",
+          "device": {
+            "id": 2,
+            "url": "http://127.0.0.1:60499/api/dcim/devices/2/",
+            "display": "test-device-beta-rt01 (ASSET-DEV-0002)",
+            "name": "test-device-beta-rt01",
+            "description": ""
+          },
+          "name": "ge-0/0/0",
+          "description": "Edge link A",
+          "cable": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/cables/1/",
+            "display": "ALPHA-BETA-LINK-1",
+            "label": "ALPHA-BETA-LINK-1",
+            "description": ""
+          },
+          "_occupied": true
+        }
+      ],
+      "link_peers_type": "dcim.interface",
+      "wireless_lans": [],
+      "vrf": null,
+      "l2vpn_termination": null,
+      "connected_endpoints": [
+        {
+          "id": 3,
+          "url": "http://127.0.0.1:60499/api/dcim/interfaces/3/",
+          "display": "ge-0/0/0",
+          "device": {
+            "id": 2,
+            "url": "http://127.0.0.1:60499/api/dcim/devices/2/",
+            "display": "test-device-beta-rt01 (ASSET-DEV-0002)",
+            "name": "test-device-beta-rt01",
+            "description": ""
+          },
+          "name": "ge-0/0/0",
+          "description": "Edge link A",
+          "cable": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/cables/1/",
+            "display": "ALPHA-BETA-LINK-1",
+            "label": "ALPHA-BETA-LINK-1",
+            "description": ""
+          },
+          "_occupied": true
+        }
+      ],
+      "connected_endpoints_type": "dcim.interface",
+      "connected_endpoints_reachable": true,
+      "owner": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:23.209521Z",
+      "last_updated": "2026-10-27T14:58:23.699389Z",
+      "count_ipaddresses": 0,
+      "count_fhrp_groups": 0,
+      "_occupied": true
+    },
+    {
+      "id": 3,
+      "url": "http://127.0.0.1:60499/api/dcim/interfaces/3/",
+      "display_url": "http://127.0.0.1:60499/dcim/interfaces/3/",
+      "display": "ge-0/0/0",
+      "device": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/devices/2/",
+        "display": "test-device-beta-rt01 (ASSET-DEV-0002)",
+        "name": "test-device-beta-rt01",
+        "description": ""
+      },
+      "vdcs": [],
+      "module": null,
+      "name": "ge-0/0/0",
+      "label": "",
+      "type": {
+        "value": "10gbase-x-sfpp",
+        "label": "SFP+ (10GE)"
+      },
+      "channels": null,
+      "channel_id": null,
+      "enabled": true,
+      "parent": null,
+      "bridge": null,
+      "bridge_interfaces": [],
+      "lag": null,
+      "mtu": 9000,
+      "mac_address": "00:11:22:33:44:57",
+      "primary_mac_address": {
+        "id": 3,
+        "url": "http://127.0.0.1:60499/api/dcim/mac-addresses/3/",
+        "display": "00:11:22:33:44:57",
+        "mac_address": "00:11:22:33:44:57",
+        "description": ""
+      },
+      "mac_addresses": [
+        {
+          "id": 3,
+          "url": "http://127.0.0.1:60499/api/dcim/mac-addresses/3/",
+          "display": "00:11:22:33:44:57",
+          "mac_address": "00:11:22:33:44:57",
+          "description": ""
+        }
+      ],
+      "speed": 10000000,
+      "duplex": null,
+      "wwn": null,
+      "mgmt_only": false,
+      "description": "Edge link A",
+      "mode": null,
+      "rf_role": null,
+      "rf_channel": null,
+      "poe_mode": null,
+      "poe_type": null,
+      "rf_channel_frequency": null,
+      "rf_channel_width": null,
+      "tx_power": null,
+      "untagged_vlan": null,
+      "tagged_vlans": [],
+      "qinq_svlan": null,
+      "vlan_translation_policy": null,
+      "mark_connected": false,
+      "cable": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/cables/1/",
+        "display": "ALPHA-BETA-LINK-1",
+        "label": "ALPHA-BETA-LINK-1",
+        "description": ""
+      },
+      "cable_end": "B",
+      "wireless_link": null,
+      "link_peers": [
+        {
+          "id": 2,
+          "url": "http://127.0.0.1:60499/api/dcim/interfaces/2/",
+          "display": "GigabitEthernet0/2",
+          "device": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+            "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+            "name": "test-device-alpha-sw01",
+            "description": ""
+          },
+          "name": "GigabitEthernet0/2",
+          "description": "Management",
+          "cable": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/cables/1/",
+            "display": "ALPHA-BETA-LINK-1",
+            "label": "ALPHA-BETA-LINK-1",
+            "description": ""
+          },
+          "_occupied": true
+        }
+      ],
+      "link_peers_type": "dcim.interface",
+      "wireless_lans": [],
+      "vrf": null,
+      "l2vpn_termination": null,
+      "connected_endpoints": [
+        {
+          "id": 2,
+          "url": "http://127.0.0.1:60499/api/dcim/interfaces/2/",
+          "display": "GigabitEthernet0/2",
+          "device": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+            "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+            "name": "test-device-alpha-sw01",
+            "description": ""
+          },
+          "name": "GigabitEthernet0/2",
+          "description": "Management",
+          "cable": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/cables/1/",
+            "display": "ALPHA-BETA-LINK-1",
+            "label": "ALPHA-BETA-LINK-1",
+            "description": ""
+          },
+          "_occupied": true
+        }
+      ],
+      "connected_endpoints_type": "dcim.interface",
+      "connected_endpoints_reachable": true,
+      "owner": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:23.300418Z",
+      "last_updated": "2026-10-27T14:58:23.710277Z",
+      "count_ipaddresses": 1,
+      "count_fhrp_groups": 0,
+      "_occupied": true
+    },
+    {
+      "id": 4,
+      "url": "http://127.0.0.1:60499/api/dcim/interfaces/4/",
+      "display_url": "http://127.0.0.1:60499/dcim/interfaces/4/",
+      "display": "ge-0/0/1",
+      "device": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/devices/2/",
+        "display": "test-device-beta-rt01 (ASSET-DEV-0002)",
+        "name": "test-device-beta-rt01",
+        "description": ""
+      },
+      "vdcs": [],
+      "module": null,
+      "name": "ge-0/0/1",
+      "label": "",
+      "type": {
+        "value": "10gbase-x-sfpp",
+        "label": "SFP+ (10GE)"
+      },
+      "channels": null,
+      "channel_id": null,
+      "enabled": true,
+      "parent": null,
+      "bridge": null,
+      "bridge_interfaces": [],
+      "lag": null,
+      "mtu": 9000,
+      "mac_address": "00:11:22:33:44:58",
+      "primary_mac_address": {
+        "id": 4,
+        "url": "http://127.0.0.1:60499/api/dcim/mac-addresses/4/",
+        "display": "00:11:22:33:44:58",
+        "mac_address": "00:11:22:33:44:58",
+        "description": ""
+      },
+      "mac_addresses": [
+        {
+          "id": 4,
+          "url": "http://127.0.0.1:60499/api/dcim/mac-addresses/4/",
+          "display": "00:11:22:33:44:58",
+          "mac_address": "00:11:22:33:44:58",
+          "description": ""
+        }
+      ],
+      "speed": 10000000,
+      "duplex": null,
+      "wwn": null,
+      "mgmt_only": false,
+      "description": "Edge link B",
+      "mode": null,
+      "rf_role": null,
+      "rf_channel": null,
+      "poe_mode": null,
+      "poe_type": null,
+      "rf_channel_frequency": null,
+      "rf_channel_width": null,
+      "tx_power": null,
+      "untagged_vlan": null,
+      "tagged_vlans": [],
+      "qinq_svlan": null,
+      "vlan_translation_policy": null,
+      "mark_connected": false,
+      "cable": null,
+      "cable_end": null,
+      "wireless_link": null,
+      "link_peers": [],
+      "link_peers_type": null,
+      "wireless_lans": [],
+      "vrf": null,
+      "l2vpn_termination": null,
+      "connected_endpoints": null,
+      "connected_endpoints_type": null,
+      "connected_endpoints_reachable": false,
+      "owner": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:23.464866Z",
+      "last_updated": "2026-10-27T14:58:23.481673Z",
+      "count_ipaddresses": 0,
+      "count_fhrp_groups": 0,
+      "_occupied": false
+    }
+  ]
+}

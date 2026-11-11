@@ -1,0 +1,136 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/racks/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/racks/1/",
+      "display": "Rack-Alpha-01 (DC1-R01)",
+      "name": "Rack-Alpha-01",
+      "facility_id": "DC1-R01",
+      "site": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/sites/1/",
+        "display": "Test Site Alpha",
+        "name": "Test Site Alpha",
+        "slug": "test-site-alpha",
+        "description": "Primary alpha site"
+      },
+      "location": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/locations/1/",
+        "display": "PWA78 capture location",
+        "name": "PWA78 capture location",
+        "slug": "pwa78-capture-location",
+        "description": "",
+        "rack_count": 0,
+        "_depth": 0
+      },
+      "group": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/rack-groups/1/",
+        "display": "PWA78 capture rack group",
+        "name": "PWA78 capture rack group",
+        "slug": "pwa78-capture-rack-group",
+        "description": "Owned synthetic serializer capture"
+      },
+      "tenant": null,
+      "status": {
+        "value": "active",
+        "label": "Active"
+      },
+      "role": null,
+      "serial": "SN-RACK-001",
+      "asset_tag": "ASSET-RACK-001",
+      "rack_type": null,
+      "form_factor": null,
+      "width": {
+        "value": 19,
+        "label": "19 inches"
+      },
+      "u_height": 42,
+      "starting_unit": 1,
+      "weight": null,
+      "max_weight": null,
+      "weight_unit": null,
+      "desc_units": false,
+      "outer_width": null,
+      "outer_height": null,
+      "outer_depth": null,
+      "outer_unit": null,
+      "mounting_depth": null,
+      "airflow": null,
+      "cooling_capability": {
+        "value": "liquid-only",
+        "label": "Liquid only"
+      },
+      "cooling_capacity": 20.5,
+      "description": "",
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:22.482924Z",
+      "last_updated": "2026-10-27T15:04:43.927527Z",
+      "device_count": 1,
+      "powerfeed_count": 0
+    },
+    {
+      "id": 2,
+      "url": "http://127.0.0.1:60499/api/dcim/racks/2/",
+      "display_url": "http://127.0.0.1:60499/dcim/racks/2/",
+      "display": "Rack-Beta-01",
+      "name": "Rack-Beta-01",
+      "facility_id": null,
+      "site": {
+        "id": 2,
+        "url": "http://127.0.0.1:60499/api/dcim/sites/2/",
+        "display": "Test Site Beta",
+        "name": "Test Site Beta",
+        "slug": "test-site-beta",
+        "description": "Secondary beta site"
+      },
+      "location": null,
+      "group": null,
+      "tenant": null,
+      "status": {
+        "value": "planned",
+        "label": "Planned"
+      },
+      "role": null,
+      "serial": "",
+      "asset_tag": null,
+      "rack_type": null,
+      "form_factor": null,
+      "width": {
+        "value": 19,
+        "label": "19 inches"
+      },
+      "u_height": 42,
+      "starting_unit": 1,
+      "weight": null,
+      "max_weight": null,
+      "weight_unit": null,
+      "desc_units": false,
+      "outer_width": null,
+      "outer_height": null,
+      "outer_depth": null,
+      "outer_unit": null,
+      "mounting_depth": null,
+      "airflow": null,
+      "cooling_capability": null,
+      "cooling_capacity": null,
+      "description": "",
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:22.527945Z",
+      "last_updated": "2026-10-27T14:58:22.527953Z",
+      "device_count": 1,
+      "powerfeed_count": 0
+    }
+  ]
+}

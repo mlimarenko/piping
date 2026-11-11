@@ -1,0 +1,74 @@
+{
+  "_note": "Canonical NetBox 4.7 front/rear port-template wire shape taken from the live OpenAPI serializer: there is no /api/dcim/port-template-mappings/ collection, and each front port template carries its mappings as rear_ports items {position, rear_port, rear_port_position}. The rear template exposes the same relationship reversed as front_ports. `device_type` is the serializer's brief nested object, `module_type` is null. The `dcim.port-template-mappings` catalogue key deliberately has no api_path: it is projected from the embedded relationship. device_type 1 is the synthetic device type of inventory_pull_manifest.json.",
+  "resources": {
+    "dcim.front-port-templates": {
+      "api_path": "/api/dcim/front-port-templates/",
+      "records": [
+        {
+          "id": 1,
+          "url": "http://127.0.0.1:8000/api/dcim/front-port-templates/1/",
+          "display": "front-1",
+          "device_type": {
+            "id": 1,
+            "url": "http://127.0.0.1:8000/api/dcim/device-types/1/",
+            "display": "SYN-1",
+            "manufacturer": {
+              "id": 1,
+              "url": "http://127.0.0.1:8000/api/dcim/manufacturers/1/",
+              "display": "Synthetic Manufacturing"
+            }
+          },
+          "module_type": null,
+          "name": "front-1",
+          "label": "",
+          "description": "",
+          "type": { "value": "8p8c", "label": "8P8C" },
+          "color": "000000",
+          "positions": 2,
+          "created": "2026-01-01T00:00:00.000000Z",
+          "last_updated": "2026-01-01T00:00:00.000000Z",
+          "rear_ports": [
+            { "position": 1, "rear_port": 1, "rear_port_position": 2 },
+            { "position": 2, "rear_port": 1, "rear_port_position": 1 }
+          ]
+        }
+      ]
+    },
+    "dcim.rear-port-templates": {
+      "api_path": "/api/dcim/rear-port-templates/",
+      "records": [
+        {
+          "id": 1,
+          "url": "http://127.0.0.1:8000/api/dcim/rear-port-templates/1/",
+          "display": "rear-1",
+          "device_type": {
+            "id": 1,
+            "url": "http://127.0.0.1:8000/api/dcim/device-types/1/",
+            "display": "SYN-1",
+            "manufacturer": {
+              "id": 1,
+              "url": "http://127.0.0.1:8000/api/dcim/manufacturers/1/",
+              "display": "Synthetic Manufacturing"
+            }
+          },
+          "module_type": null,
+          "name": "rear-1",
+          "label": "",
+          "description": "",
+          "type": { "value": "8p8c", "label": "8P8C" },
+          "color": "000000",
+          "positions": 2,
+          "created": "2026-01-01T00:00:00.000000Z",
+          "last_updated": "2026-01-01T00:00:00.000000Z",
+          "front_ports": [
+            { "position": 2, "front_port": 1, "front_port_position": 1 },
+            { "position": 1, "front_port": 1, "front_port_position": 2 }
+          ]
+        }
+      ]
+    },
+    "dcim.port-template-mappings": {
+      "records": []
+    }
+  }
+}

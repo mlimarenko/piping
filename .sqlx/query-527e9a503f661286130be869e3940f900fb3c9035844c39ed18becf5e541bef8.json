@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO secret_usage_binding (id, consumer_type, consumer_id, field_key, owner_scope_type, owner_scope_id, secret_id) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (consumer_type, consumer_id, field_key) DO UPDATE SET secret_id = EXCLUDED.secret_id, owner_scope_type = EXCLUDED.owner_scope_type, owner_scope_id = EXCLUDED.owner_scope_id, updated_at = now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Uuid",
+        "Text",
+        "Varchar",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "527e9a503f661286130be869e3940f900fb3c9035844c39ed18becf5e541bef8"
+}

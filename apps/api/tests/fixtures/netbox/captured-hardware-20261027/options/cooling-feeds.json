@@ -1,0 +1,718 @@
+{
+  "name": "Cooling Feed List",
+  "description": "",
+  "renders": [
+    "application/json",
+    "text/html"
+  ],
+  "parses": [
+    "application/json",
+    "multipart/form-data"
+  ],
+  "actions": {
+    "POST": {
+      "id": {
+        "type": "integer",
+        "required": false,
+        "read_only": true,
+        "label": "ID"
+      },
+      "url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Url"
+      },
+      "display_url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display url"
+      },
+      "display": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display"
+      },
+      "cooling_source": {
+        "type": "nested object",
+        "required": true,
+        "read_only": false,
+        "label": "Cooling source",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "rack": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Rack",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "read_only": false,
+        "label": "Name",
+        "max_length": 100
+      },
+      "status": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Status",
+        "choices": [
+          {
+            "value": "offline",
+            "display_name": "Offline"
+          },
+          {
+            "value": "active",
+            "display_name": "Active"
+          },
+          {
+            "value": "planned",
+            "display_name": "Planned"
+          },
+          {
+            "value": "failed",
+            "display_name": "Failed"
+          }
+        ]
+      },
+      "cooling_capacity": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Cooling capacity",
+        "help_text": "Rated cooling capacity (kW)",
+        "min_value": 0,
+        "max_digits": 10,
+        "decimal_places": 2
+      },
+      "max_flow": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Max flow",
+        "min_value": 0.01,
+        "max_digits": 8,
+        "decimal_places": 2
+      },
+      "max_flow_unit": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Max flow unit",
+        "choices": [
+          {
+            "value": "lpm",
+            "display_name": "Liters per minute (L/min)"
+          },
+          {
+            "value": "m3ph",
+            "display_name": "Cubic meters per hour (m\u00b3/h)"
+          },
+          {
+            "value": "gpm",
+            "display_name": "Gallons per minute (GPM)"
+          }
+        ]
+      },
+      "description": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Description",
+        "max_length": 200
+      },
+      "tenant": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Tenant",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "owner": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Owner",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "comments": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Comments"
+      },
+      "tags": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Tags",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "id": {
+              "type": "integer",
+              "required": false,
+              "read_only": true,
+              "label": "Id"
+            },
+            "url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Url"
+            },
+            "display_url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display url"
+            },
+            "display": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "read_only": false,
+              "label": "Name",
+              "max_length": 100
+            },
+            "slug": {
+              "type": "slug",
+              "required": true,
+              "read_only": false,
+              "label": "Slug",
+              "max_length": 100
+            },
+            "color": {
+              "type": "string",
+              "required": false,
+              "read_only": false,
+              "label": "Color",
+              "max_length": 6
+            }
+          }
+        }
+      },
+      "custom_fields": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Custom fields"
+      },
+      "created": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Created"
+      },
+      "last_updated": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Last updated"
+      }
+    },
+    "PUT": {
+      "id": {
+        "type": "integer",
+        "required": false,
+        "read_only": true,
+        "label": "ID"
+      },
+      "url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Url"
+      },
+      "display_url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display url"
+      },
+      "display": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display"
+      },
+      "cooling_source": {
+        "type": "nested object",
+        "required": true,
+        "read_only": false,
+        "label": "Cooling source",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "rack": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Rack",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "read_only": false,
+        "label": "Name",
+        "max_length": 100
+      },
+      "status": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Status",
+        "choices": [
+          {
+            "value": "offline",
+            "display_name": "Offline"
+          },
+          {
+            "value": "active",
+            "display_name": "Active"
+          },
+          {
+            "value": "planned",
+            "display_name": "Planned"
+          },
+          {
+            "value": "failed",
+            "display_name": "Failed"
+          }
+        ]
+      },
+      "cooling_capacity": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Cooling capacity",
+        "help_text": "Rated cooling capacity (kW)",
+        "min_value": 0,
+        "max_digits": 10,
+        "decimal_places": 2
+      },
+      "max_flow": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Max flow",
+        "min_value": 0.01,
+        "max_digits": 8,
+        "decimal_places": 2
+      },
+      "max_flow_unit": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Max flow unit",
+        "choices": [
+          {
+            "value": "lpm",
+            "display_name": "Liters per minute (L/min)"
+          },
+          {
+            "value": "m3ph",
+            "display_name": "Cubic meters per hour (m\u00b3/h)"
+          },
+          {
+            "value": "gpm",
+            "display_name": "Gallons per minute (GPM)"
+          }
+        ]
+      },
+      "description": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Description",
+        "max_length": 200
+      },
+      "tenant": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Tenant",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "owner": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Owner",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "comments": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Comments"
+      },
+      "tags": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Tags",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "id": {
+              "type": "integer",
+              "required": false,
+              "read_only": true,
+              "label": "Id"
+            },
+            "url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Url"
+            },
+            "display_url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display url"
+            },
+            "display": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "read_only": false,
+              "label": "Name",
+              "max_length": 100
+            },
+            "slug": {
+              "type": "slug",
+              "required": true,
+              "read_only": false,
+              "label": "Slug",
+              "max_length": 100
+            },
+            "color": {
+              "type": "string",
+              "required": false,
+              "read_only": false,
+              "label": "Color",
+              "max_length": 6
+            }
+          }
+        }
+      },
+      "custom_fields": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Custom fields"
+      },
+      "created": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Created"
+      },
+      "last_updated": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Last updated"
+      }
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, consumer_type, consumer_id, field_key, owner_scope_type, owner_scope_id, secret_id FROM secret_usage_binding WHERE consumer_type = 'inventory_custom_field' AND owner_scope_type = 'inventory_custom_field' AND owner_scope_id = consumer_id AND consumer_id = ANY($1) AND field_key = $2 ORDER BY secret_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "consumer_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "consumer_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "field_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "owner_scope_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "owner_scope_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "secret_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ef3f078e915f50be87ca4237c0b2d857130de456b167a1de33c2c14b5ae80741"
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "vid": 100,
+    "name": "test-vlan-mgmt",
+    "status": {"value": "active", "label": "Active"},
+    "site": {"id": 1, "slug": "test-site-alpha"},
+    "group": null,
+    "tenant": null,
+    "role": null,
+    "description": "Management VLAN",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

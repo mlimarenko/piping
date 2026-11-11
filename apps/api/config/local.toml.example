@@ -1,0 +1,87 @@
+# Local development configuration example.
+# Copy to config/local.toml and adjust as needed.
+# Values here are overridden by environment variables (PIPING_*).
+
+[server]
+# CORS origins for frontend dev (Vite default: 5173)
+cors_allowed_origins = ["http://localhost:5173"]
+
+[auth]
+# Enable local auth for development (no OIDC)
+local_enabled = true
+# Minimum password length for local auth (must stay >= 8 when local auth is enabled)
+password_min_length = 8
+# Set via PIPING_AUTH__PASSWORD_PEPPER for local user creation
+# cookie_secure = false for localhost (handled by config when not in production)
+cookie_secure = false
+# Emergency local-admin password. Leave unset locally: dev tolerance uses the
+# development fallback. In production set PIPING_AUTH__LOCAL_ADMIN_PASSWORD to a
+# strong, non-default value (Vault -> ESO); startup fails closed without one.
+# local_admin_password = ""
+
+[auth.api_tokens]
+enabled = true
+max_active_per_user = 20
+min_ttl_seconds = 60
+max_ttl_seconds = 31536000
+default_ttl_seconds = 0
+secret_bytes = 32
+
+[secrets.cipher]
+# Reference to key material source used for secrets encryption-at-rest.
+# Keep value as env reference and set actual key via environment variables.
+key_material_ref = "env:PIPING_SECRETS__CIPHER_KEY_B64"
+# Deterministic envelope version strategy.
+version = "v1"
+
+[monitoring]
+# Keep monitoring public in local development by default.
+metrics_token = ""
+sd_token = ""
+
+[proxy]
+# Validation timeout for proxy node URL checks in milliseconds.
+validation_timeout_ms = 3000
+# Max page size for proxy node admin list.
+admin_list_max_limit = 500
+
+[sync_runtime]
+# Public backend URL used in NetBox webhook callback bootstrap.
+callback_base_url = "http://localhost:8080"
+# Allowed age for signed webhook delivery (seconds).
+webhook_signature_window_seconds = 300
+# Deduplication window for inbound events (seconds).
+webhook_dedup_window_seconds = 3600
+# Outbox worker behavior.
+outbox_worker_batch_size = 100
+outbox_worker_poll_interval_ms = 1000
+outbox_retry_max_attempts = 8
+outbox_retry_backoff_ms = 2000
+dedup_retention_hours = 24
+
+[license]
+# Commercial control-plane URL for license activate/refresh.
+base_url = "http://localhost:8090"
+request_timeout_ms = 5000
+refresh_interval_seconds = 21600
+grace_period_seconds = 259200
+grace_failure_threshold = 3
+refresh_retry_base_ms = 30000
+refresh_retry_max_ms = 300000
+refresh_retry_jitter_ms = 5000
+# The entitlement-JWT trust root (public key, issuer, audience, clock skew) is
+# baked into the binary, not configured here: any jwt_*,
+# allow_non_prod_override or production_enforce_piping_space key — or the
+# matching PIPING_LICENSE__* override — makes config load fail.
+
+[observability]
+# Local console readability:
+# - text for compact human-readable output
+# - json for machine parsing
+log_output_format = "text"
+
+# Noise budget for repeated INFO events (REST route and WebSocket session activity)
+noise_window_ms = 30000
+noise_max_events_per_window = 40
+# overflow mode options: off | suppress | summarize
+noise_overflow_mode = "summarize"

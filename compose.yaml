@@ -1,0 +1,388 @@
+name: piping
+
+# Optional profiles: edge (HTTPS ingress) and proxy (proxy node runtime).
+
+x-piping-telemetry-env: &piping-telemetry-env
+  PIPING_OBSERVABILITY__OTEL_ENABLED: ${PIPING_TELEMETRY_ENABLED:-true}
+  OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment.name=prod,service.namespace=piping}
+  OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+  OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
+  OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-otlp}
+  OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-https://otel.piping.space}
+  OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: ${OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE:-cumulative}
+  OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
+
+x-piping-runtime-env: &piping-runtime-env
+  <<: *piping-telemetry-env
+  PIPING_DATABASE__URL: postgresql://${POSTGRES_USER:-piping}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set to a strong, non-default value}@postgres:5432/${POSTGRES_DB:-piping}
+  PIPING_REDIS__URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set to a strong, non-default value}@redis:6379/0
+  PIPING_PROXY__GUACD_HOST: ${PIPING_PROXY_GUACD_HOST:-127.0.0.1}
+  PIPING_PROXY__GUACD_PORT: ${PIPING_PROXY_GUACD_PORT:-4822}
+  PIPING_PROXY__RDP_DRIVE_BASE_PATH: ${PIPING_PROXY_RDP_DRIVE_BASE_PATH:-/tmp/guac-drives}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_UPLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES:-536870912}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_DOWNLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_DOWNLOAD_BYTES:-536870912}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_SIDECARS_TOTAL: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_SIDECARS_TOTAL:-8}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_SIDECARS_PER_SESSION: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_SIDECARS_PER_SESSION:-2}
+  PIPING_SECRETS__CIPHER_KEY_B64: ${PIPING_SECRETS__CIPHER_KEY_B64:?PIPING_SECRETS__CIPHER_KEY_B64 must be set (base64 32-byte key)}
+  PIPING_ANSIBLE_RUNNER__BASE_URL: ${PIPING_ANSIBLE_RUNNER__BASE_URL:-http://ansible-runner:8080}
+  PIPING_ANSIBLE_RUNNER__SHARED_SECRET: ${PIPING_ANSIBLE_RUNNER__SHARED_SECRET:-dev-ansible-runner-secret}
+  PIPING_OFFICIAL_CATALOG__REFRESH_ENABLED: ${PIPING_OFFICIAL_CATALOG_REFRESH_ENABLED:-true}
+  # The runner must call the backend over the Compose network, not localhost.
+  PIPING_PLAYBOOK_RUNTIME__SELF_CALLBACK_BASE_URL: ${PIPING_PLAYBOOK_RUNTIME__SELF_CALLBACK_BASE_URL:-http://backend:7000}
+  PIPING_AUTH__LOCAL_ENABLED: ${PIPING_AUTH_LOCAL_ENABLED:-true}
+  PIPING_AUTH__PASSWORD_PEPPER: ${PIPING_AUTH_PASSWORD_PEPPER:?PIPING_AUTH_PASSWORD_PEPPER must be set}
+  # Production startup requires a strong emergency administrator password.
+  PIPING_AUTH__LOCAL_ADMIN_PASSWORD: ${PIPING_AUTH_LOCAL_ADMIN_PASSWORD:-}
+  PIPING_AUTH__PASSWORD_MIN_LENGTH: ${PIPING_AUTH_PASSWORD_MIN_LENGTH:-8}
+  PIPING_AUTH__COOKIE_SECURE: ${PIPING_AUTH_COOKIE_SECURE:-true}
+  PIPING_SECURITY__ALLOW_WEAK_DEV_SECRETS: ${PIPING_SECURITY_ALLOW_WEAK_DEV_SECRETS:-false}
+  PIPING_START_EMBEDDED_GUACD: ${PIPING_START_EMBEDDED_GUACD:-auto}
+  PIPING_GUACD_LOG_LEVEL: ${PIPING_GUACD_LOG_LEVEL:-info}
+  PIPING_LOG_LEVEL: ${PIPING_LOG_LEVEL:-info}
+  PIPING_LOG_OUTPUT_FORMAT: ${PIPING_LOG_OUTPUT_FORMAT:-text}
+  PIPING_LOG_COLOR: ${PIPING_LOG_COLOR:-false}
+  PIPING_MONITORING__SD_TOKEN: ${PIPING_MONITORING_SD_TOKEN:-}
+  PIPING_MONITORING__SD_PUBLIC_ENABLED: ${PIPING_MONITORING_SD_PUBLIC_ENABLED:-false}
+  PIPING_MONITORING__SD_MAX_LIMIT: ${PIPING_MONITORING_SD_MAX_LIMIT:-50000}
+  PIPING_OBSERVABILITY__BROWSER_TELEMETRY_ENABLED: ${PIPING_TELEMETRY_ENABLED:-true}
+  PIPING_OBSERVABILITY__BROWSER_TELEMETRY_DEFAULT_ENABLED: ${PIPING_TELEMETRY_ENABLED:-true}
+  OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-piping-backend}
+  OTEL_SERVICE_INSTANCE_ID: ${OTEL_SERVICE_INSTANCE_ID:-}
+  RUST_BACKTRACE: full
+
+x-piping-proxy-env: &piping-proxy-env
+  <<: *piping-telemetry-env
+  OTEL_SERVICE_NAME: ${PIPING_PROXY_OTEL_SERVICE_NAME:-piping-proxy}
+  PIPING_PROXY__NODE_ID: ${PIPING_PROXY_NODE_ID:-}
+  PIPING_PROXY__NODE_SECRET: ${PIPING_PROXY_NODE_SECRET:-}
+  PIPING_PROXY__GUACD_HOST: ${PIPING_PROXY_NODE_GUACD_HOST:-127.0.0.1}
+  PIPING_PROXY__GUACD_PORT: ${PIPING_PROXY_GUACD_PORT:-4822}
+  PIPING_PROXY__RDP_DRIVE_BASE_PATH: ${PIPING_PROXY_RDP_DRIVE_BASE_PATH:-/tmp/guac-drives}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_UPLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES:-536870912}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_DOWNLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_DOWNLOAD_BYTES:-536870912}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_SIDECARS_TOTAL: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_SIDECARS_TOTAL:-8}
+  PIPING_PROXY__SSH_FILE_TRANSFER__MAX_SIDECARS_PER_SESSION: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_SIDECARS_PER_SESSION:-2}
+  PIPING_START_EMBEDDED_GUACD: ${PIPING_START_EMBEDDED_GUACD:-auto}
+  PIPING_GUACD_LOG_LEVEL: ${PIPING_GUACD_LOG_LEVEL:-info}
+  PIPING_LOG_LEVEL: ${PIPING_LOG_LEVEL:-info}
+  PIPING_LOG_OUTPUT_FORMAT: ${PIPING_LOG_OUTPUT_FORMAT:-text}
+  PIPING_LOG_COLOR: ${PIPING_LOG_COLOR:-false}
+  RUST_BACKTRACE: full
+
+# Lower CPU ceilings on hosts with fewer CPUs than the defaults.
+x-piping-resources-small: &piping-resources-small
+  limits:
+    cpus: "${PIPING_RES_SMALL_CPUS:-1.00}"
+    memory: ${PIPING_RES_SMALL_MEM:-512M}
+  reservations:
+    cpus: "0.10"
+    memory: 128M
+
+x-piping-resources-medium: &piping-resources-medium
+  limits:
+    cpus: "${PIPING_RES_MEDIUM_CPUS:-2.00}"
+    memory: ${PIPING_RES_MEDIUM_MEM:-2G}
+  reservations:
+    cpus: "0.25"
+    memory: 512M
+
+x-piping-resources-large: &piping-resources-large
+  limits:
+    cpus: "${PIPING_RES_LARGE_CPUS:-4.00}"
+    memory: ${PIPING_RES_LARGE_MEM:-4G}
+  reservations:
+    cpus: "0.50"
+    memory: 1G
+
+services:
+  postgres:
+    image: ${PIPING_POSTGRES_IMAGE:-postgres:18-alpine}
+    restart: unless-stopped
+    # OLTP read-model queries do not benefit from JIT compilation overhead.
+    command: ["postgres", "-c", "jit=off"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-piping}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set to a strong, non-default value}
+      POSTGRES_DB: ${POSTGRES_DB:-piping}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-piping} -d ${POSTGRES_DB:-piping}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "${PIPING_POSTGRES_BIND:-}:${PIPING_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-medium
+
+  redis:
+    image: ${PIPING_REDIS_IMAGE:-redis:8.10.1}
+    restart: unless-stopped
+    labels:
+      io.piping.monitoring.enabled: "true"
+      io.piping.monitoring.primary: "true"
+      io.piping.monitoring.service: "redis"
+      io.piping.monitoring.host: "127.0.0.1"
+      io.piping.monitoring.container_port: "6379"
+    # Monitoring reads the password from the environment; labels expose it.
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD must be set to a strong, non-default value}"
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set to a strong, non-default value}", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:?REDIS_PASSWORD must be set to a strong, non-default value} ping | grep -q PONG || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "${PIPING_REDIS_BIND:-}:${PIPING_REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+  backend:
+    image: ${PIPING_BACKEND_IMAGE:?Set PIPING_BACKEND_IMAGE}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        VERSION: ${PIPING_APP_VERSION:-0.1.0}
+        PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM: |-
+          -----BEGIN PUBLIC KEY-----
+          MCowBQYDK2VwAyEA6wfrFIl5II8AGPRbrIZqj2FeKAt3uiXeYyh/pAlWMKA=
+          -----END PUBLIC KEY-----
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *piping-runtime-env
+      PIPING_RUN_MODE: backend
+      PIPING_SERVER__BIND: 0.0.0.0:7000
+      PIPING_SYNC_RUNTIME__CALLBACK_BASE_URL: http://backend:7000
+      OTEL_SERVICE_NAME: ${PIPING_BACKEND_OTEL_SERVICE_NAME:-piping-backend}
+      OTEL_SERVICE_INSTANCE_ID: ${PIPING_BACKEND_OTEL_SERVICE_INSTANCE_ID:-}
+    expose:
+      - "7000"
+    tmpfs:
+      # guacd requires the base to exist and be writable for redirected drives.
+      - ${PIPING_PROXY_RDP_DRIVE_BASE_PATH:-/tmp/guac-drives}:mode=1777,size=512m
+    healthcheck:
+      # Readiness includes PostgreSQL and Redis; do not gate edge startup on it.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7000/api/v1/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      # Allow migrations to complete on first boot.
+      start_period: 60s
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-large
+
+  frontend:
+    image: ${PIPING_FRONTEND_IMAGE:?Set PIPING_FRONTEND_IMAGE}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VERSION: ${PIPING_APP_VERSION:-0.1.0}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES:-536870912}
+      PIPING_NGINX_CLIENT_MAX_BODY_SIZE: ${PIPING_NGINX_CLIENT_MAX_BODY_SIZE:-}
+    ports:
+      - "${PIPING_FRONTEND_BIND:-}:${PIPING_FRONTEND_PORT:-9080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+  proxy:
+    image: ${PIPING_BACKEND_IMAGE:?Set PIPING_BACKEND_IMAGE}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      args:
+        VERSION: ${PIPING_APP_VERSION:-0.1.0}
+        PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM: |-
+          -----BEGIN PUBLIC KEY-----
+          MCowBQYDK2VwAyEA6wfrFIl5II8AGPRbrIZqj2FeKAt3uiXeYyh/pAlWMKA=
+          -----END PUBLIC KEY-----
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    environment:
+      <<: *piping-proxy-env
+      PIPING_RUN_MODE: proxy
+      PIPING_SERVER__BIND: 0.0.0.0:7100
+    expose:
+      - "7100"
+    tmpfs:
+      - ${PIPING_PROXY_RDP_DRIVE_BASE_PATH:-/tmp/guac-drives}:mode=1777,size=512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7100/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    profiles:
+      - proxy
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-medium
+
+  ansible-runner:
+    image: ${PIPING_ANSIBLE_RUNNER_IMAGE:?Set PIPING_ANSIBLE_RUNNER_IMAGE}
+    build:
+      context: .
+      dockerfile: apps/ansible-runner/Dockerfile
+    # The guarded job network overlay disables restart and binds a runner unit.
+    restart: unless-stopped
+    # Trusted supervisor. Untrusted code runs in separate digest-pinned jobs;
+    # neither this socket nor this service's control-plane network reaches them.
+    user: "10001:10001"
+    group_add:
+      - ${PIPING_DOCKER_GID:?Set the Docker socket group ID}
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /home/runner:exec,mode=0770,uid=10001,gid=10001,size=128m
+      - /tmp:exec,mode=1777,size=256m
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: bind
+        source: ${PIPING_ANSIBLE_STATE_ROOT:?Set the persistent supervisor-private directory}
+        target: /var/lib/piping-runner
+      - type: bind
+        source: ${PIPING_ANSIBLE_JOB_ROOT:?Set the private job workspace directory}
+        target: /var/lib/piping-jobs
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      PIPING_SANDBOX_RUNTIME: docker
+      PIPING_SANDBOX_INSTALLATION_ID: ${COMPOSE_PROJECT_NAME:-piping}
+      PIPING_SANDBOX_WORKSPACE_ROOT: /var/lib/piping-jobs
+      PIPING_SANDBOX_HOST_WORKSPACE_ROOT: ${PIPING_ANSIBLE_JOB_ROOT:?Set the private job workspace directory}
+      PIPING_SANDBOX_RUNTIME_DIR: /var/lib/piping-runner/runtime
+      PIPING_SANDBOX_DOCKER_NETWORK: ${PIPING_ANSIBLE_JOB_NETWORK:-}
+      PIPING_ANSIBLE_RUNNER__SHARED_SECRET: ${PIPING_ANSIBLE_RUNNER__SHARED_SECRET:-dev-ansible-runner-secret}
+      PIPING_ANSIBLE_RUNNER__NOFILE_SOFT_LIMIT: ${PIPING_ANSIBLE_RUNNER_NOFILE_SOFT:-65536}
+      # Batch callback events and leave queue headroom for high-fork jobs.
+      PIPING_ANSIBLE_RUNNER__CALLBACK_WORKERS: ${PIPING_ANSIBLE_RUNNER_CALLBACK_WORKERS:-64}
+      PIPING_ANSIBLE_RUNNER__CALLBACK_TIMEOUT_S: ${PIPING_ANSIBLE_RUNNER_CALLBACK_TIMEOUT_S:-15}
+      PIPING_ANSIBLE_RUNNER__EVENT_QUEUE_SIZE: ${PIPING_ANSIBLE_RUNNER_EVENT_QUEUE_SIZE:-50000}
+      PIPING_ANSIBLE_RUNNER__EVENT_BATCH_SIZE: ${PIPING_ANSIBLE_RUNNER_EVENT_BATCH_SIZE:-1000}
+      PIPING_ANSIBLE_RUNNER__EVENT_BATCH_FLUSH_MS: ${PIPING_ANSIBLE_RUNNER_EVENT_BATCH_FLUSH_MS:-100}
+      PIPING_ANSIBLE_RUNNER__EVENT_DRAIN_TIMEOUT_S: ${PIPING_ANSIBLE_RUNNER_EVENT_DRAIN_TIMEOUT_S:-30}
+      PIPING_ANSIBLE_RUNNER__RESULT_FORCE_COMPACT_PAYLOAD_BYTES: ${PIPING_ANSIBLE_RUNNER_RESULT_FORCE_COMPACT_PAYLOAD_BYTES:-4000}
+    ulimits:
+      nofile:
+        soft: ${PIPING_ANSIBLE_RUNNER_NOFILE_SOFT:-65536}
+        hard: ${PIPING_ANSIBLE_RUNNER_NOFILE_HARD:-65536}
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/piping-ansible-runner", "--health-check"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    networks:
+      - piping
+    deploy:
+      resources:
+        # Supervisor bounds are separate from each disposable job's limits.
+        limits:
+          cpus: "${PIPING_ANSIBLE_RUNNER_CPUS:-8.00}"
+          memory: ${PIPING_ANSIBLE_RUNNER_MEM:-4G}
+          pids: ${PIPING_ANSIBLE_RUNNER_PIDS_LIMIT:-4096}
+        reservations:
+          cpus: "${PIPING_ANSIBLE_RUNNER_RESERVE_CPUS:-1.00}"
+          memory: ${PIPING_ANSIBLE_RUNNER_RESERVE_MEM:-1G}
+
+  # Edge TLS ingress is opt-in: docker compose --profile edge up -d.
+  nginx:
+    image: ${PIPING_NGINX_IMAGE:-nginx:1.30-alpine}
+    hostname: nginx
+    profiles:
+      - edge
+    environment:
+      PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES: ${PIPING_PROXY_SSH_FILE_TRANSFER_MAX_UPLOAD_BYTES:-536870912}
+      PIPING_NGINX_CLIENT_MAX_BODY_SIZE: ${PIPING_NGINX_CLIENT_MAX_BODY_SIZE:-}
+      PIPING_PUBLIC_HOST: ${PIPING_PUBLIC_HOST:-localhost}
+      PIPING_HTTPS_PORT: ${PIPING_HTTPS_PORT:-443}
+    labels:
+      io.piping.monitoring.enabled: "true"
+      io.piping.monitoring.primary: "true"
+      io.piping.monitoring.service: "nginx"
+      io.piping.monitoring.container_port: "80"
+      io.piping.monitoring.nginx.path: "/nginx_status"
+    ports:
+      - "${PIPING_EDGE_BIND:-}:${PIPING_HTTP_PORT:-80}:80"
+      - "${PIPING_EDGE_BIND:-}:${PIPING_HTTPS_PORT:-443}:443"
+      - "${PIPING_EDGE_BIND:-}:${PIPING_HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/proxy-common.conf:/etc/nginx/proxy-common.conf:ro
+      - ./docker/nginx/locations:/etc/nginx/locations:ro
+      - ./docker/nginx/entrypoint.d/10-init-ssl.sh:/docker-entrypoint.d/10-init-ssl.sh:ro
+      - ./docker/nginx/acme-challenge:/var/www/certbot:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --show-error --insecure --max-time 4 https://127.0.0.1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - piping
+    deploy:
+      resources:
+        <<: *piping-resources-small
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  piping:
+    driver: bridge

@@ -1,0 +1,56 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/module-bay-templates/1/",
+      "display": "capture-template-child-slot",
+      "device_type": null,
+      "module_type": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/module-types/1/",
+        "display": "PWA78 capture module type",
+        "profile": null,
+        "manufacturer": {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+          "display": "Test Manufacturer Cisco",
+          "name": "Test Manufacturer Cisco",
+          "slug": "test-manufacturer-cisco",
+          "description": "Stand-in for Cisco for fixtures"
+        },
+        "model": "PWA78 capture module type",
+        "description": "",
+        "module_count": 1
+      },
+      "name": "capture-template-child-slot",
+      "label": "",
+      "position": "",
+      "enabled": true,
+      "description": "",
+      "module_bay_types": [
+        {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/module-bay-types/1/",
+          "display": "PWA78 capture bay type",
+          "name": "PWA78 capture bay type",
+          "slug": "pwa78-capture-bay-type",
+          "manufacturer": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+            "display": "Test Manufacturer Cisco",
+            "name": "Test Manufacturer Cisco",
+            "slug": "test-manufacturer-cisco",
+            "description": "Stand-in for Cisco for fixtures"
+          },
+          "color": "123456",
+          "description": ""
+        }
+      ],
+      "created": "2026-10-27T15:04:44.067554Z",
+      "last_updated": "2026-10-27T15:04:44.067564Z"
+    }
+  ]
+}

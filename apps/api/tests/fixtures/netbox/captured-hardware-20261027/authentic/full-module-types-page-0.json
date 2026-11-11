@@ -1,0 +1,70 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/module-types/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/module-types/1/",
+      "display": "PWA78 capture module type",
+      "profile": null,
+      "manufacturer": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+        "display": "Test Manufacturer Cisco",
+        "name": "Test Manufacturer Cisco",
+        "slug": "test-manufacturer-cisco",
+        "description": "Stand-in for Cisco for fixtures"
+      },
+      "model": "PWA78 capture module type",
+      "part_number": "",
+      "airflow": null,
+      "cooling_method": {
+        "value": "liquid",
+        "label": "Liquid"
+      },
+      "weight": null,
+      "weight_unit": null,
+      "end_of_life": "2030-02-28",
+      "description": "",
+      "attributes": null,
+      "module_bay_types": [
+        {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/module-bay-types/1/",
+          "display": "PWA78 capture bay type",
+          "name": "PWA78 capture bay type",
+          "slug": "pwa78-capture-bay-type",
+          "manufacturer": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+            "display": "Test Manufacturer Cisco",
+            "name": "Test Manufacturer Cisco",
+            "slug": "test-manufacturer-cisco",
+            "description": "Stand-in for Cisco for fixtures"
+          },
+          "color": "123456",
+          "description": ""
+        }
+      ],
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:44.008423Z",
+      "last_updated": "2026-10-27T15:04:44.008433Z",
+      "module_count": 1,
+      "console_port_template_count": 0,
+      "console_server_port_template_count": 0,
+      "power_port_template_count": 0,
+      "power_outlet_template_count": 0,
+      "cooling_intake_template_count": 1,
+      "cooling_outflow_template_count": 1,
+      "interface_template_count": 0,
+      "front_port_template_count": 0,
+      "rear_port_template_count": 0,
+      "module_bay_template_count": 1
+    }
+  ]
+}

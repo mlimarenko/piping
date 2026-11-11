@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 30s
+  scrape_timeout: 15s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: piping-hosts-grouped
+    honor_labels: true
+    http_sd_configs:
+      - url: >-
+          http://backend:7000/api/v1/monitoring/sd?kind=device&target=address&port=9100&group_by=site,role,status&scheme=http&metrics_path=/metrics&job=node&label=team:platform,stack=infra&dedup=true
+        refresh_interval: 20s
+
+    relabel_configs:
+      # Keep only active hosts.
+      - source_labels: [piping_status]
+        regex: active
+        action: keep
+
+      # Default/fallback labels for dashboards and alert routing.
+      - source_labels: [piping_site]
+        target_label: site
+      - source_labels: [piping_role]
+        target_label: role
+      - source_labels: [piping_status]
+        target_label: status
+      - source_labels: [team]
+        target_label: owner_team
+
+      # For hosts without a name, keep address as instance.
+      - source_labels: [piping_host_name]
+        regex: (.+)
+        target_label: instance
+      - source_labels: [instance, __address__]
+        separator: ;
+        regex: ^;(.+)$
+        replacement: $1
+        target_label: instance

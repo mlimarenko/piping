@@ -1,0 +1,20 @@
+# Collections use immutable commits from their official release tags. Keep the
+# version annotations and commit pins together when updating a dependency.
+# ansible-galaxy still validates and installs the complete dependency graph.
+collections:
+  # ansible.posix 2.2.2
+  - name: https://github.com/ansible-collections/ansible.posix.git
+    type: git
+    version: e98d9a0756458be1ac710988498000973889075c
+  # community.general 14.0.0
+  - name: https://github.com/ansible-collections/community.general.git
+    type: git
+    version: 57ac538be39c47a5b5355f69c3a1b71231029cf4
+  # ansible.windows 3.9.2
+  - name: https://github.com/ansible-collections/ansible.windows.git
+    type: git
+    version: cbefbbd7d1f9bf1b244a0c24f29d3d4efc880651
+  # community.windows 3.3.0
+  - name: https://github.com/ansible-collections/community.windows.git
+    type: git
+    version: 20464e72482c5d4c75af13a2fd62966339cf5ffc

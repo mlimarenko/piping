@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "name": "Rack-Alpha-01",
+    "site": {"id": 1, "slug": "test-site-alpha"},
+    "status": {"value": "active", "label": "Active"},
+    "facility_id": "DC1-R01",
+    "tenant": null,
+    "role": null,
+    "serial": "SN-RACK-001",
+    "asset_tag": "ASSET-RACK-001",
+    "type": {"value": "4-post-cabinet", "label": "4-post cabinet"},
+    "width": 19,
+    "u_height": 42,
+    "desc_units": false,
+    "outer_width": null,
+    "outer_depth": null,
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Rack-Beta-01",
+    "site": {"id": 2, "slug": "test-site-beta"},
+    "status": {"value": "planned", "label": "Planned"},
+    "facility_id": null,
+    "tenant": null,
+    "role": null,
+    "serial": null,
+    "asset_tag": null,
+    "type": {"value": "4-post-frame", "label": "4-post frame"},
+    "width": 19,
+    "u_height": 42,
+    "desc_units": false,
+    "outer_width": null,
+    "outer_depth": null,
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

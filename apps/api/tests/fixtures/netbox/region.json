@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "Test Region North",
+    "slug": "test-region-north",
+    "parent": null,
+    "description": "North region for round-trip fixtures",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Test Region South",
+    "slug": "test-region-south",
+    "parent": null,
+    "description": "South region for round-trip fixtures",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

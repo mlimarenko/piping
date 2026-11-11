@@ -1,0 +1,23 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/rack-groups/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/rack-groups/1/",
+      "display": "PWA78 capture rack group",
+      "name": "PWA78 capture rack group",
+      "slug": "pwa78-capture-rack-group",
+      "description": "Owned synthetic serializer capture",
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:43.793995Z",
+      "last_updated": "2026-10-27T15:04:43.794003Z",
+      "rack_count": 1
+    }
+  ]
+}

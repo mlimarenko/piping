@@ -1,0 +1,111 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 2,
+      "url": "http://127.0.0.1:60499/api/dcim/cooling-intakes/2/",
+      "display_url": "http://127.0.0.1:60499/dcim/cooling-intakes/2/",
+      "display": "capture-explicit-in",
+      "device": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+        "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+        "name": "test-device-alpha-sw01",
+        "description": ""
+      },
+      "module": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/modules/1/",
+        "display": "pwa78-capture-slot: PWA78 capture module type (1)",
+        "device": {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+          "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+          "name": "test-device-alpha-sw01",
+          "description": ""
+        },
+        "module_bay": {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/module-bays/1/",
+          "display_url": "http://127.0.0.1:60499/dcim/module-bays/1/",
+          "display": "pwa78-capture-slot",
+          "name": "pwa78-capture-slot"
+        }
+      },
+      "name": "capture-explicit-in",
+      "label": "",
+      "type": null,
+      "diameter": 12.5,
+      "diameter_unit": {
+        "value": "cm",
+        "label": "Centimeters"
+      },
+      "max_flow": 1.25,
+      "max_flow_unit": {
+        "value": "m3ph",
+        "label": "Cubic meters per hour (m³/h)"
+      },
+      "cooling_outflow": null,
+      "description": "",
+      "owner": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:44.274830Z",
+      "last_updated": "2026-10-27T15:04:44.274839Z"
+    },
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/cooling-intakes/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/cooling-intakes/1/",
+      "display": "capture-template-in",
+      "device": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+        "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+        "name": "test-device-alpha-sw01",
+        "description": ""
+      },
+      "module": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/modules/1/",
+        "display": "pwa78-capture-slot: PWA78 capture module type (1)",
+        "device": {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+          "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+          "name": "test-device-alpha-sw01",
+          "description": ""
+        },
+        "module_bay": {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/module-bays/1/",
+          "display_url": "http://127.0.0.1:60499/dcim/module-bays/1/",
+          "display": "pwa78-capture-slot",
+          "name": "pwa78-capture-slot"
+        }
+      },
+      "name": "capture-template-in",
+      "label": "",
+      "type": null,
+      "diameter": 12.5,
+      "diameter_unit": {
+        "value": "cm",
+        "label": "Centimeters"
+      },
+      "max_flow": 1.25,
+      "max_flow_unit": {
+        "value": "m3ph",
+        "label": "Cubic meters per hour (m³/h)"
+      },
+      "cooling_outflow": null,
+      "description": "",
+      "owner": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:44.172498Z",
+      "last_updated": "2026-10-27T15:04:44.172512Z"
+    }
+  ]
+}

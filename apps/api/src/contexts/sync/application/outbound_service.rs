@@ -1,0 +1,511 @@
+use super::lock::{ProviderLease, ProviderLeaseError};
+use redis::aio::ConnectionManager;
+use std::future::Future;
+use std::sync::Arc;
+
+use chrono::{Duration, Utc};
+use serde_json::Value;
+use uuid::Uuid;
+
+use crate::config::NetboxConfig;
+use crate::contexts::secrets::domain::ResolvedCredential;
+use crate::contexts::secrets::infrastructure::SecretRepository;
+use crate::contexts::sync::domain::{
+    InventoryBinding, InventoryCommitAuthorisation, InventoryEntity, InventoryIdentity,
+    LocalInventoryCatalogView, OutboundBindingChange, OutboundEvent, OutboundEventCounters,
+    Provider, ProviderType, SYNC_PROVIDER_CONSUMER_TYPE, SourceOperationalStatus,
+    SourceRuntimeErrorCode,
+};
+use crate::contexts::sync::infrastructure::{
+    OutboundEventRepository, ProviderRepository, SourceRuntimeRepository,
+};
+use crate::errors::AppError;
+use crate::integrations::netbox::{
+    NetboxClient, NetboxRepository, NetboxResourceRegistry, NetboxSchemaProvider,
+};
+use crate::observability::{EventFields, LogLevel, log_event};
+
+/// Worker tuning for [`OutboundService`]: batch size and retry policy.
+pub struct OutboundWorkerConfig {
+    pub worker_batch_size: usize,
+    pub retry_max_attempts: i32,
+    pub retry_backoff_ms: i64,
+}
+
+pub struct OutboundServiceDeps<PRepo, EventRepo, RuntimeRepo, SecretRepo> {
+    pub providers: Arc<PRepo>,
+    pub outbox: Arc<EventRepo>,
+    pub runtime: Arc<RuntimeRepo>,
+    pub secret_repository: Arc<SecretRepo>,
+    pub catalog: Arc<dyn LocalInventoryCatalogView>,
+    pub redis: ConnectionManager,
+}
+
+pub struct OutboundService<PRepo, EventRepo, RuntimeRepo, SecretRepo>
+where
+    PRepo: ProviderRepository,
+    EventRepo: OutboundEventRepository,
+    RuntimeRepo: SourceRuntimeRepository,
+    SecretRepo: SecretRepository,
+{
+    providers: Arc<PRepo>,
+    outbox: Arc<EventRepo>,
+    runtime: Arc<RuntimeRepo>,
+    secret_repository: Arc<SecretRepo>,
+    worker_batch_size: usize,
+    retry_max_attempts: i32,
+    retry_backoff_ms: i64,
+    catalog: Arc<dyn LocalInventoryCatalogView>,
+    redis: ConnectionManager,
+}
+
+impl<PRepo, EventRepo, RuntimeRepo, SecretRepo>
+    OutboundService<PRepo, EventRepo, RuntimeRepo, SecretRepo>
+where
+    PRepo: ProviderRepository,
+    EventRepo: OutboundEventRepository,
+    RuntimeRepo: SourceRuntimeRepository,
+    SecretRepo: SecretRepository,
+{
+    pub fn new(
+        deps: OutboundServiceDeps<PRepo, EventRepo, RuntimeRepo, SecretRepo>,
+        config: OutboundWorkerConfig,
+    ) -> Self {
+        Self {
+            providers: deps.providers,
+            outbox: deps.outbox,
+            runtime: deps.runtime,
+            secret_repository: deps.secret_repository,
+            worker_batch_size: config.worker_batch_size.max(1),
+            retry_max_attempts: config.retry_max_attempts.max(1),
+            retry_backoff_ms: config.retry_backoff_ms.max(1),
+            catalog: deps.catalog,
+            redis: deps.redis,
+        }
+    }
+
+    pub async fn enqueue(&self, event: &OutboundEvent) -> Result<(), AppError> {
+        self.outbox.enqueue(event).await
+    }
+
+    pub async fn process_batch(&self, limit: usize) -> Result<usize, AppError> {
+        let limit = if limit == 0 {
+            self.worker_batch_size
+        } else {
+            limit.min(self.worker_batch_size)
+        };
+        let events = self.outbox.list_pending(limit).await?;
+        let mut processed = 0usize;
+
+        for event in events {
+            let lease = match ProviderLease::acquire(
+                self.redis.clone(),
+                event.source_id,
+                crate::config::constants::SYNC_LOCK_TTL_SECONDS as usize,
+            )
+            .await
+            {
+                Ok(lease) => lease,
+                Err(ProviderLeaseError::Busy(_)) => continue, // Pending work remains retryable under contention.
+                Err(error) => return Err(error.into()),
+            };
+            let event_id = event.id;
+            let result = lease
+                .run(|authorisation| async move {
+                    let Some(event) = self.outbox.claim(event_id).await? else {
+                        return Ok(false);
+                    };
+                    self.process_event(&event, authorisation.as_ref()).await?;
+                    Ok(true)
+                })
+                .await;
+            if matches!(result, Ok(true)) {
+                processed += 1;
+            }
+            if let Err(error) = result {
+                log_event(
+                    LogLevel::Error,
+                    "sync.outbound.event.process.failed",
+                    EventFields::default()
+                        .with_operation("outbound_process_event")
+                        .with_resource("provider", event.source_id.to_string())
+                        .with_context("event_id", event.id.to_string())
+                        .with_context("error", error.to_string()),
+                );
+            }
+        }
+
+        Ok(processed)
+    }
+
+    pub async fn replay_dead_letter(
+        &self,
+        source_id: Uuid,
+        limit: Option<usize>,
+    ) -> Result<usize, AppError> {
+        let limit = limit.unwrap_or(self.worker_batch_size).max(1);
+        self.outbox.replay_dead_letter(source_id, limit).await
+    }
+
+    pub async fn get_counters(&self, source_id: Uuid) -> Result<OutboundEventCounters, AppError> {
+        self.outbox.get_counters(source_id).await
+    }
+
+    async fn process_event(
+        &self,
+        event: &OutboundEvent,
+        authorisation: &dyn InventoryCommitAuthorisation,
+    ) -> Result<(), AppError> {
+        if event
+            .correlation_id
+            .as_deref()
+            .is_some_and(|value| value.starts_with("inbound:"))
+        {
+            self.outbox
+                .complete(event, OutboundBindingChange::None, authorisation)
+                .await?;
+            self.update_runtime_on_success(event.source_id).await?;
+            return Ok(());
+        }
+
+        let provider = match self.providers.get_by_id(event.source_id).await? {
+            Some(provider) => provider,
+            None => {
+                self.fail_event(event, "Provider not found for outbound event")
+                    .await?;
+                return Ok(());
+            }
+        };
+
+        if !provider.is_enabled {
+            self.fail_event(event, "Provider disabled for outbound event")
+                .await?;
+            return Ok(());
+        }
+        if provider.provider_type != ProviderType::Netbox {
+            self.fail_event(event, "Outbound push supports only NetBox providers")
+                .await?;
+            return Ok(());
+        }
+        if !provider.allows_remote_writes() {
+            self.fail_event(event, "Provider is read-only for outbound event")
+                .await?;
+            return Ok(());
+        }
+
+        match self.push_to_netbox(&provider, event, authorisation).await {
+            Ok(true) => {
+                self.update_runtime_on_success(event.source_id).await?;
+                log_event(
+                    LogLevel::Info,
+                    "sync.outbound.event.processed",
+                    EventFields::default()
+                        .with_operation("outbound_process_event")
+                        .with_resource("provider", event.source_id.to_string())
+                        .with_context("event_id", event.id.to_string())
+                        .with_context("resource_type", &event.resource_type)
+                        .with_context("operation", &event.operation)
+                        .with_context("outcome", "succeeded"),
+                );
+            }
+            Ok(false) => {}
+            Err(error) => {
+                if event.operation.eq_ignore_ascii_case("create") {
+                    self.fail_event(event, &error.to_string()).await?;
+                } else {
+                    self.retry_or_dead_letter(event, &error).await?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn push_to_netbox(
+        &self,
+        provider: &Provider,
+        event: &OutboundEvent,
+        authorisation: &dyn InventoryCommitAuthorisation,
+    ) -> Result<bool, AppError> {
+        let entity = InventoryEntity::all()
+            .find(|entity| entity.source_key() == event.resource_type)
+            .ok_or_else(|| AppError::Validation("Noncanonical outbound resource".into()))?;
+        if entity != InventoryEntity::Site {
+            return Err(AppError::Validation(
+                "Only Site outbound mutations are supported".into(),
+            ));
+        }
+        let local_id = event
+            .payload
+            .get("local_id")
+            .and_then(Value::as_str)
+            .and_then(|id| Uuid::parse_str(id).ok())
+            .ok_or_else(|| AppError::Validation("Outbound event requires its local UUID".into()))?;
+        let binding = self.catalog.binding_for_local(entity, local_id).await?;
+        let binding = match binding {
+            Some(binding) if binding.identity.provider_id != provider.id => {
+                return Err(AppError::Conflict(
+                    "Outbound binding belongs to another provider".into(),
+                ));
+            }
+            binding => binding,
+        };
+        let operation = event.operation.to_ascii_lowercase();
+        if operation == "create" && binding.is_some() {
+            return self
+                .outbox
+                .complete(event, OutboundBindingChange::None, authorisation)
+                .await
+                .map(|()| true);
+        }
+        if matches!(operation.as_str(), "update" | "delete") && binding.is_none() {
+            return Err(AppError::Conflict(
+                "Exact outbound binding is missing".into(),
+            ));
+        }
+        if !matches!(operation.as_str(), "create" | "update" | "delete") {
+            return Err(AppError::Validation(
+                "Unsupported outbound operation".into(),
+            ));
+        }
+        let repository = self.build_netbox_repository(provider).await?;
+        let resource_key = entity.source_key();
+        let change = match operation.as_str() {
+            "create" => {
+                let payload = outbound_payload_for_upsert(&event.payload)?;
+                authorisation.ensure_owned().await?;
+                if !self.outbox.begin_create_attempt(event, local_id).await? {
+                    self.fail_event(
+                        event,
+                        "CREATE_RECONCILIATION_REQUIRED: prior POST may have been attempted",
+                    )
+                    .await?;
+                    return Ok(false);
+                }
+                // From this point every failure is uncertain, including an invalid returned id
+                // or a failed local binding commit. Never automatically POST again.
+                let result = async {
+                    let record = repository.create(resource_key, payload).await?;
+                    let identity = InventoryIdentity::netbox(
+                        provider.id,
+                        entity,
+                        record.get("id").unwrap_or(&Value::Null),
+                    )?;
+                    self.outbox
+                        .complete(
+                            event,
+                            OutboundBindingChange::Bind(InventoryBinding { identity, local_id }),
+                            authorisation,
+                        )
+                        .await
+                }
+                .await;
+                if result.is_err() {
+                    self.fail_event(event, "CREATE_RECONCILIATION_REQUIRED: POST outcome or binding finalization uncertain").await?;
+                    return Ok(false);
+                }
+                return Ok(true);
+            }
+            "update" => {
+                let binding = binding.expect("checked binding");
+                let identity = InventoryIdentity::netbox(
+                    provider.id,
+                    entity,
+                    &Value::String(binding.identity.external_id.clone()),
+                )?;
+                repository
+                    .update(
+                        resource_key,
+                        identity.external_id,
+                        outbound_payload_for_upsert(&event.payload)?,
+                    )
+                    .await?;
+                OutboundBindingChange::None
+            }
+            "delete" => {
+                let binding = binding.expect("checked binding");
+                let identity = InventoryIdentity::netbox(
+                    provider.id,
+                    entity,
+                    &Value::String(binding.identity.external_id.clone()),
+                )?;
+                repository
+                    .delete(resource_key, identity.external_id)
+                    .await?;
+                OutboundBindingChange::Remove(binding)
+            }
+            _ => unreachable!("checked operation"),
+        };
+        self.outbox
+            .complete(event, change, authorisation)
+            .await
+            .map(|()| true)
+    }
+
+    async fn build_netbox_repository(
+        &self,
+        provider: &Provider,
+    ) -> Result<NetboxRepository, AppError> {
+        let config = self.resolve_netbox_config(provider).await?;
+        let schema_provider = NetboxSchemaProvider::new(config.clone());
+        let schema = schema_provider.get_schema().await?;
+        let registry = Arc::new(NetboxResourceRegistry::from_schema(schema)?);
+        let client = NetboxClient::from_config(&config)?;
+        Ok(NetboxRepository::new(client, registry))
+    }
+
+    async fn resolve_netbox_config(&self, provider: &Provider) -> Result<NetboxConfig, AppError> {
+        super::netbox_provider_config::resolve_netbox_config(provider, self).await
+    }
+
+    async fn retry_or_dead_letter(
+        &self,
+        event: &OutboundEvent,
+        error: &AppError,
+    ) -> Result<(), AppError> {
+        let attempts = event.attempts + 1;
+        let message = error.to_string();
+
+        if attempts >= self.retry_max_attempts {
+            self.outbox
+                .mark_failed(event.id, attempts, None, Some(message.as_str()))
+                .await?;
+            self.update_runtime_on_failure(
+                event.source_id,
+                SourceRuntimeErrorCode::OutboundRetryExhausted,
+                message.as_str(),
+            )
+            .await?;
+            log_event(
+                LogLevel::Warning,
+                "sync.outbound.event.dead_letter",
+                EventFields::default()
+                    .with_operation("outbound_process_event")
+                    .with_resource("provider", event.source_id.to_string())
+                    .with_context("event_id", event.id.to_string())
+                    .with_context("resource_type", &event.resource_type)
+                    .with_context("operation", &event.operation)
+                    .with_context("attempts", attempts.to_string())
+                    .with_context("error", message),
+            );
+            return Ok(());
+        }
+
+        let backoff_ms = exponential_backoff_ms(self.retry_backoff_ms, attempts);
+        let next_attempt_at = Utc::now() + Duration::milliseconds(backoff_ms);
+        self.outbox
+            .mark_failed(
+                event.id,
+                attempts,
+                Some(next_attempt_at),
+                Some(message.as_str()),
+            )
+            .await?;
+        self.update_runtime_on_failure(
+            event.source_id,
+            SourceRuntimeErrorCode::OutboundPushFailed,
+            message.as_str(),
+        )
+        .await?;
+        log_event(
+            LogLevel::Warning,
+            "sync.outbound.event.retry_scheduled",
+            EventFields::default()
+                .with_operation("outbound_process_event")
+                .with_resource("provider", event.source_id.to_string())
+                .with_context("event_id", event.id.to_string())
+                .with_context("resource_type", &event.resource_type)
+                .with_context("operation", &event.operation)
+                .with_context("attempts", attempts.to_string())
+                .with_context("next_attempt_at", next_attempt_at.to_rfc3339())
+                .with_context("error", message),
+        );
+        Ok(())
+    }
+
+    async fn fail_event(&self, event: &OutboundEvent, reason: &str) -> Result<(), AppError> {
+        let attempts = if event.operation.eq_ignore_ascii_case("create") {
+            event.attempts
+        } else {
+            event.attempts + 1
+        };
+        self.outbox
+            .mark_failed(event.id, attempts, None, Some(reason))
+            .await?;
+        self.update_runtime_on_failure(
+            event.source_id,
+            SourceRuntimeErrorCode::OutboundPushFailed,
+            reason,
+        )
+        .await
+    }
+
+    async fn update_runtime_on_success(&self, source_id: Uuid) -> Result<(), AppError> {
+        let mut runtime = match self.runtime.get_by_source_id(source_id).await? {
+            Some(runtime) => runtime,
+            None => return Ok(()),
+        };
+        if runtime.operational_status == SourceOperationalStatus::Degraded {
+            runtime.operational_status = SourceOperationalStatus::Ready;
+        }
+        runtime.last_error_code = None;
+        runtime.last_error_message = None;
+        runtime.updated_at = Utc::now();
+        self.runtime.upsert(&runtime).await
+    }
+
+    async fn update_runtime_on_failure(
+        &self,
+        source_id: Uuid,
+        code: SourceRuntimeErrorCode,
+        message: &str,
+    ) -> Result<(), AppError> {
+        let mut runtime = match self.runtime.get_by_source_id(source_id).await? {
+            Some(runtime) => runtime,
+            None => return Ok(()),
+        };
+        runtime.operational_status = SourceOperationalStatus::Degraded;
+        runtime.last_error_code = Some(code);
+        runtime.last_error_message = Some(message.to_string());
+        runtime.updated_at = Utc::now();
+        self.runtime.upsert(&runtime).await
+    }
+}
+
+impl<PRepo, EventRepo, RuntimeRepo, SecretRepo>
+    super::netbox_provider_config::ProviderSecretResolver
+    for OutboundService<PRepo, EventRepo, RuntimeRepo, SecretRepo>
+where
+    PRepo: ProviderRepository,
+    EventRepo: OutboundEventRepository,
+    RuntimeRepo: SourceRuntimeRepository,
+    SecretRepo: SecretRepository,
+{
+    fn resolve_secret_credential(
+        &self,
+        provider_id: Uuid,
+        field_key: &str,
+    ) -> impl Future<Output = Result<Option<ResolvedCredential>, AppError>> + Send {
+        async move {
+            self.secret_repository
+                .resolve_consumer_credential(SYNC_PROVIDER_CONSUMER_TYPE, provider_id, field_key)
+                .await
+        }
+    }
+}
+
+fn outbound_payload_for_upsert(payload: &Value) -> Result<Value, AppError> {
+    let mut payload = payload
+        .as_object()
+        .cloned()
+        .ok_or_else(|| AppError::Validation("Outbound payload must be JSON object".to_string()))?;
+    // Site's bounded outbound field scope excludes all identity and routing hints.
+    payload.retain(|key, _| matches!(key.as_str(), "name" | "slug" | "status"));
+    Ok(Value::Object(payload))
+}
+
+fn exponential_backoff_ms(base_ms: i64, attempts: i32) -> i64 {
+    let exponent: u32 = attempts.saturating_sub(1).try_into().unwrap_or(0);
+    let factor = 2_i64.saturating_pow(exponent.min(8));
+    base_ms.saturating_mul(factor).clamp(base_ms, 300_000)
+}

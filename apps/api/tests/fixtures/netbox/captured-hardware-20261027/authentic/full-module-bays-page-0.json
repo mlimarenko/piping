@@ -1,0 +1,109 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/module-bays/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/module-bays/1/",
+      "display": "pwa78-capture-slot",
+      "device": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+        "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+        "name": "test-device-alpha-sw01",
+        "description": ""
+      },
+      "module": null,
+      "name": "pwa78-capture-slot",
+      "label": "",
+      "position": "",
+      "enabled": true,
+      "description": "",
+      "module_bay_types": [
+        {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/module-bay-types/1/",
+          "display": "PWA78 capture bay type",
+          "name": "PWA78 capture bay type",
+          "slug": "pwa78-capture-bay-type",
+          "manufacturer": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+            "display": "Test Manufacturer Cisco",
+            "name": "Test Manufacturer Cisco",
+            "slug": "test-manufacturer-cisco",
+            "description": "Stand-in for Cisco for fixtures"
+          },
+          "color": "123456",
+          "description": ""
+        }
+      ],
+      "installed_module": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/modules/1/",
+        "display": "pwa78-capture-slot: PWA78 capture module type (1)",
+        "serial": "PWA78-synthetic-module",
+        "description": ""
+      },
+      "owner": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:44.091299Z",
+      "last_updated": "2026-10-27T15:04:44.091308Z",
+      "_occupied": true,
+      "is_module_compatible": true
+    },
+    {
+      "id": 2,
+      "url": "http://127.0.0.1:60499/api/dcim/module-bays/2/",
+      "display_url": "http://127.0.0.1:60499/dcim/module-bays/2/",
+      "display": "capture-template-child-slot",
+      "device": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+        "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+        "name": "test-device-alpha-sw01",
+        "description": ""
+      },
+      "module": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/modules/1/",
+        "display": "pwa78-capture-slot: PWA78 capture module type (1)"
+      },
+      "name": "capture-template-child-slot",
+      "label": "",
+      "position": "",
+      "enabled": true,
+      "description": "",
+      "module_bay_types": [
+        {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/module-bay-types/1/",
+          "display": "PWA78 capture bay type",
+          "name": "PWA78 capture bay type",
+          "slug": "pwa78-capture-bay-type",
+          "manufacturer": {
+            "id": 1,
+            "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+            "display": "Test Manufacturer Cisco",
+            "name": "Test Manufacturer Cisco",
+            "slug": "test-manufacturer-cisco",
+            "description": "Stand-in for Cisco for fixtures"
+          },
+          "color": "123456",
+          "description": ""
+        }
+      ],
+      "installed_module": null,
+      "owner": null,
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:44.189406Z",
+      "last_updated": "2026-10-27T15:04:44.189415Z",
+      "_occupied": false,
+      "is_module_compatible": true
+    }
+  ]
+}

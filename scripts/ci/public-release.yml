@@ -1,0 +1,91 @@
+spec:
+  inputs:
+    source-needs:
+      type: array
+      default:
+        - {job: 'helper:scope', artifacts: false}
+        - {job: 'helper:export', artifacts: false}
+---
+include:
+- project: $COMPONENTS_CATALOG_PROJECT
+  file: /jobs/release/version.yml
+  inputs:
+    job-name: version
+    release-strategy: public-next
+    public-repository: mlimarenko/piping
+    source-policy: protected-default
+    stage: verify
+    runner-tags: [ci-small]
+    rules-policy: protected-default-push
+    needs-enabled: true
+    needs: []
+    mode: auto
+    allow-runtime-version-overrides: false
+    tag-prefix: ''
+    initial-version: 1.0.0
+- project: $COMPONENTS_CATALOG_PROJECT
+  file: /jobs/release/version.yml
+  inputs:
+    job-name: .public:resolve
+    release-strategy: public-next
+    public-repository: mlimarenko/piping
+    source-policy: protected-default
+    stage: release
+    mode: release
+    release-bump: '${{ job.inputs.release_bump }}'
+    allow-runtime-version-overrides: false
+    tag-prefix: ''
+    initial-version: 1.0.0
+    json-path: .ci/public-release/version.json
+    dotenv-path: .ci/public-release/version.env
+    rules-policy: never
+    runner-tags: [ci-small]
+    needs-enabled: true
+    needs: []
+- project: $COMPONENTS_CATALOG_PROJECT
+  file: /jobs/tests/script.yml
+  inputs:
+    job-name: public:publish
+    script-path: scripts/ci/github_public_release.py
+    stage: release
+    rules-policy: protected-default-push-manual
+    runner-tags: [ci-small]
+    needs:
+    - {job: version, artifacts: true}
+    - $[[ inputs.source-needs ]]
+
+version:
+  # Release identity must not depend on cached tags from another job.
+  variables:
+    GIT_STRATEGY: clone
+
+public:publish:
+  inputs:
+    release_bump:
+      default: patch
+      options: [patch, minor, major]
+      description: Stable release increment selected when publishing.
+  manual_confirmation: Publish the selected public snapshot, tag and GitHub Release?
+  # Optional public publication is never a prerequisite for private delivery.
+  allow_failure: true
+  interruptible: false
+  resource_group: public-github-release
+  environment:
+    name: public-release
+    action: prepare
+  variables:
+    GIT_DEPTH: '0'
+  script:
+  - umask 077
+  - mkdir -p .ci/public-release/scratch
+  - !reference [.public:resolve, script]
+  - python3 scripts/ci/select_public_release.py --candidate .ci-components/version.json --proposal .ci/public-release/version.json --commit "$CI_COMMIT_SHA" --pipeline-id "$CI_PIPELINE_ID" --pipeline-iid "$CI_PIPELINE_IID" --output .ci/public-release/selection.json
+  - python3 scripts/ci/github_public_release.py --source "$CI_PROJECT_DIR" --selection .ci/public-release/selection.json --commit "$CI_COMMIT_SHA" --pipeline-id "$CI_PIPELINE_ID" --output .ci/public-release/publication.json --scratch-root "$CI_PROJECT_DIR/.ci/public-release/scratch"
+  artifacts:
+    when: on_success
+    expire_in: 30 days
+    paths:
+    - .ci/public-release/selection.json
+    - .ci/public-release/publication.json
+    - .ci/public-release/version.json
+    - .ci-components/version.json

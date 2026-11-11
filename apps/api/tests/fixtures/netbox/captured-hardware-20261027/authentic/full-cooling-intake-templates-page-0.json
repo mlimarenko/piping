@@ -1,0 +1,46 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/cooling-intake-templates/1/",
+      "display": "capture-template-in",
+      "device_type": null,
+      "module_type": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/module-types/1/",
+        "display": "PWA78 capture module type",
+        "profile": null,
+        "manufacturer": {
+          "id": 1,
+          "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+          "display": "Test Manufacturer Cisco",
+          "name": "Test Manufacturer Cisco",
+          "slug": "test-manufacturer-cisco",
+          "description": "Stand-in for Cisco for fixtures"
+        },
+        "model": "PWA78 capture module type",
+        "description": "",
+        "module_count": 1
+      },
+      "name": "capture-template-in",
+      "label": "",
+      "type": null,
+      "diameter": 12.5,
+      "diameter_unit": {
+        "value": "cm",
+        "label": "Centimeters"
+      },
+      "max_flow": 1.25,
+      "max_flow_unit": {
+        "value": "m3ph",
+        "label": "Cubic meters per hour (m³/h)"
+      },
+      "description": "",
+      "created": "2026-10-27T15:04:44.035800Z",
+      "last_updated": "2026-10-27T15:04:44.035812Z"
+    }
+  ]
+}

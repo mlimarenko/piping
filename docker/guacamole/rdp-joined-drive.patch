@@ -1,0 +1,46 @@
+Expose the existing RDP drive to writable native joins on Guacamole 1.6.0.
+Each joining user receives its own native filesystem object. Read-only users
+and the owner receive no additional object. Delay promotion while the enabled
+drive is initialized, and synchronize its publication with the pending hook.
+
+--- a/src/protocols/rdp/client.c
++++ b/src/protocols/rdp/client.c
+@@ -108,1 +108,11 @@
++static void* guac_rdp_expose_pending_filesystem(guac_user* user, void* data) {
++
++    guac_rdp_settings* settings = (guac_rdp_settings*) user->data;
++    if (data != NULL && settings != NULL && !settings->read_only && !user->owner)
++        return guac_rdp_fs_expose(user, data);
++
++    return NULL;
++
++}
++
+ /**
+@@ -116,1 +126,1 @@
+- *     Always zero.
++ *     Zero if synchronization completed; non-zero while the drive is starting.
+@@ -125,2 +135,13 @@
++    /* A join can arrive before the RDP thread has allocated its drive. */
++    if (rdp_client->settings != NULL && rdp_client->settings->drive_enabled
++            && rdp_client->filesystem == NULL) {
++        guac_rwlock_release_lock(&(rdp_client->lock));
++        return 1;
++    }
++
++    if (rdp_client->filesystem != NULL)
++        guac_client_foreach_pending_user(client,
++                guac_rdp_expose_pending_filesystem, rdp_client->filesystem);
++
+     /* Synchronize any audio stream for each pending user */
+     if (rdp_client->audio)
+--- a/src/protocols/rdp/rdp.c
++++ b/src/protocols/rdp/rdp.c
+@@ -810,2 +810,3 @@
+         /* Allocate actual emulated filesystem */
++        guac_rwlock_acquire_write_lock(&(rdp_client->lock));
+         rdp_client->filesystem =
+@@ -816,2 +817,3 @@
++        guac_rwlock_release_lock(&(rdp_client->lock));
+         /* Expose filesystem to owner */
+         guac_client_for_owner(client, guac_rdp_fs_expose,

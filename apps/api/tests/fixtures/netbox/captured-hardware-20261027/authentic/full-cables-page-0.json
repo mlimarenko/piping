@@ -1,0 +1,97 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/cables/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/cables/1/",
+      "display": "ALPHA-BETA-LINK-1",
+      "type": "cat6",
+      "a_terminations": [
+        {
+          "object_type": "dcim.interface",
+          "object_id": 2,
+          "object": {
+            "id": 2,
+            "url": "http://127.0.0.1:60499/api/dcim/interfaces/2/",
+            "display": "GigabitEthernet0/2",
+            "device": {
+              "id": 1,
+              "url": "http://127.0.0.1:60499/api/dcim/devices/1/",
+              "display": "test-device-alpha-sw01 (ASSET-DEV-0001)",
+              "name": "test-device-alpha-sw01",
+              "description": ""
+            },
+            "name": "GigabitEthernet0/2",
+            "description": "Management",
+            "cable": {
+              "id": 1,
+              "url": "http://127.0.0.1:60499/api/dcim/cables/1/",
+              "display": "ALPHA-BETA-LINK-1",
+              "label": "ALPHA-BETA-LINK-1",
+              "description": ""
+            },
+            "_occupied": true
+          }
+        }
+      ],
+      "b_terminations": [
+        {
+          "object_type": "dcim.interface",
+          "object_id": 3,
+          "object": {
+            "id": 3,
+            "url": "http://127.0.0.1:60499/api/dcim/interfaces/3/",
+            "display": "ge-0/0/0",
+            "device": {
+              "id": 2,
+              "url": "http://127.0.0.1:60499/api/dcim/devices/2/",
+              "display": "test-device-beta-rt01 (ASSET-DEV-0002)",
+              "name": "test-device-beta-rt01",
+              "description": ""
+            },
+            "name": "ge-0/0/0",
+            "description": "Edge link A",
+            "cable": {
+              "id": 1,
+              "url": "http://127.0.0.1:60499/api/dcim/cables/1/",
+              "display": "ALPHA-BETA-LINK-1",
+              "label": "ALPHA-BETA-LINK-1",
+              "description": ""
+            },
+            "_occupied": true
+          }
+        }
+      ],
+      "status": {
+        "value": "connected",
+        "label": "Connected"
+      },
+      "profile": null,
+      "tenant": null,
+      "bundle": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/cable-bundles/1/",
+        "display": "PWA78 capture cable bundle",
+        "name": "PWA78 capture cable bundle",
+        "description": "Owned synthetic serializer capture"
+      },
+      "label": "ALPHA-BETA-LINK-1",
+      "color": "00ff00",
+      "length": 5.0,
+      "length_unit": {
+        "value": "m",
+        "label": "Meters"
+      },
+      "description": "",
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T14:58:23.687710Z",
+      "last_updated": "2026-10-27T15:04:43.979087Z"
+    }
+  ]
+}

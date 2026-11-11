@@ -1,0 +1,292 @@
+services:
+  ssh-target:
+    image: lscr.io/linuxserver/openssh-server:latest
+    restart: unless-stopped
+    environment:
+      PUID: 1000
+      PGID: 1000
+      USER_NAME: testuser
+      USER_PASSWORD: testpassword
+      PASSWORD_ACCESS: "true"
+      SUDO_ACCESS: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 2222 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles:
+      - ssh-target
+    networks:
+      - piping
+    deploy:
+      resources: &dev-resources-small
+        limits:
+          cpus: "${PIPING_RES_SMALL_CPUS:-1.00}"
+          memory: ${PIPING_RES_SMALL_MEM:-512M}
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+
+  netbox-postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${NETBOX_DB_USER:-netbox}
+      POSTGRES_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox-db-password}
+      POSTGRES_DB: ${NETBOX_DB_NAME:-netbox}
+    volumes:
+      - netbox_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NETBOX_DB_USER:-netbox} -d ${NETBOX_DB_NAME:-netbox}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    profiles:
+      - netbox
+    networks:
+      - piping
+    deploy:
+      resources: &dev-resources-medium
+        limits:
+          cpus: "${PIPING_RES_MEDIUM_CPUS:-2.00}"
+          memory: ${PIPING_RES_MEDIUM_MEM:-2G}
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  netbox-redis:
+    image: redis:8.10.1
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${NETBOX_REDIS_PASSWORD:-netbox-redis-password}"]
+    volumes:
+      - netbox_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${NETBOX_REDIS_PASSWORD:-netbox-redis-password} ping | grep -q PONG || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    profiles:
+      - netbox
+    networks:
+      - piping
+    deploy:
+      resources: *dev-resources-small
+
+  netbox:
+    image: netboxcommunity/netbox:v4.7.1
+    restart: unless-stopped
+    environment:
+      ALLOWED_HOSTS: "*"
+      SECRET_KEY: ${NETBOX_SECRET_KEY:-netbox-dev-secret-key-change-me-before-real-use-0123456789}
+      DB_HOST: netbox-postgres
+      DB_PORT: 5432
+      DB_NAME: ${NETBOX_DB_NAME:-netbox}
+      DB_USER: ${NETBOX_DB_USER:-netbox}
+      DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox-db-password}
+      REDIS_HOST: netbox-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox-redis-password}
+      REDIS_DATABASE: 0
+      REDIS_CACHE_HOST: netbox-redis
+      REDIS_CACHE_PORT: 6379
+      REDIS_CACHE_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox-redis-password}
+      REDIS_CACHE_DATABASE: 1
+      SUPERUSER_NAME: ${NETBOX_SUPERUSER_NAME:-admin}
+      SUPERUSER_EMAIL: ${NETBOX_SUPERUSER_EMAIL:-admin@example.local}
+      API_TOKEN_PEPPER_1: ${API_TOKEN_PEPPER_1:-}
+      SUPERUSER_API_KEY: ${NETBOX_SUPERUSER_API_KEY:-}
+      SUPERUSER_PASSWORD: ${NETBOX_SUPERUSER_PASSWORD:-admin}
+      SUPERUSER_API_TOKEN: ${NETBOX_SUPERUSER_API_TOKEN:-}
+    ports:
+      - "127.0.0.1:${NETBOX_PORT:-28080}:8080"
+    depends_on:
+      netbox-postgres:
+        condition: service_healthy
+      netbox-redis:
+        condition: service_healthy
+    volumes:
+      - netbox_media:/opt/netbox/netbox/media
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -H \"Authorization: Token nbt_$${SUPERUSER_API_KEY}.$${SUPERUSER_API_TOKEN}\" http://localhost:8080/api/status/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+    profiles:
+      - netbox
+    networks:
+      - piping
+    deploy:
+      resources: &dev-resources-large
+        limits:
+          cpus: "${PIPING_RES_LARGE_CPUS:-4.00}"
+          memory: ${PIPING_RES_LARGE_MEM:-4G}
+        reservations:
+          cpus: "0.50"
+          memory: 1G
+
+  netbox-worker:
+    image: netboxcommunity/netbox:v4.7.1
+    restart: unless-stopped
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - rqworker
+      - --with-scheduler
+      - default
+      - high
+      - low
+    environment:
+      ALLOWED_HOSTS: "*"
+      SECRET_KEY: ${NETBOX_SECRET_KEY:-netbox-dev-secret-key-change-me-before-real-use-0123456789}
+      DB_HOST: netbox-postgres
+      DB_PORT: 5432
+      DB_NAME: ${NETBOX_DB_NAME:-netbox}
+      DB_USER: ${NETBOX_DB_USER:-netbox}
+      DB_PASSWORD: ${NETBOX_DB_PASSWORD:-netbox-db-password}
+      REDIS_HOST: netbox-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox-redis-password}
+      REDIS_DATABASE: 0
+      REDIS_CACHE_HOST: netbox-redis
+      REDIS_CACHE_PORT: 6379
+      REDIS_CACHE_PASSWORD: ${NETBOX_REDIS_PASSWORD:-netbox-redis-password}
+      REDIS_CACHE_DATABASE: 1
+      API_TOKEN_PEPPER_1: ${API_TOKEN_PEPPER_1:-}
+    depends_on:
+      netbox:
+        condition: service_healthy
+      netbox-postgres:
+        condition: service_healthy
+      netbox-redis:
+        condition: service_healthy
+    profiles:
+      - netbox
+    networks:
+      - piping
+    deploy:
+      resources: *dev-resources-medium
+
+  keycloak-postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak-dev-password}
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER:-keycloak} -d ${KEYCLOAK_DB_NAME:-keycloak}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    profiles:
+      - keycloak
+    networks:
+      - piping
+    deploy:
+      resources: *dev-resources-medium
+
+  keycloak:
+    image: keycloak/keycloak:26.1.4
+    restart: unless-stopped
+    command:
+      - start-dev
+      - --http-enabled=true
+      - --http-port=8080
+      - --http-relative-path=${PIPING_KEYCLOAK_BASE_PATH:-/keycloak}
+      - --hostname-strict=false
+      - --proxy-headers=xforwarded
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${PIPING_KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${PIPING_KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL_HOST: keycloak-postgres
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak-dev-password}
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8081}:8080"
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 40s
+    profiles:
+      - keycloak
+    networks:
+      - piping
+    deploy:
+      resources: *dev-resources-large
+
+  # ─── Demo observability stack ────────────────────────────────────────────
+  # `docker compose -f compose.yaml -f compose-dev.yaml --profile demo up -d` starts Prometheus
+  # + blackbox exporter that scrape Piping's HTTP service discovery (the same
+  # `/api/v1/monitoring/sd` endpoint the product exposes), so every host in
+  # the inventory automatically gets `probe_success` / `probe_duration_seconds`
+  # series tagged with `piping_target_id`. This makes the inspector metric pull
+  # subsystem demo-able on any install without any out-of-band setup. Off by
+  # default — opt-in via the `demo` profile.
+  monitoring-prometheus:
+    image: prom/prometheus:3.5.4
+    restart: unless-stopped
+    profiles:
+      - demo
+    networks:
+      - piping
+    volumes:
+      - ./contrib/demo/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - monitoring_prometheus_data:/prometheus
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=2d
+      - --web.listen-address=:9090
+    expose:
+      - "9090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources: *dev-resources-small
+
+  monitoring-blackbox:
+    image: prom/blackbox-exporter:v0.27.0
+    restart: unless-stopped
+    profiles:
+      - demo
+    networks:
+      - piping
+    # ICMP probes require raw sockets but the container otherwise stays
+    # unprivileged.
+    cap_add:
+      - NET_RAW
+    expose:
+      - "9115"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9115/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    deploy:
+      resources: *dev-resources-small
+
+volumes:
+  netbox_postgres_data:
+  netbox_redis_data:
+  netbox_media:
+  keycloak_postgres_data:
+  monitoring_prometheus_data:

@@ -1,0 +1,170 @@
+---
+# System inventory collector.
+#
+# Collects the field matrix in apps/api/docs/collected-facts.md from Linux and
+# Windows hosts and projects it onto the scoped collected-facts request. The OS
+# branch is chosen from the gathered machine fact `os_family`, not from the
+# transport: WinRM, PSRP and Windows OpenSSH take the same path. Only declared
+# facts are sent; an absent fact is omitted instead of a zero or empty string.
+# Environment values, credentials and endpoint probes are never collected.
+#
+# The write needs the scoped run context: PIPING_API_URL, the private
+# PIPING_RUN_TOKENS_FILE entry for this host's run id, PIPING_RUN_GROUP_ID and
+# the per-host run source. `piping_inventory_preview: true` assembles and
+# reports the payload without the write and never relaxes that context.
+- name: Collect inventory facts for the selected groups
+  hosts: all
+  gather_facts: true
+  gather_subset:
+    - "!all"
+    - "!min"
+    - platform
+    - distribution
+  vars:
+    piping_api_url: "{{ lookup('ansible.builtin.env', 'PIPING_API_URL') | trim | regex_replace('/+$', '') }}"
+    piping_run_tokens_file: "{{ lookup('ansible.builtin.env', 'PIPING_RUN_TOKENS_FILE') | trim }}"
+    piping_run_group_id: "{{ lookup('ansible.builtin.env', 'PIPING_RUN_GROUP_ID') | trim }}"
+    piping_run_id_effective: "{{ hostvars[inventory_hostname].piping_run_id | default('', true) | trim }}"
+    piping_target_id_effective: "{{ hostvars[inventory_hostname].piping_target_id | default('', true) | trim }}"
+    piping_source_kind_effective: "{{ hostvars[inventory_hostname].piping_source_kind | default('', true) | trim }}"
+    piping_source_id_effective: "{{ hostvars[inventory_hostname].piping_source_id | default('', true) | trim }}"
+    piping_target_name_effective: "{{ hostvars[inventory_hostname].piping_target_name | default('', true) | trim }}"
+    piping_inventory_windows: "{{ (ansible_facts.os_family | default('', true)) == 'Windows' }}"
+    piping_inventory_preview_effective: "{{ piping_inventory_preview | default(false) | bool }}"
+    piping_inventory_gather_timeout_effective: "{{ piping_inventory_gather_timeout | default(8, true) | int }}"
+    piping_inventory_rest_timeout_effective: "{{ piping_inventory_rest_timeout | default(10, true) | int }}"
+    piping_inventory_rest_retries_effective: "{{ piping_inventory_rest_retries | default(1, true) | int }}"
+    piping_inventory_rest_delay_effective: "{{ piping_inventory_rest_delay | default(1, true) | int }}"
+    piping_collection_gaps: []
+
+  pre_tasks:
+    - name: Verify the scoped inventory write context
+      ansible.builtin.assert:
+        that:
+          - piping_api_url | length > 0
+          - piping_run_tokens_file | length > 0
+          - piping_run_group_id | length > 0
+          - piping_run_id_effective | length > 0
+          - piping_target_id_effective | length > 0
+          - piping_source_kind_effective in ['device', 'virtual_machine']
+          - piping_source_id_effective | length > 0
+        fail_msg: >-
+          The collected-facts write needs the scoped run context: PIPING_API_URL,
+          PIPING_RUN_TOKENS_FILE, PIPING_RUN_GROUP_ID, the run and target identity
+          and the source kind/id. Set piping_inventory_preview to collect and
+          report the payload without writing.
+        quiet: true
+      delegate_to: localhost
+      no_log: true
+      when: not piping_inventory_preview_effective
+
+  tasks:
+    - name: Gather Linux facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "!min"
+          - distribution
+          - hardware
+          - network
+          - virtual
+        gather_timeout: "{{ piping_inventory_gather_timeout_effective }}"
+      when: not piping_inventory_windows
+
+    - name: Gather Windows facts
+      ansible.windows.setup:
+        gather_subset:
+          - "!all"
+          - "!min"
+          - platform
+          - distribution
+          - hardware
+          - interfaces
+        gather_timeout: "{{ piping_inventory_gather_timeout_effective }}"
+      when: piping_inventory_windows
+
+    # The setup module has no disk or mount fact on Windows, so the read-only
+    # disk/volume module supplies them. It needs an elevated account: without
+    # one the task reports a gap and the payload omits the disk values instead
+    # of reporting zero.
+    - name: Read Windows disk facts
+      ansible.windows.win_disk_info:
+        filter:
+          - partitions
+          - volumes
+      register: piping_windows_disk_info
+      changed_when: false
+      failed_when: false
+      when: piping_inventory_windows
+
+    - name: Note the Windows disk facts gap
+      ansible.builtin.set_fact:
+        piping_collection_gaps: "{{ piping_collection_gaps + ['windows_disks_unavailable'] }}"
+      when:
+        - piping_inventory_windows
+        - piping_windows_disk_info.disks is not defined
+
+    - name: Project the gathered facts onto the collected-facts payload
+      ansible.builtin.include_tasks: auto-update-inventory-payload.yml
+
+    - name: Select the run-scoped API token
+      ansible.builtin.set_fact:
+        piping_api_token: >-
+          {{ (lookup('ansible.builtin.file', piping_run_tokens_file) | from_json)[piping_run_id_effective]
+             | default('', true) | trim }}
+      when:
+        - not piping_inventory_preview_effective
+        - piping_run_tokens_file | length > 0
+        - piping_run_id_effective | length > 0
+      no_log: true
+
+    - name: Verify the run-scoped API token
+      ansible.builtin.assert:
+        that:
+          - piping_api_token | default('', true) | length > 0
+        fail_msg: >-
+          PIPING_RUN_TOKENS_FILE has no token for this host's run id; the
+          collected-facts request would be unauthenticated.
+        quiet: true
+      when: not piping_inventory_preview_effective
+      no_log: true
+
+    - name: Send collected facts to Piping
+      ansible.builtin.uri:
+        url: "{{ piping_api_url }}/api/v1/inventory/collected-facts"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ piping_api_token }}"
+          Accept: application/json
+          Content-Type: application/json
+        body_format: json
+        body: "{{ piping_collected_facts_payload }}"
+        status_code:
+          - 200
+        timeout: "{{ piping_inventory_rest_timeout_effective }}"
+      register: piping_collected_facts_response
+      retries: "{{ piping_inventory_rest_retries_effective }}"
+      delay: "{{ piping_inventory_rest_delay_effective }}"
+      until: piping_collected_facts_response.status == 200
+      no_log: true
+      delegate_to: localhost
+      when: not piping_inventory_preview_effective
+
+    - name: Report the projected payload without writing
+      ansible.builtin.debug:
+        var: piping_collected_facts_payload
+      when: piping_inventory_preview_effective
+
+    - name: Report the collection result
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          mode: "{{ 'preview' if piping_inventory_preview_effective else 'writeback' }}"
+          family: "{{ 'windows' if piping_inventory_windows else 'linux' }}"
+          disabled_groups: >-
+            {{ piping_payload_write_policy | dict2items | rejectattr('value') | map(attribute='key') | list }}
+          gaps: "{{ piping_collection_gaps }}"
+          ingest: >-
+            {{ piping_collected_facts_response.json | default({}, true)
+               if (piping_collected_facts_response is defined and piping_collected_facts_response.json is defined)
+               else {} }}

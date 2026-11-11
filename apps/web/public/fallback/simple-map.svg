@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Piping simplified map fallback</title>
+  <desc id="desc">A local fallback placeholder used when the detailed PMTiles map is unavailable.</desc>
+  <rect width="960" height="540" fill="#0d1117"/>
+  <path d="M120 260c55-52 126-76 201-63 77 13 128 62 203 58 64-4 103-43 170-34 56 8 103 47 143 95" fill="none" stroke="#263241" stroke-width="34" stroke-linecap="round"/>
+  <path d="M143 243c51-38 111-52 173-42 74 12 126 61 204 56 65-4 105-42 169-31 50 9 94 41 132 82" fill="none" stroke="#3b4556" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="478" cy="270" r="96" fill="#151b24" stroke="#2d3748" stroke-width="2"/>
+  <path d="M420 254c26-44 85-56 124-21 38 34 31 98-13 122-45 24-102 0-119-47" fill="none" stroke="#f6b419" stroke-width="6" stroke-linecap="round"/>
+  <text x="480" y="455" fill="#7f8da3" font-family="sans-serif" font-size="18" text-anchor="middle">Simplified SVG map fallback</text>
+</svg>

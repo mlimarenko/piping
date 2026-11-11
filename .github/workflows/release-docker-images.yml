@@ -1,0 +1,315 @@
+name: Release public images and desktop
+run-name: Public release ${{ github.event.release.tag_name || inputs.tag }}
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published stable release tag to retry (run this workflow on that same tag)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-release-${{ github.event.release.tag_name || inputs.tag }}
+  queue: max
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'mlimarenko/piping' &&
+      ((github.event_name == 'release' && !github.event.release.draft && !github.event.release.prerelease) ||
+       (github.event_name == 'workflow_dispatch' && github.ref == format('refs/tags/{0}', inputs.tag)))
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - name: Select release version
+        id: tag
+        env:
+          SELECTED_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SELECTED_TAG" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          [[ ${#SELECTED_TAG} -le 64 ]]
+          printf 'version=%s\n' "$SELECTED_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the event-selected public tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Open public DockerHub channels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: python scripts/public_release.py initialize --version "$VERSION"
+
+      - name: Resume image publication
+        id: cohort
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: python scripts/public_release.py prepare --version "$VERSION"
+
+      - name: Set up Docker Buildx
+        if: steps.cohort.outputs.complete != 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        if: steps.cohort.outputs.complete != 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Prepare canonical image provenance
+        id: meta
+        if: steps.cohort.outputs.complete != 'true'
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            docker.io/pipingspace/piping-backend
+            docker.io/pipingspace/piping-frontend
+            docker.io/pipingspace/piping-ansible-runner
+          tags: type=raw,value=${{ steps.cohort.outputs.version }}
+          flavor: latest=false
+          labels: |
+            org.opencontainers.image.version=${{ steps.cohort.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.cohort.outputs.public_commit }}
+            org.opencontainers.image.source=https://github.com/mlimarenko/piping
+            space.piping.source.commit=${{ steps.cohort.outputs.source_commit }}
+            space.piping.source.pipeline=${{ steps.cohort.outputs.pipeline_id }}
+
+      - name: Build and publish backend only when its tag is absent
+        id: backend
+        if: steps.cohort.outputs.complete != 'true' && steps.cohort.outputs.build_backend == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: docker.io/pipingspace/piping-backend:${{ steps.cohort.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.cohort.outputs.version }}
+            PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM_B64=${{ secrets.PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM_B64 }}
+          cache-from: type=gha,scope=piping-backend
+          cache-to: type=gha,mode=max,scope=piping-backend
+
+      - name: Build and publish frontend only when its tag is absent
+        id: frontend
+        if: steps.cohort.outputs.complete != 'true' && steps.cohort.outputs.build_frontend == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: docker.io/pipingspace/piping-frontend:${{ steps.cohort.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.cohort.outputs.version }}
+          cache-from: type=gha,scope=piping-frontend
+          cache-to: type=gha,mode=max,scope=piping-frontend
+
+      - name: Build and publish runner only when its tag is absent
+        id: runner
+        if: steps.cohort.outputs.complete != 'true' && steps.cohort.outputs.build_ansible_runner == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/ansible-runner/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: docker.io/pipingspace/piping-ansible-runner:${{ steps.cohort.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.cohort.outputs.version }}
+          cache-from: type=gha,scope=piping-ansible-runner
+          cache-to: type=gha,mode=max,scope=piping-ansible-runner
+
+      - name: Publish installer and readiness manifest
+        if: steps.cohort.outputs.complete != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.cohort.outputs.version }}
+          BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
+          FRONTEND_DIGEST: ${{ steps.frontend.outputs.digest }}
+          RUNNER_DIGEST: ${{ steps.runner.outputs.digest }}
+        run: |
+          python scripts/public_release.py finalize --version "$VERSION" \
+            --backend-digest "$BACKEND_DIGEST" --frontend-digest "$FRONTEND_DIGEST" \
+            --ansible-runner-digest "$RUNNER_DIGEST"
+
+  desktop:
+    if: >-
+      github.repository == 'mlimarenko/piping' &&
+      ((github.event_name == 'release' && !github.event.release.draft && !github.event.release.prerelease) ||
+       (github.event_name == 'workflow_dispatch' && github.ref == format('refs/tags/{0}', inputs.tag)))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            platform: linux-x86_64
+          - runner: windows-2022
+            platform: windows-x86_64
+          - runner: macos-15
+            platform: macos-arm64
+          - runner: macos-15-intel
+            platform: macos-x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ github.event.release.tag_name || inputs.tag }}
+      PLATFORM: ${{ matrix.platform }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Validate selected tag
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ && ${#VERSION} -le 64 ]]
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify public release and source identity
+        id: source
+        run: python scripts/public_release.py desktop-context --version "$VERSION"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.99.1'
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux-x86_64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2
+      - name: Set the selected version in the build tree
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, re
+          root = pathlib.Path('apps/desktop')
+          version = os.environ['VERSION']
+          for name in ('package.json', 'src-tauri/tauri.conf.json'):
+              path = root / name
+              data = json.loads(path.read_text(encoding='utf-8'))
+              data['version'] = version
+              path.write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
+          for name, pattern in (
+              ('src-tauri/Cargo.toml', r'(?m)^(version = ")[^"]+("\s*)$'),
+              ('src-tauri/Cargo.lock', r'(?m)(^name = "piping-desktop"\nversion = ")[^"]+("\s*$)'),
+          ):
+              path = root / name
+              data, count = re.subn(pattern, lambda m: m.group(1) + version + m.group(2), path.read_text(encoding='utf-8'))
+              if count != 1:
+                  raise ValueError(f'expected one desktop version in {name}')
+              path.write_text(data, encoding='utf-8')
+          PY
+      - name: Install locked desktop dependencies
+        working-directory: apps/desktop
+        run: pnpm install --frozen-lockfile
+      - name: Test native desktop behavior
+        continue-on-error: true
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --release --locked --lib
+      - name: Build native bundles
+        working-directory: apps/desktop
+        run: |
+          set -euo pipefail
+          case "$PLATFORM" in
+            linux-*) bash scripts/build-linux-bundles.sh --bundles appimage -- --locked ;;
+            windows-*) pnpm exec tauri build --bundles nsis -- --locked ;;
+            macos-*) pnpm exec tauri build --bundles dmg -- --locked ;;
+          esac
+      - name: Prepare bundle, checksum and provenance
+        env:
+          PUBLIC_COMMIT: ${{ steps.source.outputs.public_commit }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.source_commit }}
+          SOURCE_PIPELINE: ${{ steps.source.outputs.pipeline_id }}
+        run: |
+          python - <<'PY'
+          import glob, hashlib, json, os, pathlib, shutil
+          platform, version = os.environ['PLATFORM'], os.environ['VERSION']
+          patterns = {'linux-x86_64': ('appimage/*.AppImage', 'AppImage'),
+                      'windows-x86_64': ('nsis/*-setup.exe', 'exe'),
+                      'macos-arm64': ('dmg/*.dmg', 'dmg'), 'macos-x86_64': ('dmg/*.dmg', 'dmg')}
+          pattern, extension = patterns[platform]
+          files = glob.glob('apps/desktop/src-tauri/target/release/bundle/' + pattern)
+          if len(files) != 1:
+              raise ValueError(f'expected exactly one {platform} bundle, found {len(files)}')
+          out = pathlib.Path('desktop-release')
+          out.mkdir()
+          name = f'piping-desktop-{platform}.{extension}'
+          path = out / name
+          shutil.copyfile(files[0], path)
+          digest = hashlib.file_digest(path.open('rb'), 'sha256').hexdigest()
+          (out / (name + '.sha256')).write_text(f'{digest}  {name}\n', encoding='utf-8', newline='\n')
+          provenance = {'version': version, 'platform': platform, 'asset': name, 'sha256': digest,
+                        'public_commit': os.environ['PUBLIC_COMMIT'], 'source_commit': os.environ['SOURCE_COMMIT'],
+                        'pipeline_id': os.environ['SOURCE_PIPELINE']}
+          (out / (name + '.source.json')).write_text(json.dumps(provenance, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+      - name: Publish without replacing existing assets
+        run: |
+          set -euo pipefail
+          python scripts/public_release.py desktop-context --version "$VERSION" >/dev/null
+          mkdir existing-desktop-assets
+          assets="$(gh release view "$VERSION" --json assets --jq '.assets[].name')"
+          for file in desktop-release/*; do
+            name="${file##*/}"
+            if printf '%s\n' "$assets" | grep -Fxq -- "$name"; then
+              gh release download "$VERSION" --pattern "$name" --dir existing-desktop-assets
+              cmp "$file" "existing-desktop-assets/$name" || { echo "Conflicting release asset: $name" >&2; exit 1; }
+            else
+              gh release upload "$VERSION" "$file"
+            fi
+          done
+
+  promote:
+    needs: [publish, desktop]
+    concurrency:
+      group: public-release-promote
+      queue: max
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify release and promote latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.event.release.tag_name || inputs.tag }}
+        run: python scripts/public_release.py promote --version "$VERSION"

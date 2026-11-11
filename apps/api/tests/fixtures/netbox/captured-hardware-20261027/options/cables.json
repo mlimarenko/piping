@@ -1,0 +1,1274 @@
+{
+  "name": "Cable List",
+  "description": "",
+  "renders": [
+    "application/json",
+    "text/html"
+  ],
+  "parses": [
+    "application/json",
+    "multipart/form-data"
+  ],
+  "actions": {
+    "POST": {
+      "id": {
+        "type": "integer",
+        "required": false,
+        "read_only": true,
+        "label": "ID"
+      },
+      "url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Url"
+      },
+      "display_url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display url"
+      },
+      "display": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display"
+      },
+      "type": {
+        "type": "choice",
+        "required": false,
+        "read_only": false,
+        "label": "Type",
+        "choices": [
+          {
+            "value": "cat3",
+            "display_name": "CAT3"
+          },
+          {
+            "value": "cat5",
+            "display_name": "CAT5"
+          },
+          {
+            "value": "cat5e",
+            "display_name": "CAT5e"
+          },
+          {
+            "value": "cat6",
+            "display_name": "CAT6"
+          },
+          {
+            "value": "cat6a",
+            "display_name": "CAT6a"
+          },
+          {
+            "value": "cat7",
+            "display_name": "CAT7"
+          },
+          {
+            "value": "cat7a",
+            "display_name": "CAT7a"
+          },
+          {
+            "value": "cat8",
+            "display_name": "CAT8"
+          },
+          {
+            "value": "mrj21-trunk",
+            "display_name": "MRJ21 Trunk"
+          },
+          {
+            "value": "dac-active",
+            "display_name": "Direct Attach Copper (Active)"
+          },
+          {
+            "value": "dac-passive",
+            "display_name": "Direct Attach Copper (Passive)"
+          },
+          {
+            "value": "coaxial",
+            "display_name": "Coaxial"
+          },
+          {
+            "value": "rg-6",
+            "display_name": "RG-6"
+          },
+          {
+            "value": "rg-8",
+            "display_name": "RG-8"
+          },
+          {
+            "value": "rg-11",
+            "display_name": "RG-11"
+          },
+          {
+            "value": "rg-59",
+            "display_name": "RG-59"
+          },
+          {
+            "value": "rg-62",
+            "display_name": "RG-62"
+          },
+          {
+            "value": "rg-213",
+            "display_name": "RG-213"
+          },
+          {
+            "value": "lmr-100",
+            "display_name": "LMR-100"
+          },
+          {
+            "value": "lmr-200",
+            "display_name": "LMR-200"
+          },
+          {
+            "value": "lmr-400",
+            "display_name": "LMR-400"
+          },
+          {
+            "value": "mmf",
+            "display_name": "Multimode Fiber"
+          },
+          {
+            "value": "mmf-om1",
+            "display_name": "Multimode Fiber (OM1)"
+          },
+          {
+            "value": "mmf-om2",
+            "display_name": "Multimode Fiber (OM2)"
+          },
+          {
+            "value": "mmf-om3",
+            "display_name": "Multimode Fiber (OM3)"
+          },
+          {
+            "value": "mmf-om4",
+            "display_name": "Multimode Fiber (OM4)"
+          },
+          {
+            "value": "mmf-om5",
+            "display_name": "Multimode Fiber (OM5)"
+          },
+          {
+            "value": "smf",
+            "display_name": "Single-mode Fiber"
+          },
+          {
+            "value": "smf-os1",
+            "display_name": "Single-mode Fiber (OS1)"
+          },
+          {
+            "value": "smf-os2",
+            "display_name": "Single-mode Fiber (OS2)"
+          },
+          {
+            "value": "aoc",
+            "display_name": "Active Optical Cabling (AOC)"
+          },
+          {
+            "value": "power",
+            "display_name": "Power"
+          },
+          {
+            "value": "usb",
+            "display_name": "USB"
+          }
+        ]
+      },
+      "a_terminations": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "A terminations",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "object_type": {
+              "type": "field",
+              "required": true,
+              "read_only": false,
+              "label": "Object type"
+            },
+            "object_id": {
+              "type": "integer",
+              "required": true,
+              "read_only": false,
+              "label": "Object id"
+            },
+            "object": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Object"
+            }
+          }
+        }
+      },
+      "b_terminations": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "B terminations",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "object_type": {
+              "type": "field",
+              "required": true,
+              "read_only": false,
+              "label": "Object type"
+            },
+            "object_id": {
+              "type": "integer",
+              "required": true,
+              "read_only": false,
+              "label": "Object id"
+            },
+            "object": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Object"
+            }
+          }
+        }
+      },
+      "status": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Status",
+        "choices": [
+          {
+            "value": "connected",
+            "display_name": "Connected"
+          },
+          {
+            "value": "planned",
+            "display_name": "Planned"
+          },
+          {
+            "value": "decommissioning",
+            "display_name": "Decommissioning"
+          }
+        ]
+      },
+      "profile": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Profile",
+        "choices": [
+          {
+            "value": "single-1c1p",
+            "display_name": "1C1P"
+          },
+          {
+            "value": "single-1c2p",
+            "display_name": "1C2P"
+          },
+          {
+            "value": "single-1c4p",
+            "display_name": "1C4P"
+          },
+          {
+            "value": "single-1c6p",
+            "display_name": "1C6P"
+          },
+          {
+            "value": "single-1c8p",
+            "display_name": "1C8P"
+          },
+          {
+            "value": "single-1c12p",
+            "display_name": "1C12P"
+          },
+          {
+            "value": "single-1c16p",
+            "display_name": "1C16P"
+          },
+          {
+            "value": "trunk-2c1p",
+            "display_name": "2C1P trunk"
+          },
+          {
+            "value": "trunk-2c2p",
+            "display_name": "2C2P trunk"
+          },
+          {
+            "value": "trunk-2c4p",
+            "display_name": "2C4P trunk"
+          },
+          {
+            "value": "trunk-2c4p-shuffle",
+            "display_name": "2C4P trunk (shuffle)"
+          },
+          {
+            "value": "trunk-2c6p",
+            "display_name": "2C6P trunk"
+          },
+          {
+            "value": "trunk-2c8p",
+            "display_name": "2C8P trunk"
+          },
+          {
+            "value": "trunk-2c12p",
+            "display_name": "2C12P trunk"
+          },
+          {
+            "value": "trunk-4c1p",
+            "display_name": "4C1P trunk"
+          },
+          {
+            "value": "trunk-4c2p",
+            "display_name": "4C2P trunk"
+          },
+          {
+            "value": "trunk-4c4p",
+            "display_name": "4C4P trunk"
+          },
+          {
+            "value": "trunk-4c4p-shuffle",
+            "display_name": "4C4P trunk (shuffle)"
+          },
+          {
+            "value": "trunk-4c6p",
+            "display_name": "4C6P trunk"
+          },
+          {
+            "value": "trunk-4c8p",
+            "display_name": "4C8P trunk"
+          },
+          {
+            "value": "trunk-8c4p",
+            "display_name": "8C4P trunk"
+          },
+          {
+            "value": "breakout-1c2p-2c1p",
+            "display_name": "1C2P:2C1P breakout"
+          },
+          {
+            "value": "breakout-1c4p-4c1p",
+            "display_name": "1C4P:4C1P breakout"
+          },
+          {
+            "value": "breakout-1c6p-6c1p",
+            "display_name": "1C6P:6C1P breakout"
+          },
+          {
+            "value": "breakout-1c8p-8c1p",
+            "display_name": "1C8P:8C1P breakout"
+          },
+          {
+            "value": "breakout-2c4p-8c1p-shuffle",
+            "display_name": "2C4P:8C1P breakout (shuffle)"
+          }
+        ]
+      },
+      "tenant": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Tenant",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "bundle": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Bundle",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "label": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Label",
+        "max_length": 100
+      },
+      "color": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Color",
+        "max_length": 6
+      },
+      "length": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Length",
+        "max_digits": 8,
+        "decimal_places": 2
+      },
+      "length_unit": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Length unit",
+        "choices": [
+          {
+            "value": "km",
+            "display_name": "Kilometers"
+          },
+          {
+            "value": "m",
+            "display_name": "Meters"
+          },
+          {
+            "value": "cm",
+            "display_name": "Centimeters"
+          },
+          {
+            "value": "mi",
+            "display_name": "Miles"
+          },
+          {
+            "value": "ft",
+            "display_name": "Feet"
+          },
+          {
+            "value": "in",
+            "display_name": "Inches"
+          }
+        ]
+      },
+      "description": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Description",
+        "max_length": 200
+      },
+      "owner": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Owner",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "comments": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Comments"
+      },
+      "tags": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Tags",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "id": {
+              "type": "integer",
+              "required": false,
+              "read_only": true,
+              "label": "Id"
+            },
+            "url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Url"
+            },
+            "display_url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display url"
+            },
+            "display": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "read_only": false,
+              "label": "Name",
+              "max_length": 100
+            },
+            "slug": {
+              "type": "slug",
+              "required": true,
+              "read_only": false,
+              "label": "Slug",
+              "max_length": 100
+            },
+            "color": {
+              "type": "string",
+              "required": false,
+              "read_only": false,
+              "label": "Color",
+              "max_length": 6
+            }
+          }
+        }
+      },
+      "custom_fields": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Custom fields"
+      },
+      "created": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Created"
+      },
+      "last_updated": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Last updated"
+      }
+    },
+    "PUT": {
+      "id": {
+        "type": "integer",
+        "required": false,
+        "read_only": true,
+        "label": "ID"
+      },
+      "url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Url"
+      },
+      "display_url": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display url"
+      },
+      "display": {
+        "type": "field",
+        "required": false,
+        "read_only": true,
+        "label": "Display"
+      },
+      "type": {
+        "type": "choice",
+        "required": false,
+        "read_only": false,
+        "label": "Type",
+        "choices": [
+          {
+            "value": "cat3",
+            "display_name": "CAT3"
+          },
+          {
+            "value": "cat5",
+            "display_name": "CAT5"
+          },
+          {
+            "value": "cat5e",
+            "display_name": "CAT5e"
+          },
+          {
+            "value": "cat6",
+            "display_name": "CAT6"
+          },
+          {
+            "value": "cat6a",
+            "display_name": "CAT6a"
+          },
+          {
+            "value": "cat7",
+            "display_name": "CAT7"
+          },
+          {
+            "value": "cat7a",
+            "display_name": "CAT7a"
+          },
+          {
+            "value": "cat8",
+            "display_name": "CAT8"
+          },
+          {
+            "value": "mrj21-trunk",
+            "display_name": "MRJ21 Trunk"
+          },
+          {
+            "value": "dac-active",
+            "display_name": "Direct Attach Copper (Active)"
+          },
+          {
+            "value": "dac-passive",
+            "display_name": "Direct Attach Copper (Passive)"
+          },
+          {
+            "value": "coaxial",
+            "display_name": "Coaxial"
+          },
+          {
+            "value": "rg-6",
+            "display_name": "RG-6"
+          },
+          {
+            "value": "rg-8",
+            "display_name": "RG-8"
+          },
+          {
+            "value": "rg-11",
+            "display_name": "RG-11"
+          },
+          {
+            "value": "rg-59",
+            "display_name": "RG-59"
+          },
+          {
+            "value": "rg-62",
+            "display_name": "RG-62"
+          },
+          {
+            "value": "rg-213",
+            "display_name": "RG-213"
+          },
+          {
+            "value": "lmr-100",
+            "display_name": "LMR-100"
+          },
+          {
+            "value": "lmr-200",
+            "display_name": "LMR-200"
+          },
+          {
+            "value": "lmr-400",
+            "display_name": "LMR-400"
+          },
+          {
+            "value": "mmf",
+            "display_name": "Multimode Fiber"
+          },
+          {
+            "value": "mmf-om1",
+            "display_name": "Multimode Fiber (OM1)"
+          },
+          {
+            "value": "mmf-om2",
+            "display_name": "Multimode Fiber (OM2)"
+          },
+          {
+            "value": "mmf-om3",
+            "display_name": "Multimode Fiber (OM3)"
+          },
+          {
+            "value": "mmf-om4",
+            "display_name": "Multimode Fiber (OM4)"
+          },
+          {
+            "value": "mmf-om5",
+            "display_name": "Multimode Fiber (OM5)"
+          },
+          {
+            "value": "smf",
+            "display_name": "Single-mode Fiber"
+          },
+          {
+            "value": "smf-os1",
+            "display_name": "Single-mode Fiber (OS1)"
+          },
+          {
+            "value": "smf-os2",
+            "display_name": "Single-mode Fiber (OS2)"
+          },
+          {
+            "value": "aoc",
+            "display_name": "Active Optical Cabling (AOC)"
+          },
+          {
+            "value": "power",
+            "display_name": "Power"
+          },
+          {
+            "value": "usb",
+            "display_name": "USB"
+          }
+        ]
+      },
+      "a_terminations": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "A terminations",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "object_type": {
+              "type": "field",
+              "required": true,
+              "read_only": false,
+              "label": "Object type"
+            },
+            "object_id": {
+              "type": "integer",
+              "required": true,
+              "read_only": false,
+              "label": "Object id"
+            },
+            "object": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Object"
+            }
+          }
+        }
+      },
+      "b_terminations": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "B terminations",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "object_type": {
+              "type": "field",
+              "required": true,
+              "read_only": false,
+              "label": "Object type"
+            },
+            "object_id": {
+              "type": "integer",
+              "required": true,
+              "read_only": false,
+              "label": "Object id"
+            },
+            "object": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Object"
+            }
+          }
+        }
+      },
+      "status": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Status",
+        "choices": [
+          {
+            "value": "connected",
+            "display_name": "Connected"
+          },
+          {
+            "value": "planned",
+            "display_name": "Planned"
+          },
+          {
+            "value": "decommissioning",
+            "display_name": "Decommissioning"
+          }
+        ]
+      },
+      "profile": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Profile",
+        "choices": [
+          {
+            "value": "single-1c1p",
+            "display_name": "1C1P"
+          },
+          {
+            "value": "single-1c2p",
+            "display_name": "1C2P"
+          },
+          {
+            "value": "single-1c4p",
+            "display_name": "1C4P"
+          },
+          {
+            "value": "single-1c6p",
+            "display_name": "1C6P"
+          },
+          {
+            "value": "single-1c8p",
+            "display_name": "1C8P"
+          },
+          {
+            "value": "single-1c12p",
+            "display_name": "1C12P"
+          },
+          {
+            "value": "single-1c16p",
+            "display_name": "1C16P"
+          },
+          {
+            "value": "trunk-2c1p",
+            "display_name": "2C1P trunk"
+          },
+          {
+            "value": "trunk-2c2p",
+            "display_name": "2C2P trunk"
+          },
+          {
+            "value": "trunk-2c4p",
+            "display_name": "2C4P trunk"
+          },
+          {
+            "value": "trunk-2c4p-shuffle",
+            "display_name": "2C4P trunk (shuffle)"
+          },
+          {
+            "value": "trunk-2c6p",
+            "display_name": "2C6P trunk"
+          },
+          {
+            "value": "trunk-2c8p",
+            "display_name": "2C8P trunk"
+          },
+          {
+            "value": "trunk-2c12p",
+            "display_name": "2C12P trunk"
+          },
+          {
+            "value": "trunk-4c1p",
+            "display_name": "4C1P trunk"
+          },
+          {
+            "value": "trunk-4c2p",
+            "display_name": "4C2P trunk"
+          },
+          {
+            "value": "trunk-4c4p",
+            "display_name": "4C4P trunk"
+          },
+          {
+            "value": "trunk-4c4p-shuffle",
+            "display_name": "4C4P trunk (shuffle)"
+          },
+          {
+            "value": "trunk-4c6p",
+            "display_name": "4C6P trunk"
+          },
+          {
+            "value": "trunk-4c8p",
+            "display_name": "4C8P trunk"
+          },
+          {
+            "value": "trunk-8c4p",
+            "display_name": "8C4P trunk"
+          },
+          {
+            "value": "breakout-1c2p-2c1p",
+            "display_name": "1C2P:2C1P breakout"
+          },
+          {
+            "value": "breakout-1c4p-4c1p",
+            "display_name": "1C4P:4C1P breakout"
+          },
+          {
+            "value": "breakout-1c6p-6c1p",
+            "display_name": "1C6P:6C1P breakout"
+          },
+          {
+            "value": "breakout-1c8p-8c1p",
+            "display_name": "1C8P:8C1P breakout"
+          },
+          {
+            "value": "breakout-2c4p-8c1p-shuffle",
+            "display_name": "2C4P:8C1P breakout (shuffle)"
+          }
+        ]
+      },
+      "tenant": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Tenant",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "slug": {
+            "type": "slug",
+            "required": true,
+            "read_only": false,
+            "label": "Slug",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "bundle": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Bundle",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "label": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Label",
+        "max_length": 100
+      },
+      "color": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Color",
+        "max_length": 6
+      },
+      "length": {
+        "type": "decimal",
+        "required": false,
+        "read_only": false,
+        "label": "Length",
+        "max_digits": 8,
+        "decimal_places": 2
+      },
+      "length_unit": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Length unit",
+        "choices": [
+          {
+            "value": "km",
+            "display_name": "Kilometers"
+          },
+          {
+            "value": "m",
+            "display_name": "Meters"
+          },
+          {
+            "value": "cm",
+            "display_name": "Centimeters"
+          },
+          {
+            "value": "mi",
+            "display_name": "Miles"
+          },
+          {
+            "value": "ft",
+            "display_name": "Feet"
+          },
+          {
+            "value": "in",
+            "display_name": "Inches"
+          }
+        ]
+      },
+      "description": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Description",
+        "max_length": 200
+      },
+      "owner": {
+        "type": "nested object",
+        "required": false,
+        "read_only": false,
+        "label": "Owner",
+        "children": {
+          "id": {
+            "type": "integer",
+            "required": false,
+            "read_only": true,
+            "label": "ID"
+          },
+          "url": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Url"
+          },
+          "display": {
+            "type": "field",
+            "required": false,
+            "read_only": true,
+            "label": "Display"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "read_only": false,
+            "label": "Name",
+            "max_length": 100
+          },
+          "description": {
+            "type": "string",
+            "required": false,
+            "read_only": false,
+            "label": "Description",
+            "max_length": 200
+          }
+        }
+      },
+      "comments": {
+        "type": "string",
+        "required": false,
+        "read_only": false,
+        "label": "Comments"
+      },
+      "tags": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Tags",
+        "child": {
+          "type": "nested object",
+          "required": false,
+          "read_only": false,
+          "children": {
+            "id": {
+              "type": "integer",
+              "required": false,
+              "read_only": true,
+              "label": "Id"
+            },
+            "url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Url"
+            },
+            "display_url": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display url"
+            },
+            "display": {
+              "type": "field",
+              "required": false,
+              "read_only": true,
+              "label": "Display"
+            },
+            "name": {
+              "type": "string",
+              "required": true,
+              "read_only": false,
+              "label": "Name",
+              "max_length": 100
+            },
+            "slug": {
+              "type": "slug",
+              "required": true,
+              "read_only": false,
+              "label": "Slug",
+              "max_length": 100
+            },
+            "color": {
+              "type": "string",
+              "required": false,
+              "read_only": false,
+              "label": "Color",
+              "max_length": 6
+            }
+          }
+        }
+      },
+      "custom_fields": {
+        "type": "field",
+        "required": false,
+        "read_only": false,
+        "label": "Custom fields"
+      },
+      "created": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Created"
+      },
+      "last_updated": {
+        "type": "datetime",
+        "required": false,
+        "read_only": true,
+        "label": "Last updated"
+      }
+    }
+  }
+}

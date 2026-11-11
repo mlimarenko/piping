@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT content_type_id FROM custom_field_object_type WHERE custom_field_id = $1 ORDER BY content_type_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "content_type_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "99e0f4f67244920a69d2f9431e04ecba0fba00f27e780833bab8690a9c2a5ebc"
+}

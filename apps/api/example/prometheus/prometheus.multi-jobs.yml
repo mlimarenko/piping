@@ -1,0 +1,43 @@
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: piping-devices-node-exporter
+    honor_labels: true
+    http_sd_configs:
+      - url: >-
+          http://backend:7000/api/v1/monitoring/sd?kind=device&target=address&group_by=site,role&label=layer=devices
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [piping_host_name]
+        target_label: instance
+        regex: (.+)
+      - source_labels: [piping_site]
+        target_label: site
+      - source_labels: [piping_role]
+        target_label: role
+
+  - job_name: piping-vms-node-exporter
+    honor_labels: true
+    http_sd_configs:
+      - url: >-
+          http://backend:7000/api/v1/monitoring/sd?kind=virtual_machine&target=address&group_by=tenant,site&label=layer=vms
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [piping_host_name]
+        target_label: instance
+        regex: (.+)
+      - source_labels: [piping_site]
+        target_label: site
+      - source_labels: [piping_tenant]
+        target_label: tenant
+
+  # Example of targeted scraping for one role/site:
+  - job_name: piping-role-specific
+    honor_labels: true
+    http_sd_configs:
+      - url: >-
+          http://backend:7000/api/v1/monitoring/sd?kind=device&target=address&group_by=none&role_id=00000000-0000-7000-8000-000000000002&site_id=00000000-0000-7000-8000-000000000101&label=profile=app-metrics
+        refresh_interval: 45s

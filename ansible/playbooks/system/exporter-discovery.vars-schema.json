@@ -1,0 +1,172 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "piping_discovery_host_inspection": {
+      "type": "boolean",
+      "title": "Inspect the host",
+      "description": "Read running services, processes, containers and listening sockets over the run connection. Disabling this source leaves the endpoint probe as the only evidence.",
+      "default": true
+    },
+    "piping_discovery_endpoint_probe": {
+      "type": "boolean",
+      "title": "Probe metrics endpoints",
+      "description": "Probe declared and discovered metrics endpoints from the Piping backend, independently of host inspection. This does not prove Prometheus scraper reachability.",
+      "default": true
+    },
+    "piping_discovery_detect_exporter_type": {
+      "type": "boolean",
+      "title": "Resolve exporter type",
+      "description": "Resolve the exporter type from declared catalog assignments and typed machine identifiers (unit, service, executable, container image). A response alone never assigns a type.",
+      "default": true
+    },
+    "piping_discovery_excluded_hosts": {
+      "type": "array",
+      "title": "Excluded hosts",
+      "description": "Inventory host names or addresses that discovery skips. An excluded host yields a skipped observation, never an absence.",
+      "default": [],
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255
+      },
+      "maxItems": 500
+    },
+    "piping_discovery_excluded_ports": {
+      "type": "array",
+      "title": "Excluded ports",
+      "description": "TCP ports that discovery never probes.",
+      "default": [],
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 65535
+      },
+      "maxItems": 500
+    },
+    "piping_discovery_extra_endpoints": {
+      "type": "array",
+      "title": "Additional endpoints",
+      "description": "Extra endpoints to probe in addition to declared assignments and discovered listeners. Each entry must address a host in the run target set.",
+      "default": [],
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "host",
+          "port"
+        ],
+        "properties": {
+          "host": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "scheme": {
+            "type": "string",
+            "enum": [
+              "http",
+              "https"
+            ],
+            "default": "http"
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^/",
+            "maxLength": 255,
+            "default": "/metrics"
+          }
+        }
+      }
+    },
+    "piping_discovery_labels": {
+      "type": "object",
+      "title": "Observed labels",
+      "description": "Labels attached to observations produced by this run. Configured assignment labels stay separate and are never overwritten.",
+      "default": {},
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 255
+      },
+      "maxProperties": 50
+    },
+    "piping_discovery_probe_timeout_ms": {
+      "type": "integer",
+      "title": "Probe timeout",
+      "description": "Connect and response timeout for one endpoint probe in milliseconds.",
+      "default": 3000,
+      "minimum": 100,
+      "maximum": 30000
+    },
+    "piping_discovery_probe_concurrency": {
+      "type": "integer",
+      "title": "Probe concurrency",
+      "description": "Number of endpoint probes executed in parallel per host.",
+      "default": 4,
+      "minimum": 1,
+      "maximum": 16
+    },
+    "piping_discovery_max_endpoints_per_host": {
+      "type": "integer",
+      "title": "Endpoint cap per host",
+      "description": "Maximum endpoints probed for one host. A truncated set is reported as partial and can never prove absence.",
+      "default": 64,
+      "minimum": 1,
+      "maximum": 512
+    },
+    "piping_discovery_rest_timeout": {
+      "type": "integer",
+      "title": "Piping REST timeout",
+      "description": "Timeout in seconds for the discovery report request made from the playbook.",
+      "default": 15,
+      "minimum": 2,
+      "maximum": 120
+    },
+    "piping_discovery_rest_retries": {
+      "type": "integer",
+      "title": "Piping REST attempts",
+      "description": "Number of attempts for the discovery report request. Keep this low for large target sets.",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "piping_discovery_command_timeout": {
+      "type": "integer",
+      "title": "Inspection command timeout",
+      "description": "Per-command timeout in seconds for bounded host inspection commands.",
+      "default": 10,
+      "minimum": 2,
+      "maximum": 60
+    },
+    "piping_discovery_absence_policy": {
+      "type": "string",
+      "title": "Absence policy",
+      "enum": [
+        "manual",
+        "automatic"
+      ],
+      "default": "manual",
+      "description": "Manual keeps service discovery unchanged when an exporter is confirmed absent. Automatic is an explicit opt-in that may exclude only source-owned assignments after the confirmation window."
+    },
+    "piping_discovery_absence_confirm_runs": {
+      "type": "integer",
+      "title": "Absence confirmation runs",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 50,
+      "description": "Consecutive complete runs with confirmed absence required before an automatic exclusion."
+    },
+    "piping_discovery_restore_on_reappearance": {
+      "type": "boolean",
+      "title": "Restore on reappearance",
+      "default": true,
+      "description": "In automatic mode, restore a source-owned assignment when the same endpoint is confirmed discovered again."
+    }
+  }
+}

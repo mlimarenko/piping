@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM secret_usage_binding WHERE secret_id = $1 AND (owner_scope_type <> $2 OR owner_scope_id <> $3)) AS \"foreign!: bool\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "foreign!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "46a094c90b371885bb4670fe3964cecbaff6c351a6e48edb8438c2b1f51086b4"
+}

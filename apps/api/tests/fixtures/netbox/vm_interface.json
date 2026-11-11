@@ -1,0 +1,28 @@
+[
+  {
+    "id": 1,
+    "virtual_machine": {"id": 1, "name": "test-vm-alpha-01"},
+    "name": "eth0",
+    "enabled": true,
+    "mac_address": "52:54:00:11:22:33",
+    "mtu": 1500,
+    "mode": null,
+    "description": "Primary VM NIC",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "virtual_machine": {"id": 1, "name": "test-vm-alpha-01"},
+    "name": "eth1",
+    "enabled": true,
+    "mac_address": "52:54:00:11:22:34",
+    "mtu": 1500,
+    "mode": null,
+    "description": "Secondary VM NIC",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "name": "Test Role Access Switch",
+    "slug": "test-role-access-switch",
+    "color": "00bcd4",
+    "vm_role": false,
+    "description": "Access-layer switch role",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Test Role Edge Router",
+    "slug": "test-role-edge-router",
+    "color": "ff5722",
+    "vm_role": false,
+    "description": "Edge router role",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

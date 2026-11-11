@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "Test Site Group Alpha",
+    "slug": "test-site-group-alpha",
+    "parent": null,
+    "description": "Alpha site grouping",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Test Site Group Beta",
+    "slug": "test-site-group-beta",
+    "parent": null,
+    "description": "Beta site grouping",
+    "tags": [],
+    "created": "2026-04-24T00:00:00Z",
+    "last_updated": "2026-04-24T00:00:00Z"
+  }
+]

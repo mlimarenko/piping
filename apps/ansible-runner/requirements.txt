@@ -1,0 +1,22 @@
+# piping-ansible-runner execution environment deps.
+# We build our own minimal Execution Environment on python:slim (upstream quay.io EE
+# images require registry auth), so ansible-core is installed here explicitly.
+#
+# Every pin is exact so one image build resolves to one dependency set; update
+# the pin only together with a verified image build and the collection commits
+# in requirements.yml. Versions verified against the official PyPI index.
+#
+# ansible-core 2.22 supports the Python 3.14 controller in the runtime image.
+# Keep this pin in lockstep with the base-image Python tag in the Dockerfile.
+ansible-core==2.22.0
+# WinRM (pywinrm) and PSRP (pypsrp) transports for Windows targets; both are
+# supported transports, OpenSSH for Windows uses the SSH path.
+pywinrm==0.5.0
+pypsrp==0.9.1
+# Direct import of the local piping.space collection (module_utils/piping_api.py);
+# it used to arrive only transitively through pywinrm, leaving the direct
+# dependency undeclared.
+requests==2.34.2
+# Security floors: GHSA-6v7p-g79w-8964 and CVE-2025-47273, kept as exact pins.
+msgpack==1.2.4
+setuptools==84.2.1

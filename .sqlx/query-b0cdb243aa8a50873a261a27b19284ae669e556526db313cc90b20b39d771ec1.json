@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, key, is_masked, is_protected, kind, description, retire_with_field_usage FROM secrets_variable WHERE id = $1 LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "key",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_masked",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_protected",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "kind",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "retire_with_field_usage",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "b0cdb243aa8a50873a261a27b19284ae669e556526db313cc90b20b39d771ec1"
+}

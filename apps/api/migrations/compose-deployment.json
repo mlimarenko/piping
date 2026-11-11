@@ -1,0 +1,30 @@
+{
+  "schema": "piping.compose-migrations/v1",
+  "installed_prefix": 1,
+  "pending_tail": [],
+  "deltas": [],
+  "position_pairs": {
+    "public.monitoring_alert_source.created_at": [8, 9],
+    "public.monitoring_alert_source.enabled": [7, 8],
+    "public.monitoring_alert_source.options": [6, 7],
+    "public.monitoring_alert_source.timeout_ms": [5, 6],
+    "public.monitoring_alert_source.updated_at": [9, 10],
+    "public.monitoring_query_source.created_at": [7, 8],
+    "public.monitoring_query_source.enabled": [6, 7],
+    "public.monitoring_query_source.options": [10, 11],
+    "public.monitoring_query_source.source_type": [9, 10],
+    "public.monitoring_query_source.timeout_ms": [5, 6],
+    "public.monitoring_query_source.updated_at": [8, 9],
+    "public.playbook_project.created_at": [18, 19],
+    "public.playbook_project.created_by_user_id": [16, 17],
+    "public.playbook_project.default_execution_environment_id": [9, 10],
+    "public.playbook_project.last_sync_error": [13, 14],
+    "public.playbook_project.last_sync_revision": [12, 13],
+    "public.playbook_project.last_synced_at": [14, 15],
+    "public.playbook_project.metadata": [15, 16],
+    "public.playbook_project.sync_policy": [10, 11],
+    "public.playbook_project.sync_status": [11, 12],
+    "public.playbook_project.updated_at": [19, 20],
+    "public.playbook_project.updated_by_user_id": [17, 18]
+  }
+}

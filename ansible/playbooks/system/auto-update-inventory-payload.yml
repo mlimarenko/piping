@@ -1,0 +1,289 @@
+---
+# Fact projection for the system inventory collector: gathered machine facts to
+# the scoped collected-facts request. The field matrix is
+# apps/api/docs/collected-facts.md; only declared fields are sent here, and an
+# absent observation is omitted instead of a zero, empty string or false.
+#
+# The OS branch comes from the gathered machine fact `os_family`; the transport
+# (WinRM, PSRP or Windows OpenSSH) is only recorded as provenance.
+
+- name: Start the projected payload parts
+  ansible.builtin.set_fact:
+    piping_payload_interfaces: []
+    piping_payload_virtual_disks: []
+
+- name: Project the run identity
+  ansible.builtin.set_fact:
+    piping_payload_identity: >-
+      {{ {}
+         | combine({'run_group_id': piping_run_group_id} if piping_run_group_id | length > 0 else {})
+         | combine({'run_id': piping_run_id_effective} if piping_run_id_effective | length > 0 else {})
+         | combine({'connection_target_id': piping_target_id_effective} if piping_target_id_effective | length > 0 else {})
+         | combine({'inventory_kind': piping_source_kind_effective} if piping_source_kind_effective | length > 0 else {})
+         | combine({'inventory_id': piping_source_id_effective} if piping_source_id_effective | length > 0 else {})
+         | combine({'target_name': piping_target_name_effective} if piping_target_name_effective | length > 0 else {}) }}
+
+- name: Project the operating-system platform
+  ansible.builtin.set_fact:
+    piping_payload_platform: >-
+      {{ {'name': piping_platform_name, 'slug': piping_platform_slug}
+         if piping_platform_available else {} }}
+  vars:
+    # `unknown` is the setup module's code for an unrecognized product type;
+    # it carries no identity and is not part of the platform name.
+    piping_platform_edition: >-
+      {{ (ansible_facts.os_product_type | default('', true) | replace('_', ' '))
+         if (ansible_facts.os_product_type | default('', true) | lower) not in ['', 'unknown'] else '' }}
+    piping_platform_version_raw: "{{ ansible_facts.distribution_version | default('', true) | trim }}"
+    piping_platform_kernel_raw: "{{ ansible_facts.kernel | default('', true) | trim }}"
+    # A rolling distribution reports a non-numeric placeholder such as `n/a`;
+    # that is not an observed version. The kernel build is the version code only
+    # on Windows, where it is the OS build; elsewhere it must not become a
+    # platform identity of its own.
+    piping_platform_version: >-
+      {{ (piping_platform_version_raw if (piping_platform_version_raw is match('^[0-9][0-9.]*$'))
+          else ((piping_platform_kernel_raw if (piping_platform_kernel_raw is match('^[0-9][0-9.]*$')) else '')
+                if piping_inventory_windows else '')) }}
+    piping_platform_major_raw: "{{ ansible_facts.distribution_major_version | default('', true) | trim }}"
+    piping_platform_major: >-
+      {{ piping_platform_major_raw if (piping_platform_major_raw is match('^[0-9][0-9.]*$'))
+         else piping_platform_version }}
+    piping_platform_family: "{{ ansible_facts.distribution | default(ansible_facts.os_family | default('', true), true) }}"
+    # Windows has no canonical non-localized distribution name, so the platform
+    # is the machine build identity; a Windows host without a build code has no
+    # observed platform instead of a `Windows unknown` catch-all.
+    piping_platform_available: >-
+      {{ (piping_platform_version | length > 0) if piping_inventory_windows
+         else (piping_platform_family | length > 0) }}
+    piping_platform_name: >-
+      {{ (['Windows', piping_platform_edition, piping_platform_version] | select | join(' '))
+          if piping_inventory_windows
+          else ([piping_platform_family, piping_platform_version] | select | join(' ')) }}
+    piping_platform_slug: >-
+      {{ (('windows-' ~ piping_platform_edition ~ '-' ~ piping_platform_version)
+          if piping_inventory_windows
+          else (piping_platform_family
+                ~ (('-' ~ piping_platform_major) if piping_platform_major | length > 0 else '')))
+         | lower | regex_replace('[^a-z0-9]+', '-') | regex_replace('(^-+|-+$)', '') }}
+
+- name: Project the observed storage devices
+  ansible.builtin.set_fact:
+    piping_windows_disks: >-
+      {{ piping_windows_disk_info.disks | default([], true)
+         if (piping_windows_disk_info is defined and piping_windows_disk_info.disks is defined) else [] }}
+    piping_linux_devices: >-
+      {{ ansible_facts.mounts | default([], true)
+         | selectattr('device', 'defined') | selectattr('device', 'match', '^/dev/')
+         | list | unique(attribute='device') }}
+
+- name: Project the machine storage
+  ansible.builtin.set_fact:
+    piping_disk_total_mb: >-
+      {{ ((piping_windows_disks | selectattr('size', 'defined') | map(attribute='size') | map('int') | sum) // 1048576)
+         if piping_inventory_windows
+         else ((piping_linux_devices | selectattr('size_total', 'defined') | map(attribute='size_total') | map('int') | sum) // 1048576) }}
+
+- name: Project the hardware identity and resources
+  ansible.builtin.set_fact:
+    piping_payload_hardware: >-
+      {{ {}
+         | combine({'manufacturer': piping_hardware_manufacturer} if piping_hardware_manufacturer | length > 0 else {})
+         | combine({'model': piping_hardware_model} if piping_hardware_model | length > 0 else {})
+         | combine({'serial': piping_hardware_serial} if piping_hardware_serial | length > 0 else {})
+         | combine({'product_uuid': piping_hardware_uuid} if piping_hardware_uuid | length > 0 else {})
+         | combine({'cpu_count': piping_hardware_cpu} if piping_hardware_cpu > 0 else {})
+         | combine({'memory_mb': piping_hardware_memory} if piping_hardware_memory > 0 else {})
+         | combine({'disk_mb': piping_disk_total_mb} if piping_disk_total_mb > 0 else {}) }}
+  vars:
+    piping_hardware_manufacturer: "{{ ansible_facts.system_vendor | default('', true) | trim }}"
+    piping_hardware_model: "{{ ansible_facts.product_name | default('', true) | trim }}"
+    piping_hardware_serial: "{{ ansible_facts.product_serial | default('', true) | trim }}"
+    # A product UUID is a machine identifier; a value that is not a UUID is a
+    # firmware sentinel, not an observation. Text serials have no native format,
+    # so their placeholder values stay with the ingest placeholder rule.
+    piping_hardware_uuid: >-
+      {{ (ansible_facts.product_uuid | default('', true) | trim)
+         if (ansible_facts.product_uuid | default('', true) | trim
+             is match('^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$')) else '' }}
+    piping_hardware_cpu: "{{ ansible_facts.processor_vcpus | default(0, true) | int }}"
+    piping_hardware_memory: "{{ ansible_facts.memtotal_mb | default(0, true) | int }}"
+
+- name: Project the Linux network interfaces
+  ansible.builtin.set_fact:
+    piping_payload_interfaces: >-
+      {{ piping_payload_interfaces + ([piping_interface_row] if piping_interface_observed else []) }}
+    piping_collection_gaps: >-
+      {{ piping_collection_gaps
+         + (['interface_unobserved: ' ~ item] if not piping_interface_observed else []) }}
+  vars:
+    # Ansible stores the per-interface fact under a name where '-' becomes '_'
+    # (PrefixFactNamespace), while the model keeps the reported interface name.
+    # The `device` field is the identity guard: when both spellings exist, one
+    # fact wins the sanitized key and the other must not borrow it.
+    piping_interface_facts_raw: "{{ ansible_facts[item | replace('-', '_')] | default({}, true) }}"
+    piping_interface_facts: "{{ piping_interface_facts_raw if piping_interface_facts_raw is mapping else {} }}"
+    piping_interface_observed: "{{ (piping_interface_facts.device | default('', true)) == item }}"
+    piping_interface_ipv4: "{{ piping_interface_facts.ipv4 | default({}, true) }}"
+    piping_interface_ipv4_cidr: >-
+      {{ (piping_interface_ipv4.address ~ '/' ~ piping_interface_ipv4.prefix)
+         if (piping_interface_ipv4.address is defined and piping_interface_ipv4.prefix is defined
+             and piping_interface_ipv4.address | length > 0) else '' }}
+    piping_interface_ipv6_facts: >-
+      {{ piping_interface_facts.ipv6 | default([], true) | selectattr('address', 'defined')
+         | selectattr('prefix', 'defined') | list }}
+    piping_interface_ipv6_cidrs: >-
+      {{ (piping_interface_ipv6_facts | map(attribute='address')
+          | zip(piping_interface_ipv6_facts | map(attribute='prefix'))) | map('join', '/') | list }}
+    # The Linux provider keeps only the first IPv4 address in `ipv4`; every
+    # additional address is listed in `ipv4_secondaries` with the same shape
+    # (address, broadcast, netmask, network, prefix).
+    piping_interface_ipv4_secondary_facts: >-
+      {{ piping_interface_facts.ipv4_secondaries | default([], true)
+         | selectattr('address', 'defined') | selectattr('prefix', 'defined') | list }}
+    piping_interface_ipv4_secondary_cidrs: >-
+      {{ (piping_interface_ipv4_secondary_facts | map(attribute='address')
+          | zip(piping_interface_ipv4_secondary_facts | map(attribute='prefix'))) | map('join', '/') | list }}
+    # Every observed address of both families travels in one list; the request
+    # boundary owns family, prefix and canonical-form validation.
+    piping_interface_addresses: >-
+      {{ (([piping_interface_ipv4_cidr] if piping_interface_ipv4_cidr | length > 0 else [])
+          + piping_interface_ipv4_secondary_cidrs
+          + piping_interface_ipv6_cidrs) | unique | list }}
+    piping_interface_row: >-
+      {{ {'name': item}
+         | combine({'label': piping_interface_facts.device}
+                    if (piping_interface_facts.device | default('', true) | length > 0) else {})
+         | combine({'enabled': piping_interface_facts.active | bool}
+                    if (piping_interface_facts.active is defined and piping_interface_facts.active is not none) else {})
+         | combine({'mtu': piping_interface_facts.mtu | int}
+                    if (piping_interface_facts.mtu | default(0, true) | int > 0) else {})
+         | combine({'mac': piping_interface_facts.macaddress}
+                    if (piping_interface_facts.macaddress | default('', true) | length > 0) else {})
+         | combine({'addresses': piping_interface_addresses}
+                    if piping_interface_addresses | length > 0 else {}) }}
+  loop: "{{ ansible_facts.interfaces | default([], true) | reject('equalto', 'lo') | list }}"
+  when: not piping_inventory_windows
+
+- name: Project the Windows network interfaces
+  ansible.builtin.set_fact:
+    piping_payload_interfaces: >-
+      {{ piping_payload_interfaces + ([piping_interface_row] if piping_interface_name | length > 0 else []) }}
+  vars:
+    # The Windows setup module emits a list per address family and a single
+    # address can arrive as one object; both shapes normalise to one list here.
+    piping_interface_ipv4_raw: "{{ item.ipv4 | default([], true) }}"
+    piping_interface_ipv6_raw: "{{ item.ipv6 | default([], true) }}"
+    piping_interface_ipv4_facts: >-
+      {{ ([piping_interface_ipv4_raw] if piping_interface_ipv4_raw is mapping
+          else (piping_interface_ipv4_raw | list))
+         | selectattr('address', 'defined') | selectattr('prefix', 'defined') | list }}
+    piping_interface_ipv6_facts: >-
+      {{ ([piping_interface_ipv6_raw] if piping_interface_ipv6_raw is mapping
+          else (piping_interface_ipv6_raw | list))
+         | selectattr('address', 'defined') | selectattr('prefix', 'defined') | list }}
+    piping_interface_ipv4_cidrs: >-
+      {{ (piping_interface_ipv4_facts | map(attribute='address')
+          | zip(piping_interface_ipv4_facts | map(attribute='prefix'))) | map('join', '/') | list }}
+    piping_interface_ipv6_cidrs: >-
+      {{ (piping_interface_ipv6_facts | map(attribute='address')
+          | zip(piping_interface_ipv6_facts | map(attribute='prefix'))) | map('join', '/') | list }}
+    piping_interface_addresses: >-
+      {{ (piping_interface_ipv4_cidrs + piping_interface_ipv6_cidrs) | unique | list }}
+    piping_interface_name: "{{ item.connection_name | default(item.interface_name | default('', true), true) }}"
+    piping_interface_row: >-
+      {{ {'name': piping_interface_name}
+         | combine({'label': item.interface_name}
+                    if (item.interface_name | default('', true) | length > 0) else {})
+         | combine({'mtu': item.mtu | int}
+                    if (item.mtu | default(0, true) | int > 0) else {})
+         | combine({'mac': item.macaddress}
+                    if (item.macaddress | default('', true) | length > 0) else {})
+         | combine({'addresses': piping_interface_addresses}
+                    if piping_interface_addresses | length > 0 else {}) }}
+  loop: "{{ ansible_facts.interfaces | default([], true) | list }}"
+  when: piping_inventory_windows
+
+- name: Project the virtual-machine disks from mounted block devices
+  ansible.builtin.set_fact:
+    piping_payload_virtual_disks: "{{ piping_payload_virtual_disks + [piping_virtual_disk_row] }}"
+  vars:
+    piping_virtual_disk_row: >-
+      {{ {'name': item.mount | default(item.device, true)}
+         | combine({'size_mb': ((item.size_total | int) // 1048576)})
+         | combine({'description': item.device}) }}
+  loop: "{{ piping_linux_devices }}"
+  when:
+    - not piping_inventory_windows
+    - piping_source_kind_effective == 'virtual_machine'
+    - item.size_total | default(0, true) | int > 0
+
+- name: Project the virtual-machine disks from Windows volumes
+  ansible.builtin.set_fact:
+    piping_payload_virtual_disks: "{{ piping_payload_virtual_disks + [piping_virtual_disk_row] }}"
+  vars:
+    piping_virtual_disk_name: >-
+      {{ (item.drive_letter ~ ':') if (item.drive_letter | default('', true) | length > 0)
+         else (item.path | default('', true)) }}
+    piping_virtual_disk_description: >-
+      {{ item.label if (item.label | default('', true) | length > 0)
+         else (item.type | default('', true)) }}
+    piping_virtual_disk_row: >-
+      {{ {'name': piping_virtual_disk_name}
+         | combine({'size_mb': ((item.size | int) // 1048576)})
+         | combine({'description': piping_virtual_disk_description}
+                    if piping_virtual_disk_description | length > 0 else {}) }}
+  loop: "{{ piping_windows_disks | selectattr('partitions', 'defined') | map(attribute='partitions') | flatten
+            | selectattr('volumes', 'defined') | map(attribute='volumes') | flatten
+            | selectattr('size', 'defined') | selectattr('size', 'greaterthan', 0) | list }}"
+  when:
+    - piping_inventory_windows
+    - piping_source_kind_effective == 'virtual_machine'
+    - piping_virtual_disk_name | length > 0
+
+- name: Project the curated ansible facts
+  ansible.builtin.set_fact:
+    piping_payload_raw_facts: >-
+      {{ piping_raw_facts_observed | dict2items | rejectattr('value', 'equalto', '') | items2dict }}
+  vars:
+    piping_raw_facts_observed:
+      connection_family: "{{ 'windows' if piping_inventory_windows else 'linux' }}"
+      transport: "{{ ansible_connection | default('', true) }}"
+      shell_type: "{{ ansible_shell_type | default('', true) }}"
+      system: "{{ ansible_facts.system | default('', true) }}"
+      kernel: "{{ ansible_facts.kernel | default('', true) }}"
+      distribution: "{{ ansible_facts.distribution | default('', true) }}"
+      distribution_version: "{{ ansible_facts.distribution_version | default('', true) }}"
+      architecture: "{{ ansible_facts.architecture2 | default(ansible_facts.architecture | default('', true), true) }}"
+      hostname: "{{ ansible_facts.hostname | default('', true) }}"
+      fqdn: "{{ ansible_facts.fqdn | default('', true) }}"
+      domain: "{{ ansible_facts.domain | default('', true) }}"
+      bios_version: "{{ ansible_facts.bios_version | default('', true) }}"
+      python_version: "{{ ansible_facts.python_version | default('', true) }}"
+      os_product_type: "{{ ansible_facts.os_product_type | default('', true) }}"
+      os_installation_type: "{{ ansible_facts.os_installation_type | default('', true) }}"
+      virtualization_type: "{{ ansible_facts.virtualization_type | default('', true) }}"
+      virtualization_role: "{{ ansible_facts.virtualization_role | default('', true) }}"
+
+- name: Project the selected write groups
+  ansible.builtin.set_fact:
+    piping_payload_write_policy:
+      write_platform: "{{ piping_inventory_write_platform | default(true) | bool }}"
+      write_device_type: "{{ piping_inventory_write_device_type | default(true) | bool }}"
+      write_serial: "{{ piping_inventory_write_serial | default(true) | bool }}"
+      write_resources: "{{ piping_inventory_write_resources | default(true) | bool }}"
+      write_interfaces: "{{ piping_inventory_write_interfaces | default(true) | bool }}"
+      write_ip_addresses: "{{ piping_inventory_write_ip_addresses | default(true) | bool }}"
+      write_mac_addresses: "{{ piping_inventory_write_mac_addresses | default(true) | bool }}"
+      write_virtual_disks: "{{ piping_inventory_write_virtual_disks | default(true) | bool }}"
+      write_ansible_custom_fields: "{{ piping_inventory_write_ansible_custom_fields | default(true) | bool }}"
+
+- name: Assemble the collected-facts payload
+  ansible.builtin.set_fact:
+    piping_collected_facts_payload: >-
+      {{ piping_payload_identity
+         | combine({'platform': piping_payload_platform} if piping_payload_platform | length > 0 else {})
+         | combine({'hardware': piping_payload_hardware} if piping_payload_hardware | length > 0 else {})
+         | combine({'interfaces': piping_payload_interfaces} if piping_payload_interfaces | length > 0 else {})
+         | combine({'virtual_disks': piping_payload_virtual_disks} if piping_payload_virtual_disks | length > 0 else {})
+         | combine({'write_policy': piping_payload_write_policy})
+         | combine({'raw_facts': piping_payload_raw_facts} if piping_payload_raw_facts | length > 0 else {}) }}

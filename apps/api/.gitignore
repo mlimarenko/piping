@@ -1,0 +1,25 @@
+# Rust
+target/
+*.rs.bk
+*.rlib
+*.prof*
+
+# Env
+.env
+.env.*
+
+# Local generated artifacts
+export.json
+.audit/
+
+# Logs/IDE
+*.log
+.idea/
+.vscode/
+
+# Python (tooling/scripts)
+__pycache__/
+*.pyc
+
+# Local CCTV driver capability/reachability notes — may reference real fleet data; never commit.
+DRIVER_MATRIX.md

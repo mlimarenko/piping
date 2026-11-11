@@ -1,0 +1,64 @@
+diff --git a/dist/cjs/guacamole-common.js b/dist/cjs/guacamole-common.js
+index 9117f2cc1034393fcee219d51b86f92ab60b012a..8d6c284a569cca14b406784fb5559bc5e5574f32 100644
+--- a/dist/cjs/guacamole-common.js
++++ b/dist/cjs/guacamole-common.js
+@@ -15304,6 +15304,16 @@ Guacamole.HTTPTunnel.prototype = new Guacamole.Tunnel();
+  */
+ Guacamole.WebSocketTunnel = function(tunnelURL) {
+ 
++    /**
++     * Optional observer of the raw WebSocket close pair, invoked with the
++     * browser close code and reason before this tunnel maps them to a
++     * Guacamole status. Undefined by default; status, error and state
++     * handling are unchanged.
++     *
++     * @type {function(number, string)}
++     */
++    this.onwsclose = null;
++
+     /**
+      * Reference to this WebSocket tunnel.
+      *
+@@ -15554,6 +15564,10 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
+ 
+         socket.onclose = function(event) {
+ 
++            // Hand the untouched pair to an optional observer before mapping it.
++            if (tunnel.onwsclose)
++                tunnel.onwsclose(event.code, event.reason);
++
+             // Pull status code directly from closure reason provided by Guacamole
+             if (event.reason)
+                 close_tunnel(new Guacamole.Status(parseInt(event.reason), event.reason));
+diff --git a/dist/esm/guacamole-common.js b/dist/esm/guacamole-common.js
+index 0eb036296ba0bdac76b602a432f3483c1b1f12b8..c834396fc8567fa6bf94c2280224f1e276b6c3d3 100644
+--- a/dist/esm/guacamole-common.js
++++ b/dist/esm/guacamole-common.js
+@@ -15304,6 +15304,16 @@ Guacamole.HTTPTunnel.prototype = new Guacamole.Tunnel();
+  */
+ Guacamole.WebSocketTunnel = function(tunnelURL) {
+ 
++    /**
++     * Optional observer of the raw WebSocket close pair, invoked with the
++     * browser close code and reason before this tunnel maps them to a
++     * Guacamole status. Undefined by default; status, error and state
++     * handling are unchanged.
++     *
++     * @type {function(number, string)}
++     */
++    this.onwsclose = null;
++
+     /**
+      * Reference to this WebSocket tunnel.
+      *
+@@ -15554,6 +15564,10 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
+ 
+         socket.onclose = function(event) {
+ 
++            // Hand the untouched pair to an optional observer before mapping it.
++            if (tunnel.onwsclose)
++                tunnel.onwsclose(event.code, event.reason);
++
+             // Pull status code directly from closure reason provided by Guacamole
+             if (event.reason)
+                 close_tunnel(new Guacamole.Status(parseInt(event.reason), event.reason));

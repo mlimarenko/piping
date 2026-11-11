@@ -1,0 +1,36 @@
+services:
+  postgres:
+    ports: !reset []
+    labels:
+      io.piping.fixture: licensing-e2e
+  backend:
+    environment:
+      PIPING_SPACE_EU_BILLING_PROVIDER: sim
+      PIPING_SPACE_RU_BILLING_PROVIDER: sim
+      PIPING_SPACE_BILLING_PROVIDER_BASE_URL: http://billing-sim:8181
+    ports: !override
+    - "127.0.0.1:${PIPING_LICENSE_E2E_PORTAL_PORT:-18090}:8090"
+    labels:
+      io.piping.fixture: licensing-e2e
+    networks:
+      piping-space: {}
+      licensing-e2e:
+        aliases: [licensing-portal]
+  billing-sim:
+    environment:
+      BILLING_SIM_PIPING_SPACE_WEBHOOK_URL: http://backend:8090/api/v1/billing/webhooks
+      BILLING_SIM_CHECKOUT_BASE_URL: http://127.0.0.1:${PIPING_LICENSE_E2E_BILLING_PORT:-18181}/checkout
+    ports: !override
+    - "127.0.0.1:${PIPING_LICENSE_E2E_BILLING_PORT:-18181}:8181"
+
+volumes:
+  postgres-data:
+    name: ${PIPING_LICENSE_E2E_CLOUD_PROJECT:?Set the isolated Cloud project}_postgres-data
+    labels:
+      io.piping.fixture: licensing-e2e
+
+networks:
+  licensing-e2e:
+    name: ${PIPING_LICENSE_E2E_CLOUD_PROJECT:?Set the isolated Cloud project}_licensing-e2e
+    labels:
+      io.piping.fixture: licensing-e2e

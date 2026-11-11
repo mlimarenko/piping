@@ -1,0 +1,31 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/module-bay-types/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/module-bay-types/1/",
+      "display": "PWA78 capture bay type",
+      "name": "PWA78 capture bay type",
+      "slug": "pwa78-capture-bay-type",
+      "manufacturer": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/manufacturers/1/",
+        "display": "Test Manufacturer Cisco",
+        "name": "Test Manufacturer Cisco",
+        "slug": "test-manufacturer-cisco",
+        "description": "Stand-in for Cisco for fixtures"
+      },
+      "color": "123456",
+      "description": "",
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:43.833122Z",
+      "last_updated": "2026-10-27T15:04:43.833129Z"
+    }
+  ]
+}

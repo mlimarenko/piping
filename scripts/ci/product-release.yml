@@ -1,0 +1,594 @@
+include:
+- local: /scripts/ci/install-source.yml
+- local: /scripts/ci/public-release.yml
+  inputs:
+    source-needs:
+      - {job: 'image:backend:build', artifacts: false}
+      - {job: 'image:frontend:build', artifacts: false}
+      - {job: 'image:ansible-runner:build', artifacts: false}
+- &catalog
+  project: $COMPONENTS_CATALOG_PROJECT
+  file: /policies/pipeline.yml
+  inputs:
+    pipeline-policy: protected-default
+    mr-sourcechecks-enabled: true
+    default-push-auto-cancel: interruptible
+- <<: *catalog
+  file: /jobs/languages/frontend.yml
+  inputs:
+    workdir: apps/web
+    package-manager: pnpm@12.16.1
+    allow-runtime-command-overrides: false
+    setup-script:
+    - node -e 'if (process.versions.node.split(".")[0] !== "26") { throw new Error("Frontend checks require Node 26"); }'
+    lint-command: 'node --max-old-space-size=2560 ./node_modules/eslint/bin/eslint.js .'
+    typecheck-command: '"$FRONTEND_PM" run typecheck'
+    test-command: '"$FRONTEND_PM" run test --maxWorkers=2'
+    build-command: '"$FRONTEND_PM" run build && "$FRONTEND_PM" run build:demo'
+    build-artifact-paths: [apps/web/dist/]
+    rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH && $CI_MERGE_REQUEST_TARGET_BRANCH_PROTECTED == "true"'
+      changes:
+        paths:
+        - apps/web/**/*
+        - .gitlab-ci.yml
+        - scripts/ci/product-release.yml
+      when: on_success
+      allow_failure: true
+    - when: never
+- <<: *catalog
+  file: /jobs/tests/script.yml
+  inputs:
+    job-name: migrations:source
+    script-path: scripts/check_netbox_owner_schema.py
+    stage: verify
+    rules-policy: unconditional
+    runner-tags: [ci-medium]
+    needs: []
+- <<: *catalog
+  file: /jobs/languages/rust.yml
+  inputs:
+    job-prefix: backend-contracts
+    runner-tags: [ci-xlarge]
+    toolchain: 1.99.1
+- <<: *catalog
+  file: /jobs/containers/build.yml
+  inputs:
+    job-name: image:backend:build
+    artifact-key: backend
+    dotenv-prefix: PIPING_BACKEND_IMAGE
+    repository: release/backend
+    version-build-arg-name: VERSION
+    context: .
+    dockerfile: apps/api/Dockerfile
+    use-ci-registry-credentials: true
+    cache-mode: registry
+    dag-needs-enabled: true
+    version-job: version
+    version-job-optional: false
+    version-contract-required: true
+    reuse-built-artifact: true
+    rules-policy: protected-default-push
+    runner-tags: [ci-medium]
+    build-arg-names: PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM_B64
+- <<: *catalog
+  file: /jobs/containers/build.yml
+  inputs:
+    job-name: image:frontend:build
+    version-build-arg-name: VERSION
+    artifact-key: frontend
+    dotenv-prefix: PIPING_FRONTEND_IMAGE
+    repository: release/frontend
+    context: .
+    dockerfile: apps/web/Dockerfile
+    use-ci-registry-credentials: true
+    cache-mode: registry
+    dag-needs-enabled: true
+    version-job: version
+    version-job-optional: false
+    version-contract-required: true
+    reuse-built-artifact: true
+    rules-policy: protected-default-push
+    runner-tags: [ci-medium]
+- <<: *catalog
+  file: /jobs/containers/build.yml
+  inputs:
+    job-name: image:ansible-runner:build
+    artifact-key: ansible-runner
+    dotenv-prefix: PIPING_ANSIBLE_RUNNER_IMAGE
+    repository: release/ansible-runner
+    context: .
+    dockerfile: apps/ansible-runner/Dockerfile
+    use-ci-registry-credentials: true
+    cache-mode: registry
+    dag-needs-enabled: true
+    version-job: version
+    version-job-optional: false
+    version-contract-required: true
+    reuse-built-artifact: true
+    rules-policy: protected-default-push
+    runner-tags: [ci-medium]
+- <<: *catalog
+  file: /jobs/release/bundle.yml
+  inputs:
+    release-source: ref
+    rules-policy: protected-default-push
+    image-contracts: &image-contracts >-
+      backend|release/backend|||image:backend:build
+      frontend|release/frontend|||image:frontend:build
+      ansible-runner|release/ansible-runner|||image:ansible-runner:build
+    version-job: version
+    image-needs: &image-build-needs
+    - {job: image:backend:build, artifacts: true}
+    - {job: image:frontend:build, artifacts: true}
+    - {job: image:ansible-runner:build, artifacts: true}
+    runner-tags: [ci-small]
+- <<: *catalog
+  file: /jobs/containers/promote.yml
+  inputs:
+    batch-enabled: true
+    source-policy: protected-default
+    job-name: .release:promote:source
+    enabled: true
+    use-ci-registry-credentials: true
+    image-contracts: *image-contracts
+    image-batch-needs:
+    - {job: release:bundle, artifacts: true}
+    promote-needs: *image-build-needs
+    version-job: version
+    release-source: public-next
+    rules-policy: protected-default-push
+    runner-tags: [ci-small]
+- <<: *catalog
+  file: /jobs/deploy/gitops.yml
+  inputs:
+    release-source: ref
+    gitops-project-path: infrastructure/argocd
+    gitops-branch: develop
+    push-token-variable: GIT_ACCESS_TOKEN
+    source-branch: develop
+    source-policy: protected-default
+    stage: deploy
+    rules-policy: protected-default-push
+    assert-script: scripts/ci/assert_argocd_automation.py
+    assert-args: --application-name piping-app --region-root argocd/piping-eu/apps
+    apply-script: scripts/ci/apply_release_bundle.py
+    apply-args: >-
+      --kustomization argocd/_shared/apps/piping-app/base/kustomization.yaml
+      --platform linux/amd64
+      --image backend=$CI_REGISTRY/$CI_PROJECT_PATH/release/backend
+      --image frontend=$CI_REGISTRY/$CI_PROJECT_PATH/release/frontend
+      --image ansible-runner=$CI_REGISTRY/$CI_PROJECT_PATH/release/ansible-runner
+    project-name: piping-app
+    resource-group: piping-app-deploy
+    needs:
+    - job: version
+      artifacts: true
+    - job: release:bundle
+      artifacts: true
+    - job: release:promote
+      artifacts: false
+    job-name: deploy:gitops
+    runner-tags: [ci-small]
+- <<: *catalog
+  file: /jobs/base.yml
+  inputs:
+    runner-tags: [ci-small]
+frontend:lint:
+  extends: .frontend:lint
+  tags: [ci-large]
+  allow_failure: true
+backend:contracts:
+  extends: .backend-contracts:rust-base
+  allow_failure: true
+  variables:
+    CARGO_BUILD_JOBS: '1'
+    CARGO_INCREMENTAL: '0'
+    CARGO_PROFILE_DEV_DEBUG: '0'
+    CARGO_PROFILE_TEST_DEBUG: '0'
+    SQLX_OFFLINE: 'true'
+    PIPING_SECRETS__CIPHER_KEY_B64: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+    PIPING_AUTH__LOCAL_ENABLED: 'true'
+    PIPING_AUTH__PASSWORD_PEPPER: test-pepper
+  services:
+  - name: postgres:18-alpine
+    alias: postgres
+    variables:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+  - name: redis:8.10.1
+    alias: redis
+  rules:
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH && $CI_MERGE_REQUEST_TARGET_BRANCH_PROTECTED == "true"'
+    changes:
+      paths:
+      - apps/api/**/*
+      - apps/ansible-runner/**/*
+      - crates/**/*
+      - .sqlx/**/*
+      - Cargo.toml
+      - Cargo.lock
+      - .gitlab-ci.yml
+      - scripts/ci/product-release.yml
+  - when: never
+  script:
+  - |
+    set -eu
+    cd "$RUST_COMPONENT_TRUSTED_WORKDIR"
+    export PIPING_DATABASE__URL='postgresql://postgres@postgres:5432/postgres'
+    export PIPING_REDIS__URL='redis://redis:6379/0'
+    export REDIS_URL="$PIPING_REDIS__URL"
+    cargo build --locked -p piping-backend --bin dump-openapi --bin piping-backend
+    artifact_dir="$CI_PROJECT_DIR/backend-contracts/$CI_JOB_ID"
+    mkdir -p "$artifact_dir"
+    schema="$artifact_dir/openapi.yaml"
+    "$CARGO_TARGET_DIR/debug/dump-openapi" > "$schema.partial"
+    test -s "$schema.partial"
+    test "$(wc -c < "$schema.partial")" -le 10485760
+    mv "$schema.partial" "$schema"
+    gzip -c "$CARGO_TARGET_DIR/debug/piping-backend" > "$artifact_dir/piping-backend.gz.partial"
+    test -s "$artifact_dir/piping-backend.gz.partial"
+    test "$(wc -c < "$artifact_dir/piping-backend.gz.partial")" -le 536870912
+    mv "$artifact_dir/piping-backend.gz.partial" "$artifact_dir/piping-backend.gz"
+    sha256sum "$CARGO_TARGET_DIR/debug/piping-backend" > "$artifact_dir/piping-backend.sha256"
+    printf '%s\n' "$CI_COMMIT_SHA" > "$artifact_dir/source-sha.txt"
+    status=0
+    if cargo build --locked -p piping-ansible-runner --bin piping-ansible-runner; then
+      gzip -c "$CARGO_TARGET_DIR/debug/piping-ansible-runner" > "$artifact_dir/piping-ansible-runner.gz.partial"
+      test -s "$artifact_dir/piping-ansible-runner.gz.partial"
+      test "$(wc -c < "$artifact_dir/piping-ansible-runner.gz.partial")" -le 536870912
+      mv "$artifact_dir/piping-ansible-runner.gz.partial" "$artifact_dir/piping-ansible-runner.gz"
+      sha256sum "$CARGO_TARGET_DIR/debug/piping-ansible-runner" > "$artifact_dir/piping-ansible-runner.sha256"
+    else
+      status=$?
+    fi
+    # Compile each target as it runs so one broken fixture does not suppress the others.
+    # The first suite initializes the shared disposable database with product migrations.
+    for suite in integration_playbook_launch_audit integration_ssh_record_delegation \
+       integration_playbook_scheduled_secret_gate integration_audit_projection \
+      integration_audit_authorization integration_run_console integration_project_workspace \
+        integration_connection_observation_lifecycle integration_target_set_delete \
+        integration_target_selector_preview integration_config_context_matching \
+        integration_netbox_bidirectional_live integration_netbox_source_flow integration_pull_schedule \
+        integration_monitoring_profiles_migration integration_playbook_catalog \
+        integration_playbook_catalog_api; do
+      cargo test --locked -p piping-backend --test "$suite" -- --ignored --test-threads=1 || status=$?
+    done
+    cargo test --locked -p piping-backend --test integration_rest playbook_batch_authorization_runtime_tests -- --ignored --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test integration_rest admin_user_management_tests -- --ignored --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test integration_rest playbook_callback_authorization_tests -- --ignored --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test integration_rest monitoring_profiles_tests -- --ignored --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test integration_rest monitoring_discovery_tests -- --ignored --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test integration_rest config_context -- --ignored --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test integration_inventory_pull embedded_front_rear_template_relationships_import_as_mapping_rows -- --ignored --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test playbook_batch_authorization -- --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test integration_proxy_observation -- --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test service_layer revoked_or_expired_personal_token_cannot_commit -- --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test service_layer scheduled_request_rechecks_revoked_token_and_current_scopes -- --test-threads=1 || status=$?
+    cargo test --locked -p piping-backend --test config_defaults_smoke -- --test-threads=1 || status=$?
+    if cargo test --locked -p piping-backend --lib --no-run; then
+      for filter in mcp_audit_ safe_projection observer_ concurrent_attach_ other_policy_violations websocket_transport_audit \
+        pty_ capability_handshake_ desktop_geometry_ rdp_join_connect_values_never_carry_target_credentials \
+        normalize_terminal_ api::middleware::auth::tests::playbook_ config_resolver config_context contexts::monitoring \
+        api::rest::routes::monitoring::discovery_report \
+        api::middleware::auth::tests::discovery_report_is_a_job_token_callback_only_for_post \
+        collected_facts_repository::tests::payload_megabytes_ \
+        collected_facts_repository::tests::future_observation_ \
+        collected_facts_repository::tests::numeric_representations_ \
+        contexts::playbooks::domain::catalog::tests contexts::sync::application::schedule_principal::tests \
+        contexts::sync::application::inventory_pull::tests::only_lease_contention_is_a_busy_pull \
+        contexts::sync::application::pull_schedule::tests \
+        providers::netbox_source_projection::tests port_template_relationship_dispositions_track_the_projection \
+        template_reverse_port_relations_are_consumed \
+        contexts::access_control::application::bootstrap::tests \
+        api::rest::routes::rum::tests api::middleware::auth::tests::rum_ observability::metrics::web::tests \
+        observability::tracing::tests::http_signal_path_; do
+        cargo test --locked -p piping-backend --lib "$filter" -- --test-threads=1 || status=$?
+      done
+      cargo test --locked -p piping-backend --lib \
+        app::pull_schedule_worker::tests::worker_preserves_busy_job_then_recovers_and_refuses_disabled_source \
+        -- --ignored --test-threads=1 || status=$?
+      cargo test --locked -p piping-backend --lib \
+        storage::database::pool::tests::pool_disables_jit_on_each_connection_and_replacement \
+        -- --ignored --test-threads=1 || status=$?
+      cargo test --locked -p piping-backend --lib \
+        collected_facts_repository::tests::ingest_records_provenance_and_protects_manual_values \
+        -- --ignored --test-threads=1 || status=$?
+      cargo test --locked -p piping-backend --lib \
+        collected_facts_repository::tests::group_error_is_isolated_from_other_groups \
+        -- --ignored --test-threads=1 || status=$?
+      cargo test --locked -p piping-backend --lib \
+        collected_facts_repository::tests::virtual_disk_size_is_converted_and_unknown_does_not_overwrite \
+        -- --ignored --test-threads=1 || status=$?
+      cargo test --locked -p piping-backend --lib \
+        discovery_store::db_tests::reconciliation_is_idempotent_and_protects_manual_data \
+        -- --ignored --test-threads=1 || status=$?
+    else
+      status=$?
+      printf '%s\n' 'Backend lib filters were not run: the test executable did not compile.' >&2
+    fi
+    cargo test --locked -p piping-ansible-runner --bin piping-ansible-runner tests:: -- --test-threads=1 || status=$?
+    cargo test --locked -p piping-contracts -- --test-threads=1 || status=$?
+    python3 -m unittest discover -s apps/ansible-runner/docker/tests || status=$?
+    exit "$status"
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+    - backend-contracts/$CI_JOB_ID/openapi.yaml
+    - backend-contracts/$CI_JOB_ID/piping-backend.gz
+    - backend-contracts/$CI_JOB_ID/piping-backend.sha256
+    - backend-contracts/$CI_JOB_ID/piping-ansible-runner.gz
+    - backend-contracts/$CI_JOB_ID/piping-ansible-runner.sha256
+    - backend-contracts/$CI_JOB_ID/source-sha.txt
+frontend:typecheck:
+  extends: .frontend:typecheck
+  tags: [ci-medium]
+  allow_failure: true
+frontend:test:
+  extends: .frontend:test
+  # Two jsdom workers share the 4 GiB capacity pool, not ci-small's 2 GiB.
+  tags: [ci-medium]
+  allow_failure: true
+frontend:build:
+  extends: .frontend:build
+  # Production and demo bundling use the existing 4 GiB pool.
+  tags: [ci-medium]
+  allow_failure: true
+frontend:sourcemaps:
+  # Private release-bound maps for the deployed bundle. The normal build emits
+  # none, so the image and the static artifact stay map-free.
+  stage: verify
+  image: $CI_TOOLS_IMAGE
+  tags: [ci-medium]
+  needs:
+    - {job: version, artifacts: true}
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    PIPING_SOURCE_MAPS: "1"
+  script:
+    - cd apps/web
+    # The tools image already provides pnpm@12.16.1 and keeps corepack offline,
+    # so a runtime corepack bootstrap cannot fetch. Guard the baked version.
+    - test "$(pnpm --version)" = 12.16.1
+    - pnpm install --frozen-lockfile
+    # The version job publishes version.env as a dotenv artifact, which reaches
+    # this job as an environment variable. The file itself is written with
+    # umask 077 and stays unreadable to the non-root job user.
+    - test -n "$CI_COMPONENTS_VERSION"
+    - VITE_APP_VERSION="$CI_COMPONENTS_VERSION" pnpm run build
+    - node scripts/collect-sourcemaps.mjs "$CI_COMPONENTS_VERSION"
+  artifacts:
+    name: "sourcemaps-$CI_PIPELINE_IID"
+    expire_in: 30 days
+    paths: [apps/web/sourcemaps/]
+  allow_failure: true
+migrations:source:
+  # Prove schema/guard changes before merge. The protected image producer
+  # retains its own exact-release SQL proof before starting BuildKit.
+  allow_failure: true
+  variables:
+    GIT_DEPTH: '0'
+  services:
+  - name: postgres:18-alpine
+    alias: postgres
+    variables:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+  rules:
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH && $CI_MERGE_REQUEST_TARGET_BRANCH_PROTECTED == "true"'
+    changes:
+      paths:
+      - apps/api/**/*
+      - crates/**/*
+      - .sqlx/**/*
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - scripts/rebaseline-sqlx-0001.sh
+      - scripts/rebaseline_sqlx.py
+      - scripts/deploy_release_bundle.py
+      - scripts/ci-compose-native.py
+      - scripts/check_netbox_owner_schema.py
+      - scripts/ci/postgres_migration_contract.py
+      - scripts/ci/compose_delivery_contract.py
+      - tests/ci/test_deploy_compose_release.py
+      - tests/ci/test_native_fixture_transport.py
+      - tests/ci/test_postgres_migration_contract.py
+      - tests/ci/test_netbox_owner_schema.py
+      - tests/ci/test_sqlx_rebaseline.py
+      - tests/ci/test_helper_source_scope.py
+      - tests/compose/test_deploy_release_bundle.py
+      - scripts/ci/install-source.yml
+      - .gitlab-ci.yml
+      - scripts/ci/product-release.yml
+    when: on_success
+  - when: never
+  script:
+  - mkdir -p apps/api/coverage
+  - timeout 900 python3 scripts/check_netbox_owner_schema.py --postgres-host postgres --output-dir "$CI_PROJECT_DIR/apps/api/coverage/.netbox-schema-${CI_JOB_ID}" --prefix ci_schema --require-clean-source
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+    - apps/api/coverage/.netbox-schema-*/
+image:backend:build:
+  # Migration SQL must pass before the mandatory producer starts BuildKit.
+  services:
+  - name: postgres:18-alpine
+    alias: postgres
+    variables:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+  before_script:
+  - !reference [.ci-components-log, before_script]
+  - mkdir -p apps/api/coverage
+  - timeout 900 python3 scripts/check_netbox_owner_schema.py --postgres-host postgres --output-dir "$CI_PROJECT_DIR/apps/api/coverage/.netbox-schema-${CI_JOB_ID}" --prefix ci_schema --require-clean-source
+deploy:gitops:
+  before_script:
+  - !reference [.ci-components-log, before_script]
+  needs:
+  - {job: version, artifacts: true}
+  - {job: release:bundle, artifacts: true}
+  - {job: release:promote, artifacts: true}
+  allow_failure: false
+release:promote:
+  extends: .release:promote:source
+  # Private delivery promotes only the same-pipeline RC, independently of GitHub.
+  rules:
+  - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_TAG == null'
+    when: on_success
+    allow_failure: false
+  - when: never
+  before_script:
+  - !reference [.ci-components-log, before_script]
+  script:
+  - !reference [.release:promote:source, script]
+  allow_failure: false
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+    - .ci/promotions/
+
+# MR source proof builds the canonical builder from a Git export; default-branch
+# proof consumes the exact producer image. All selected paths route to product CI.
+# Historical helper-native jobs keep their registered source and artifact routes.
+baseline:native:
+  stage: package
+  tags: [ci-medium]
+  timeout: 60m
+  allow_failure: true
+  image:
+    name: $CI_TOOLS_IMAGE
+    entrypoint: ['']
+    docker:
+      user: '0:0'
+    kubernetes:
+      user: '0:0'
+  variables:
+    GIT_DEPTH: '0'
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /builds/baseline-${CI_JOB_ID}-tls
+    DOCKER_CERT_PATH: /builds/baseline-${CI_JOB_ID}-tls/client
+    DOCKER_TLS_VERIFY: '1'
+    HEALTHCHECK_TCP_PORT: '2376'
+  services:
+  - name: docker:29.8.2-dind
+    alias: docker
+    command:
+    - sh
+    - -ec
+    - exec dockerd-entrypoint.sh --data-root="/builds/baseline-${CI_JOB_ID}-store" --label=piping.fixture=current-baseline
+  rules:
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH && $CI_MERGE_REQUEST_TARGET_BRANCH_PROTECTED == "true"'
+    changes:
+      paths: &baseline-source-paths
+      - apps/api/**/*
+      - crates/**/*
+      - .sqlx/**/*
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - scripts/rebaseline-sqlx-0001.sh
+      - scripts/rebaseline_sqlx.py
+      - scripts/check_netbox_owner_schema.py
+      - scripts/deploy_release_bundle.py
+      - scripts/ci/postgres_migration_contract.py
+      - scripts/ci/compose_delivery_contract.py
+      - scripts/ci-compose-native.py
+      - tests/ci/test_sqlx_rebaseline.py
+      - tests/ci/test_deploy_compose_release.py
+      - tests/ci/test_netbox_owner_schema.py
+      - tests/ci/test_native_fixture_transport.py
+      - tests/ci/test_postgres_migration_contract.py
+      - tests/compose/test_deploy_release_bundle.py
+      - scripts/ci/install-source.yml
+      - scripts/ci/product-release.yml
+      - .gitlab-ci.yml
+    variables:
+      BASELINE_BACKEND_MODE: source
+    needs:
+    - {job: 'migrations:source', artifacts: false}
+    when: on_success
+  - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_TAG == null'
+    changes:
+      compare_to: '$CI_COMMIT_BEFORE_SHA'
+      paths: *baseline-source-paths
+    variables:
+      BASELINE_BACKEND_MODE: image
+    needs:
+    - {job: 'image:backend:build', artifacts: true}
+    when: on_success
+  - when: never
+  script:
+  - |
+    set +x
+    set -eu
+    umask 077
+    test "$(git -c "safe.directory=$CI_PROJECT_DIR" rev-parse HEAD)" = "$CI_COMMIT_SHA"
+    mkdir -p .ci/baseline-native/private
+    export DOCKER_CONFIG="$CI_PROJECT_DIR/.ci/baseline-native/private/docker-auth"
+    mkdir -p "$DOCKER_CONFIG"
+    printf '%s' "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY" >/dev/null
+    docker info >/dev/null
+    case "$BASELINE_BACKEND_MODE" in
+      image)
+        backend_ref="$(python3 -c 'import json,os,re; d=json.load(open(".ci/images/backend/image.json")); assert d["commit"]==os.environ["CI_COMMIT_SHA"]; ref=d["digest_ref"]; assert re.fullmatch(re.escape(os.environ["CI_REGISTRY_IMAGE"])+r"/release/backend@sha256:[0-9a-f]{64}",ref); print(ref)')"
+        docker pull "$backend_ref"
+        backend_path=/usr/local/bin/piping-backend
+        converter_path=/usr/local/bin/convert-fhrp-auth-keys
+        ;;
+      source)
+        mkdir .ci/baseline-native/private/source
+        git -c "safe.directory=$CI_PROJECT_DIR" archive --output=.ci/baseline-native/private/source.tar "$CI_COMMIT_SHA"
+        tar -xf .ci/baseline-native/private/source.tar -C .ci/baseline-native/private/source
+        # Fixture signing material stays private; any command failure aborts.
+        openssl genpkey -algorithm Ed25519 -out .ci/baseline-native/private/fixture-signing.pem >/dev/null 2>&1
+        openssl pkey -in .ci/baseline-native/private/fixture-signing.pem -pubout -out .ci/baseline-native/private/fixture-public.pem >/dev/null 2>&1
+        fixture_public_key="$(base64 -w0 .ci/baseline-native/private/fixture-public.pem)"
+        # Unpublished fixtures use source metadata; published builds use the native reservation.
+        fixture_version="$(python3 -c 'import sys,tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["workspace"]["package"]["version"])' .ci/baseline-native/private/source/Cargo.toml)"
+        backend_ref="baseline-builder:${CI_COMMIT_SHA}"
+        docker build --target builder -f .ci/baseline-native/private/source/apps/api/Dockerfile \
+          --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+          --build-arg "PIPING_LICENSE_BAKED_PUBLIC_KEY_PEM_B64=$fixture_public_key" \
+          --build-arg "VERSION=$fixture_version" \
+          -t "$backend_ref" .ci/baseline-native/private/source
+        backend_path=/out/piping-backend
+        converter_path=/out/convert-fhrp-auth-keys
+        ;;
+      *) printf '%s\n' 'Select an explicit source or image backend proof cohort' >&2; exit 1 ;;
+    esac
+    backend_image_id="$(docker image inspect --format '{{ .Id }}' "$backend_ref")"
+    test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$backend_image_id")" = "$CI_COMMIT_SHA"
+    fixture="baseline-extract-${CI_JOB_ID}"
+    # Preserve the original failure if create/copy fails; this fresh daemon's
+    # nonce container may not yet exist when the EXIT cleanup runs.
+    trap 'docker rm -f "$fixture" >/dev/null 2>&1 || true' EXIT
+    docker create --name "$fixture" --network none "$backend_image_id" >/dev/null
+    docker cp "$fixture:$backend_path" .ci/baseline-native/private/piping-backend
+    docker cp "$fixture:$converter_path" .ci/baseline-native/private/convert-fhrp-auth-keys
+    docker rm "$fixture" >/dev/null
+    trap - EXIT
+    backend_sha="$(sha256sum .ci/baseline-native/private/piping-backend)"
+    backend_sha="${backend_sha%% *}"
+    converter_sha="$(sha256sum .ci/baseline-native/private/convert-fhrp-auth-keys)"
+    converter_sha="${converter_sha%% *}"
+    for image in docker:29.8.2-dind postgres:18-trixie registry:2; do docker pull "$image"; done
+    python3 scripts/ci-compose-native.py --baseline --backend-source-sha "$CI_COMMIT_SHA" \
+      --backend-image-id "$backend_image_id" \
+      --backend-binary "$CI_PROJECT_DIR/.ci/baseline-native/private/piping-backend" \
+      --converter-binary "$CI_PROJECT_DIR/.ci/baseline-native/private/convert-fhrp-auth-keys" \
+      --converter-sha256 "$converter_sha" \
+      --backend-sha256 "$backend_sha" --image "$CI_TOOLS_IMAGE" \
+      --proof-directory "$CI_PROJECT_DIR/.ci/baseline-native/public"
+  artifacts:
+    when: on_success
+    expire_in: 30 days
+    paths:
+    - .ci/baseline-native/public/*.json

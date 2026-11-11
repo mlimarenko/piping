@@ -1,0 +1,83 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/locations/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/locations/1/",
+      "display": "PWA78 capture location",
+      "name": "PWA78 capture location",
+      "slug": "pwa78-capture-location",
+      "site": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/sites/1/",
+        "display": "Test Site Alpha",
+        "name": "Test Site Alpha",
+        "slug": "test-site-alpha",
+        "description": "Primary alpha site"
+      },
+      "parent": null,
+      "status": {
+        "value": "active",
+        "label": "Active"
+      },
+      "tenant": null,
+      "facility": "",
+      "description": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:43.854427Z",
+      "last_updated": "2026-10-27T15:04:43.854436Z",
+      "rack_count": 1,
+      "device_count": 1,
+      "prefix_count": 0,
+      "owner": null,
+      "comments": "",
+      "_depth": 0
+    },
+    {
+      "id": 2,
+      "url": "http://127.0.0.1:60499/api/dcim/locations/2/",
+      "display_url": "http://127.0.0.1:60499/dcim/locations/2/",
+      "display": "PWA78 capture child location",
+      "name": "PWA78 capture child location",
+      "slug": "pwa78-capture-child-location",
+      "site": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/sites/1/",
+        "display": "Test Site Alpha",
+        "name": "Test Site Alpha",
+        "slug": "test-site-alpha",
+        "description": "Primary alpha site"
+      },
+      "parent": {
+        "id": 1,
+        "url": "http://127.0.0.1:60499/api/dcim/locations/1/",
+        "display_url": "http://127.0.0.1:60499/dcim/locations/1/",
+        "display": "PWA78 capture location",
+        "name": "PWA78 capture location",
+        "slug": "pwa78-capture-location",
+        "_depth": 0
+      },
+      "status": {
+        "value": "active",
+        "label": "Active"
+      },
+      "tenant": null,
+      "facility": "",
+      "description": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:43.877359Z",
+      "last_updated": "2026-10-27T15:04:43.877368Z",
+      "rack_count": 0,
+      "device_count": 0,
+      "prefix_count": 0,
+      "owner": null,
+      "comments": "",
+      "_depth": 1
+    }
+  ]
+}

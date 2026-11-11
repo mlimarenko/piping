@@ -1,0 +1,22 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://127.0.0.1:60499/api/dcim/cable-bundles/1/",
+      "display_url": "http://127.0.0.1:60499/dcim/cable-bundles/1/",
+      "display": "PWA78 capture cable bundle",
+      "name": "PWA78 capture cable bundle",
+      "description": "Owned synthetic serializer capture",
+      "owner": null,
+      "comments": "",
+      "tags": [],
+      "custom_fields": {},
+      "created": "2026-10-27T15:04:43.814581Z",
+      "last_updated": "2026-10-27T15:04:43.814590Z",
+      "cable_count": 1
+    }
+  ]
+}

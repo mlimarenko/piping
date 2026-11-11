@@ -1,0 +1,355 @@
+---
+# Exporter discovery evidence collector.
+#
+# This playbook only reads bounded, non-secret machine evidence over the run
+# connection and reports it as one run artifact. It does not install or start
+# exporters, does not scan ports or networks, and never records process
+# arguments, environment values or credentials. Status resolution, exporter
+# typing, absence policy and service-discovery changes belong to the monitoring
+# owner and are never decided from free-form text here.
+- name: Collect exporter discovery evidence
+  hosts: all
+  gather_facts: false
+  vars:
+    piping_api_url: "{{ lookup('ansible.builtin.env', 'PIPING_API_URL') | trim | regex_replace('/+$', '') }}"
+    piping_run_tokens_file: "{{ lookup('ansible.builtin.env', 'PIPING_RUN_TOKENS_FILE') | trim }}"
+    piping_run_group_id: "{{ lookup('ansible.builtin.env', 'PIPING_RUN_GROUP_ID') | trim }}"
+    piping_run_id_effective: "{{ hostvars[inventory_hostname].piping_run_id | default('') | trim }}"
+    piping_api_token_effective: "{{ (lookup('ansible.builtin.file', piping_run_tokens_file) | from_json)[piping_run_id_effective] }}"
+    piping_target_id_effective: "{{ hostvars[inventory_hostname].piping_target_id | default('') | trim }}"
+    piping_source_kind_effective: "{{ hostvars[inventory_hostname].piping_source_kind | default('') | trim }}"
+    piping_source_id_effective: "{{ hostvars[inventory_hostname].piping_source_id | default('') | trim }}"
+    piping_discovery_connection_family: >-
+      {{
+        'windows'
+        if (ansible_connection | default('ssh')) in ['winrm', 'psrp']
+        else 'linux'
+      }}
+    piping_discovery_host_inspection_effective: "{{ piping_discovery_host_inspection | default(true) | bool }}"
+    piping_discovery_endpoint_probe_effective: "{{ piping_discovery_endpoint_probe | default(true) | bool }}"
+    piping_discovery_detect_exporter_type_effective: "{{ piping_discovery_detect_exporter_type | default(true) | bool }}"
+    piping_discovery_excluded_hosts_effective: "{{ piping_discovery_excluded_hosts | default([], true) }}"
+    piping_discovery_excluded_ports_effective: "{{ piping_discovery_excluded_ports | default([], true) }}"
+    piping_discovery_extra_endpoints_effective: "{{ piping_discovery_extra_endpoints | default([], true) }}"
+    piping_discovery_labels_effective: "{{ piping_discovery_labels | default({}, true) }}"
+    piping_discovery_probe_timeout_ms_effective: "{{ piping_discovery_probe_timeout_ms | default(3000, true) | int }}"
+    piping_discovery_probe_concurrency_effective: "{{ piping_discovery_probe_concurrency | default(4, true) | int }}"
+    piping_discovery_max_endpoints_per_host_effective: "{{ piping_discovery_max_endpoints_per_host | default(64, true) | int }}"
+    piping_discovery_rest_timeout_effective: "{{ piping_discovery_rest_timeout | default(15, true) | int }}"
+    piping_discovery_rest_retries_effective: "{{ piping_discovery_rest_retries | default(1, true) | int }}"
+    piping_discovery_command_timeout_effective: "{{ piping_discovery_command_timeout | default(10, true) | int }}"
+    piping_discovery_listener_line_cap: 5000
+    piping_api_headers:
+      Authorization: "Bearer {{ piping_api_token_effective }}"
+      Accept: application/json
+      Content-Type: application/json
+
+  pre_tasks:
+    - name: Verify Piping discovery REST environment
+      ansible.builtin.assert:
+        that:
+          - piping_api_url | length > 0
+          - piping_run_tokens_file | length > 0
+          - piping_run_group_id | length > 0
+          - piping_run_id_effective | length > 0
+          - piping_target_id_effective | length > 0
+          - piping_source_kind_effective in ['device', 'virtual_machine']
+          - piping_source_id_effective | length > 0
+        fail_msg: "Piping exporter discovery REST environment is not available for this system playbook run."
+        quiet: true
+      delegate_to: localhost
+      no_log: true
+
+    - name: Inspect the controller run-token file
+      ansible.builtin.stat:
+        path: "{{ piping_run_tokens_file }}"
+        follow: false
+        get_checksum: false
+        get_mime: false
+      register: piping_run_tokens_stat
+      delegate_to: localhost
+      no_log: true
+
+    - name: Require a private regular run-token file
+      ansible.builtin.assert:
+        that:
+          - piping_run_tokens_stat.stat.isreg | default(false)
+          - piping_run_tokens_stat.stat.mode | default('') == '0600'
+        fail_msg: "The controller run-token file must be a private regular file with mode 0600."
+        quiet: true
+      delegate_to: localhost
+      no_log: true
+
+    - name: Require the token bound to this host's run
+      ansible.builtin.assert:
+        that:
+          - piping_api_token_effective is string
+          - piping_api_token_effective | length > 0
+        fail_msg: "The controller token map has no token for this host's run."
+        quiet: true
+      delegate_to: localhost
+      no_log: true
+
+  tasks:
+    - name: Mark skipped inspection for an excluded host
+      ansible.builtin.set_fact:
+        piping_discovery_host_excluded: >-
+          {{
+            (inventory_hostname in piping_discovery_excluded_hosts_effective)
+            or (ansible_host | default('') in piping_discovery_excluded_hosts_effective)
+            or (piping_target_id_effective in piping_discovery_excluded_hosts_effective)
+          }}
+
+    - name: Record inspection start time
+      ansible.builtin.set_fact:
+        piping_discovery_started_at: "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime(utc=true) }}"
+
+    - name: Inspect listening sockets on Linux
+      ansible.builtin.shell: >-
+        timeout {{ piping_discovery_command_timeout_effective }} ss -H -lntup
+      args:
+        executable: /bin/sh
+      register: piping_discovery_linux_listeners
+      changed_when: false
+      failed_when: false
+      when:
+        - piping_discovery_connection_family == 'linux'
+        - not piping_discovery_host_excluded
+        - piping_discovery_host_inspection_effective
+
+    - name: Inspect running services on Linux
+      ansible.builtin.shell: >-
+        timeout {{ piping_discovery_command_timeout_effective }} systemctl list-units
+        --type=service --state=running --no-legend --plain --no-pager | awk '{print $1}'
+      args:
+        executable: /bin/sh
+      register: piping_discovery_linux_services
+      changed_when: false
+      failed_when: false
+      when:
+        - piping_discovery_connection_family == 'linux'
+        - not piping_discovery_host_excluded
+        - piping_discovery_host_inspection_effective
+
+    - name: Inspect process executable names on Linux
+      ansible.builtin.shell: >-
+        timeout {{ piping_discovery_command_timeout_effective }} ps -eo comm=
+      args:
+        executable: /bin/sh
+      register: piping_discovery_linux_processes
+      changed_when: false
+      failed_when: false
+      when:
+        - piping_discovery_connection_family == 'linux'
+        - not piping_discovery_host_excluded
+        - piping_discovery_host_inspection_effective
+
+    - name: Detect a Linux container runtime
+      ansible.builtin.shell: >-
+        command -v docker
+      args:
+        executable: /bin/sh
+      register: piping_discovery_linux_docker
+      changed_when: false
+      failed_when: false
+      when:
+        - piping_discovery_connection_family == 'linux'
+        - not piping_discovery_host_excluded
+        - piping_discovery_host_inspection_effective
+
+    - name: Inspect containers on Linux
+      ansible.builtin.shell: >-
+        timeout {{ piping_discovery_command_timeout_effective }} docker ps
+        --format '{% raw %}{{ .Image }}|{{ .Names }}|{{ .Ports }}{% endraw %}'
+      args:
+        executable: /bin/sh
+      register: piping_discovery_linux_containers
+      changed_when: false
+      failed_when: false
+      when:
+        - piping_discovery_connection_family == 'linux'
+        - not piping_discovery_host_excluded
+        - piping_discovery_host_inspection_effective
+        - piping_discovery_linux_docker.rc | default(1) == 0
+
+    - name: Record the inspection user on Linux
+      ansible.builtin.shell: >-
+        id -u
+      args:
+        executable: /bin/sh
+      register: piping_discovery_linux_uid
+      changed_when: false
+      failed_when: false
+      when:
+        - piping_discovery_connection_family == 'linux'
+        - not piping_discovery_host_excluded
+        - piping_discovery_host_inspection_effective
+
+    - name: Inspect the host on Windows
+      ansible.windows.win_shell: |
+        $ErrorActionPreference = 'Stop'
+        $result = [ordered]@{ services = @(); processes = @(); listeners = @(); containers = @(); docker = $false; errors = @() }
+        try {
+          $result.services = @(Get-Service | Select-Object Name, Status | ForEach-Object { [ordered]@{ name = $_.Name; state = $_.Status.ToString() } })
+        } catch { $result.errors += 'services_failed' }
+        try {
+          $result.processes = @(Get-Process | Select-Object Id, ProcessName | ForEach-Object { [ordered]@{ id = $_.Id; name = $_.ProcessName } })
+        } catch { $result.errors += 'processes_failed' }
+        try {
+          $result.listeners = @(Get-NetTCPConnection -State Listen | Select-Object LocalAddress, LocalPort, OwningProcess | ForEach-Object { [ordered]@{ address = $_.LocalAddress; port = [int]$_.LocalPort; process_id = [int]$_.OwningProcess } })
+        } catch { $result.errors += 'listeners_failed' }
+        if (Get-Command docker -ErrorAction SilentlyContinue) {
+          $result.docker = $true
+          try { $result.containers = @(docker ps --format json | ForEach-Object { $_ | ConvertFrom-Json | Select-Object Image, Names }) } catch { $result.errors += 'containers_failed' }
+        }
+        $result | ConvertTo-Json -Depth 5 -Compress
+      register: piping_discovery_windows
+      changed_when: false
+      failed_when: false
+      when:
+        - piping_discovery_connection_family == 'windows'
+        - not piping_discovery_host_excluded
+        - piping_discovery_host_inspection_effective
+
+    - name: Build the Linux inspection evidence
+      ansible.builtin.set_fact:
+        piping_discovery_platform: linux
+        piping_discovery_listeners_complete: >-
+          {{
+            piping_discovery_linux_listeners.rc | default(1) == 0
+            and (piping_discovery_linux_listeners.stdout | default('')).splitlines() | length < piping_discovery_listener_line_cap
+          }}
+        piping_discovery_services_complete: "{{ piping_discovery_linux_services.rc | default(1) == 0 }}"
+        piping_discovery_processes_complete: "{{ piping_discovery_linux_processes.rc | default(1) == 0 }}"
+        piping_discovery_containers_state: >-
+          {{
+            'not_installed' if piping_discovery_linux_docker.rc | default(1) != 0
+            else ('complete' if piping_discovery_linux_containers.rc | default(1) == 0 else 'partial')
+          }}
+        piping_discovery_owner_visibility: >-
+          {{ 'complete' if piping_discovery_linux_uid.stdout | default('') | trim == '0' else 'partial' }}
+        piping_discovery_raw:
+          listeners: "{{ piping_discovery_linux_listeners.stdout | default('') }}"
+          services: "{{ piping_discovery_linux_services.stdout | default('') }}"
+          processes: "{{ piping_discovery_linux_processes.stdout | default('') }}"
+          containers: "{{ piping_discovery_linux_containers.stdout | default('') }}"
+      when: piping_discovery_connection_family == 'linux'
+
+    - name: Build the Windows inspection evidence
+      ansible.builtin.set_fact:
+        piping_discovery_platform: windows
+        piping_discovery_windows_errors: "{{ (piping_discovery_windows.stdout | default('{}') | from_json).errors | default([]) }}"
+        piping_discovery_listeners_complete: >-
+          {{
+            piping_discovery_windows.rc | default(1) == 0
+            and 'listeners_failed' not in ((piping_discovery_windows.stdout | default('{}') | from_json).errors | default([]))
+          }}
+        piping_discovery_services_complete: >-
+          {{
+            piping_discovery_windows.rc | default(1) == 0
+            and 'services_failed' not in ((piping_discovery_windows.stdout | default('{}') | from_json).errors | default([]))
+          }}
+        piping_discovery_processes_complete: >-
+          {{
+            piping_discovery_windows.rc | default(1) == 0
+            and 'processes_failed' not in ((piping_discovery_windows.stdout | default('{}') | from_json).errors | default([]))
+          }}
+        piping_discovery_containers_state: >-
+          {{
+            'not_installed' if not ((piping_discovery_windows.stdout | default('{}') | from_json).docker | default(false))
+            else ('partial' if 'containers_failed' in ((piping_discovery_windows.stdout | default('{}') | from_json).errors | default([])) else 'complete')
+          }}
+        piping_discovery_owner_visibility: complete
+        piping_discovery_raw: "{{ piping_discovery_windows.stdout | default('{}') | from_json }}"
+      when:
+        - piping_discovery_connection_family == 'windows'
+        - not piping_discovery_host_excluded
+        - piping_discovery_host_inspection_effective
+
+    - name: Build the skipped inspection evidence
+      ansible.builtin.set_fact:
+        piping_discovery_platform: "{{ piping_discovery_connection_family }}"
+        piping_discovery_listeners_complete: false
+        piping_discovery_services_complete: false
+        piping_discovery_processes_complete: false
+        piping_discovery_containers_state: skipped
+        piping_discovery_owner_visibility: skipped
+        piping_discovery_raw:
+          listeners: ""
+          services: ""
+          processes: ""
+          containers: ""
+      when:
+        - piping_discovery_host_excluded or not piping_discovery_host_inspection_effective
+
+    - name: Record inspection finish time
+      ansible.builtin.set_fact:
+        piping_discovery_finished_at: "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime(utc=true) }}"
+
+    - name: Build the discovery evidence payload
+      ansible.builtin.set_fact:
+        piping_discovery_payload:
+          schema_version: 1
+          run_id: "{{ piping_run_id_effective }}"
+          run_group_id: "{{ piping_run_group_id }}"
+          connection_target_id: "{{ piping_target_id_effective }}"
+          host_id: "{{ piping_source_id_effective }}"
+          host_name: "{{ hostvars[inventory_hostname].piping_target_name | default(inventory_hostname, true) }}"
+          source_kind: "{{ piping_source_kind_effective }}"
+          platform: "{{ piping_discovery_platform }}"
+          started_at: "{{ piping_discovery_started_at }}"
+          finished_at: "{{ piping_discovery_finished_at }}"
+          skipped: "{{ piping_discovery_host_excluded | bool }}"
+          sources:
+            host_inspection: "{{ piping_discovery_host_inspection_effective | bool }}"
+            endpoint_probe: "{{ piping_discovery_endpoint_probe_effective | bool }}"
+          options:
+            detect_exporter_type: "{{ piping_discovery_detect_exporter_type_effective | bool }}"
+            excluded_hosts: "{{ piping_discovery_excluded_hosts_effective }}"
+            excluded_ports: "{{ piping_discovery_excluded_ports_effective }}"
+            extra_endpoints: "{{ piping_discovery_extra_endpoints_effective }}"
+            labels: "{{ piping_discovery_labels_effective }}"
+            probe_timeout_ms: "{{ piping_discovery_probe_timeout_ms_effective }}"
+            probe_concurrency: "{{ piping_discovery_probe_concurrency_effective }}"
+            max_endpoints_per_host: "{{ piping_discovery_max_endpoints_per_host_effective }}"
+            absence_policy: "{{ piping_discovery_absence_policy | default('manual') }}"
+            absence_confirm_runs: "{{ piping_discovery_absence_confirm_runs | default(3) | int }}"
+            restore_on_reappearance: "{{ piping_discovery_restore_on_reappearance | default(true) | bool }}"
+          coverage:
+            listeners: "{{ 'complete' if piping_discovery_listeners_complete | bool else 'partial' }}"
+            services: "{{ 'complete' if piping_discovery_services_complete | bool else 'partial' }}"
+            processes: "{{ 'complete' if piping_discovery_processes_complete | bool else 'partial' }}"
+            containers: "{{ piping_discovery_containers_state }}"
+            listener_owners: "{{ piping_discovery_owner_visibility }}"
+          raw: "{{ piping_discovery_raw }}"
+
+    - name: Send the discovery evidence to Piping
+      ansible.builtin.uri:
+        url: "{{ piping_api_url }}/api/v1/monitoring/discovery/report"
+        method: POST
+        headers: "{{ piping_api_headers }}"
+        body_format: json
+        body: "{{ piping_discovery_payload }}"
+        status_code:
+          - 201
+        timeout: "{{ piping_discovery_rest_timeout_effective }}"
+      register: piping_discovery_response
+      retries: "{{ piping_discovery_rest_retries_effective }}"
+      delay: 1
+      until: piping_discovery_response.status == 201
+      no_log: true
+      delegate_to: localhost
+
+    - name: Report the discovery evidence summary
+      ansible.builtin.debug:
+        msg:
+          target: "{{ inventory_hostname }}"
+          platform: "{{ piping_discovery_platform }}"
+          skipped: "{{ piping_discovery_payload.skipped }}"
+          listeners_coverage: "{{ piping_discovery_payload.coverage.listeners }}"
+          services_coverage: "{{ piping_discovery_payload.coverage.services }}"
+          containers_coverage: "{{ piping_discovery_payload.coverage.containers }}"
+          absence_policy: "{{ piping_discovery_payload.options.absence_policy }}"
+          absence_confirm_runs: "{{ piping_discovery_payload.options.absence_confirm_runs }}"
+          restore_on_reappearance: "{{ piping_discovery_payload.options.restore_on_reappearance }}"
+          artifact: "{{ piping_discovery_response.json.artifact_id | default('') }}"
